@@ -1,106 +1,38 @@
 # Novel Agent 小说创作平台
 
-一个可直接运行的本地小说创作 Web 应用。前端使用 React + Vite，后端使用 Express，数据以 JSON 文件持久化在 `data/` 目录，不依赖数据库。后端统一调用 DeepSeek 模型辅助创作，模型默认 `deepseek-v4-flash`。
+一个可直接运行的本地小说创作 Web 应用。前端使用 React + Vite，后端使用 Express，数据以 JSON 文件持久化在 `data/` 目录。后端统一调用 DeepSeek 模型辅助创作，模型默认 `deepseek-v4-flash`。
 
-## 功能
+## 快速开始
 
-- 登录 / 注册，JWT 登录态，未登录自动跳回登录页。
-- 创作工作台：一书一页面，顶部可新建或选择历史图书。
-- 交互式构思：Agent 逐个追问主角、故事背景、分类，整理摘要后经用户确认再生成。
-- 持久化聊天：聊天记录随书籍保存，切换板块后回来仍能继续。
-- 续写与修改：可直接在聊天中续写下一章、改写章节或询问剧情。
-- 书本组件：生成后聊天内出现书本卡片，可并列打开阅读与编辑。
-- 我的：书籍列表、章节编辑、停止输入 1 秒后自动保存。
-- 关系网：展示书中人物与势力关系的 SVG 节点图。
-- 书架：内部开发阶段占位页面。
-- 设置：浅色 / 深色 / 护眼纸纹背景风格与字号切换。
-
-## 目录结构
-
-```text
-Novel Agent/
-├─ client/     # React 前端（Vite，端口 5173）
-├─ server/     # Express 后端（端口 3001）
-├─ data/       # 运行时生成的 users.json / books.json / settings.json
-├─ .env.example
-└─ TARGET.md
-```
-
-## 环境要求
-
-- Node.js 18 或以上。
-- 可选：DeepSeek API Key。
-
-## 配置环境变量
-
-在项目根目录创建 `.env`，参考 `.env.example`：
-
-```text
-DEEPSEEK_API_KEY=你的密钥
-DEEPSEEK_MODEL=deepseek-v4-flash
-DEEPSEEK_BASE_URL=https://api.deepseek.com
-JWT_SECRET=请改成随机字符串
-PORT=3001
-```
-
-`.env` 已加入 `.gitignore`，不会提交到仓库。
-
-## 安装
+安装依赖：
 
 ```bash
-cd client
-npm install
-cd ../server
-npm install
+npm run install:all
 ```
 
-Windows PowerShell 若提示禁止运行脚本，请使用 `npm.cmd install`。
-
-## 启动
-
-开两个终端：
+开发模式：
 
 ```bash
-cd server
-npm run dev
-```
-
-```bash
-cd client
-npm run dev
+npm run dev:server
+npm run dev:client
 ```
 
 访问 `http://localhost:5173`。
 
-## 生产模式
-
-后端会直接托管前端构建产物，只需一个服务即可访问完整界面：
+生产模式：
 
 ```bash
 npm run build
 npm start
 ```
 
-然后访问 `http://localhost:3001`。
+访问 `http://localhost:3001`。
 
-## 测试账号
+测试账号：`admin / 123456`
 
-首次启动后自动创建：`admin / 123456`
+## 项目文档
 
-## 测试与构建
+- `TARGET.md`：每轮更新的目标、待更新说明与版本记录。
+- `SUMMARY.md`：项目详细概况、技术架构与版本更新说明。
 
-```bash
-cd server
-npm test
-```
-
-```bash
-cd client
-npm run build
-```
-
-## 常见问题
-
-- 创作返回“未配置 DEEPSEEK_API_KEY”：在根目录 `.env` 中配置密钥后重启 server。
-- 端口被占用：修改 `.env` 的 `PORT`，或在 `client/vite.config.js` 中调整代理地址。
-- 忘记登录态：清除浏览器 localStorage，或重新登录。
+配置 DeepSeek 密钥时，在项目根目录创建 `.env`，参考 `.env.example`。
