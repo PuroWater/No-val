@@ -422,3 +422,41 @@ button, input, textarea, select {
   stroke: var(--panel);
   stroke-width: 3;
 }
+
+.shelf-placeholder {
+  padding: 28px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+}
+
+.settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.option-row {
+  display: flex;
+  gap: 8px;
+}
+
+.option-row button {
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.option-row button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+.saved-tip {
+  margin: 0;
+  color: var(--muted);
+}
