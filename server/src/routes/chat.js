@@ -1,9 +1,30 @@
 import { Router } from 'express';
+import { readJson, writeJson, BOOKS_FILE } from '../lib/store.js';
+import { normalizeBook } from '../lib/bookUtils.js';
 import { requireAuth } from '../middleware/auth.js';
+import { createDraft, handleMessage } from '../services/chatService.js';
 import { createBookFromConcept, continueBook } from '../services/bookService.js';
 
 const router = Router();
 router.use(requireAuth);
+
+router.post('/sessions', (req, res) => {
+  const book = createDraft(req.user.id);
+  res.status(201).json({ book });
+});
+
+router.post('/message', async (req, res) => {
+  const { bookId, content } = req.body || {};
+  if (!bookId || !String(content || '').trim()) {
+    return res.status(400).json({ error: '请选择书籍并输入内容' });
+  }
+  try {
+    const book = await handleMessage(req.user.id, bookId, String(content).trim());
+    return res.json({ book });
+  } catch (err) {
+    return res.status(502).json({ error: err.message });
+  }
+});
 
 router.post('/create-book', async (req, res) => {
   const concept = String(req.body?.concept || '').trim();
@@ -22,7 +43,11 @@ router.post('/continue', async (req, res) => {
     return res.status(400).json({ error: '请选择书籍并输入续写指令' });
   }
   try {
-    const book = await continueBook(req.user.id, bookId, String(instruction).trim());
+    const books = readJson(BOOKS_FILE, []).map(normalizeBook);
+    const book = books.find((item) => item.id === bookId && item.userId === req.user.id);
+    if (!book) return res.status(404).json({ error: '书籍不存在' });
+    await continueBook(book, String(instruction).trim());
+    writeJson(BOOKS_FILE, books);
     return res.json({ book });
   } catch (err) {
     return res.status(502).json({ error: err.message });

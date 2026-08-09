@@ -1,4 +1,5 @@
 import { readJson, writeJson, BOOKS_FILE } from '../lib/store.js';
+import { newId, normalizeBook } from '../lib/bookUtils.js';
 import { chatCompletion } from './deepseek.js';
 
 function nextChapterId(book) {
@@ -18,7 +19,7 @@ async function extractRelations(book) {
   };
 }
 
-export async function createBookFromConcept(userId, concept) {
+export async function generateBookContent(concept) {
   const result = await chatCompletion({
     system: '你是小说创作助手。始终只返回 JSON，不要包含 Markdown。',
     user: `根据构思创作一本小说，返回 JSON：{"title":"书名","outline":"简介","chapters":[{"title":"章节标题","content":"章节正文"}]}。构思：${concept}`,
@@ -27,34 +28,59 @@ export async function createBookFromConcept(userId, concept) {
   if (!result.title || !Array.isArray(result.chapters) || result.chapters.length === 0) {
     throw new Error('模型未返回完整小说结构');
   }
-  const now = new Date().toISOString();
-  const bookId = `b_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-  const book = {
-    id: bookId,
-    userId,
+  return {
     title: String(result.title).trim(),
     outline: String(result.outline || '').trim(),
-    chapters: result.chapters.map((chapter, index) => ({
-      id: nextChapterId({ id: bookId }),
+    chapters: result.chapters
+  };
+}
+
+export async function createBookFromConcept(userId, concept) {
+  const content = await generateBookContent(concept);
+  const now = new Date().toISOString();
+  const book = normalizeBook({
+    id: newId('b'),
+    userId,
+    status: 'ready',
+    title: content.title,
+    outline: content.outline,
+    chapters: content.chapters.map((chapter, index) => ({
+      id: nextChapterId({ id: newId('b') }),
       title: String(chapter.title || `第 ${index + 1} 章`).trim(),
       content: String(chapter.content || '').trim(),
       updatedAt: now
     })),
     relations: { nodes: [], edges: [] },
+    chat: [],
+    draft: { concept, summary: concept },
     createdAt: now,
     updatedAt: now
-  };
+  });
   book.relations = await extractRelations(book).catch(() => ({ nodes: [], edges: [] }));
-  const books = readJson(BOOKS_FILE, []);
+  const books = readJson(BOOKS_FILE, []).map(normalizeBook);
   books.push(book);
   writeJson(BOOKS_FILE, books);
   return book;
 }
 
-export async function continueBook(userId, bookId, instruction) {
-  const books = readJson(BOOKS_FILE, []);
-  const book = books.find((item) => item.id === bookId && item.userId === userId);
-  if (!book) throw new Error('书籍不存在');
+export async function finalizeDraftBook(book) {
+  const content = await generateBookContent(book.draft.summary || book.draft.concept);
+  const now = new Date().toISOString();
+  book.title = content.title;
+  book.outline = content.outline;
+  book.chapters = content.chapters.map((chapter, index) => ({
+    id: nextChapterId(book),
+    title: String(chapter.title || `第 ${index + 1} 章`).trim(),
+    content: String(chapter.content || '').trim(),
+    updatedAt: now
+  }));
+  book.status = 'ready';
+  book.updatedAt = now;
+  book.relations = await extractRelations(book).catch(() => ({ nodes: [], edges: [] }));
+  return book;
+}
+
+export async function continueBook(book, instruction) {
   const context = book.chapters.map((c) => `${c.title}\n${c.content}`).join('\n\n');
   const result = await chatCompletion({
     system: '你是小说续写助手。始终只返回 JSON，不要包含 Markdown。',
@@ -71,6 +97,21 @@ export async function continueBook(userId, bookId, instruction) {
   });
   book.updatedAt = new Date().toISOString();
   book.relations = await extractRelations(book).catch(() => book.relations);
-  writeJson(BOOKS_FILE, books);
+  return book;
+}
+
+export async function rewriteChapter(book, chapterIndex, instruction) {
+  const target = book.chapters[chapterIndex];
+  if (!target) throw new Error('章节不存在');
+  const result = await chatCompletion({
+    system: '你是小说改写助手。始终只返回 JSON，不要包含 Markdown。',
+    user: `根据修改意见改写章节，返回 JSON：{"title":"章节标题","content":"新内容"}。原章节：\n${target.title}\n${target.content}\n修改意见：${instruction}`,
+    maxTokens: 2400
+  });
+  target.title = String(result.title || target.title).trim();
+  target.content = String(result.content || target.content).trim();
+  target.updatedAt = new Date().toISOString();
+  book.updatedAt = target.updatedAt;
+  book.relations = await extractRelations(book).catch(() => book.relations);
   return book;
 }

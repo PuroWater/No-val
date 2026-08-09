@@ -460,3 +460,147 @@ button, input, textarea, select {
   margin: 0;
   color: var(--muted);
 }
+
+.workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+}
+
+.workspace-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.workspace-top h2 {
+  margin: 0;
+}
+
+.workspace-top select {
+  min-width: 280px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+}
+
+.workspace-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 60px 20px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+}
+
+.workspace-chat {
+  min-height: 520px;
+}
+
+.workspace-split {
+  display: grid;
+  grid-template-columns: minmax(320px, 5fr) minmax(320px, 6fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.status-badge {
+  margin-left: 8px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: var(--bg);
+  color: var(--muted);
+}
+
+.status-badge.ready {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.chat-message.error {
+  border: 1px solid #e5a0a0;
+  color: #b03a2e;
+}
+
+.book-widget {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 420px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.book-widget-cover {
+  width: 46px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  background: var(--accent);
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.book-widget-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.book-widget-info span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.book-widget .primary {
+  margin-left: auto;
+  padding: 8px 10px;
+}
+
+.book-side-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.side-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.side-panel-head h3 {
+  margin: 0;
+}
+
+.close-button {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+@media (max-width: 900px) {
+  .workspace-split {
+    grid-template-columns: 1fr;
+  }
+}

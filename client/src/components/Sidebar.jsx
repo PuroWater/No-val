@@ -9,8 +9,7 @@ export default function Sidebar() {
     <aside className="sidebar">
       <div className="sidebar-brand">Novel Agent</div>
       <nav>
-        <NavLink to="/create">创作</NavLink>
-        <NavLink to="/continue">续写</NavLink>
+        <NavLink to="/workspace">创作</NavLink>
         <NavLink to="/shelf">书架</NavLink>
         <NavLink to="/my">我的</NavLink>
       </nav>

@@ -18,7 +18,7 @@ export default function MyPage() {
         <Link to="/settings" className="link-button">设置</Link>
       </div>
       {error && <p className="form-error">{error}</p>}
-      <BookList books={books} />
+      <BookList books={books.filter((book) => book.status !== 'draft')} />
     </section>
   );
 }
