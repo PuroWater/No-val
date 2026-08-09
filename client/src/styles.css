@@ -1,0 +1,48 @@
+:root {
+  color-scheme: light;
+  --bg: #f5f6f8;
+  --panel: #ffffff;
+  --text: #1f2328;
+  --muted: #6b7280;
+  --accent: #2f6fed;
+  --border: #d9dee7;
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #15181d;
+  --panel: #20242b;
+  --text: #e8eaed;
+  --muted: #9aa3af;
+  --accent: #6ea8ff;
+  --border: #353b45;
+}
+
+[data-theme='paper'] {
+  --bg: #f3ead8;
+  --panel: #fffaf0;
+  --text: #3b3226;
+  --muted: #7a6f5e;
+  --accent: #8a6d3b;
+  --border: #ddd0b8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, 'Segoe UI', sans-serif;
+}
+
+button, input, textarea, select {
+  font: inherit;
+}
+
+.placeholder {
+  padding: 40px;
+  color: var(--muted);
+}
