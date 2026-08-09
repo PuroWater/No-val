@@ -22,7 +22,7 @@ app.use('/api/books', booksRouter);
 app.use('/api/chat', chatRouter);
 app.use('/api/settings', settingsRouter);
 
-app.use((req, res) => res.status(404).json({ error: '接口不存在' }));
+app.use((req, res) => res.status(404).json({ error: `接口不存在: ${req.method} ${req.originalUrl}` }));
 
 const port = Number(process.env.PORT || 3001);
 await ensureInitialData();
