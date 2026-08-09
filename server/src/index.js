@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
-import { ENV_PATH } from './config.js';
+import { ENV_PATH, ROOT_DIR } from './config.js';
 import { ensureInitialData } from './lib/bootstrap.js';
 import authRouter from './routes/auth.js';
 import booksRouter from './routes/books.js';
@@ -21,6 +21,16 @@ app.use('/api/auth', authRouter);
 app.use('/api/books', booksRouter);
 app.use('/api/chat', chatRouter);
 app.use('/api/settings', settingsRouter);
+
+const CLIENT_DIST = path.join(ROOT_DIR, 'client', 'dist');
+app.use(express.static(CLIENT_DIST));
+
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api')) return next();
+  res.sendFile(path.join(CLIENT_DIST, 'index.html'), (err) => {
+    if (err) res.status(404).json({ error: '前端尚未构建，请先运行 npm run build' });
+  });
+});
 
 app.use((req, res) => res.status(404).json({ error: `接口不存在: ${req.method} ${req.originalUrl}` }));
 

@@ -69,6 +69,17 @@ npm run dev
 
 访问 `http://localhost:5173`。
 
+## 生产模式
+
+后端会直接托管前端构建产物，只需一个服务即可访问完整界面：
+
+```bash
+npm run build
+npm start
+```
+
+然后访问 `http://localhost:3001`。
+
 ## 测试账号
 
 首次启动后自动创建：`admin / 123456`
