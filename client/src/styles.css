@@ -488,6 +488,12 @@ button, input, textarea, select {
   color: var(--text);
 }
 
+.workspace-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .workspace-empty {
   display: flex;
   flex-direction: column;
@@ -523,9 +529,19 @@ button, input, textarea, select {
   color: #ffffff;
 }
 
+.status-badge.processing {
+  background: #d97706;
+  color: #ffffff;
+}
+
 .chat-message.error {
   border: 1px solid #e5a0a0;
   color: #b03a2e;
+}
+
+.chat-message.processing {
+  color: var(--muted);
+  font-style: italic;
 }
 
 .book-widget {

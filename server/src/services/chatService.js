@@ -7,6 +7,10 @@ export function isConfirmation(text) {
   return /确认|确定|可以|没问题|不用改|不需要修改|就这样|开始生成|生成吧/.test(String(text));
 }
 
+export function hasPending(book) {
+  return book.chat.some((message) => message.kind === 'processing');
+}
+
 function appendMessage(book, role, content, kind = 'text', extra = {}) {
   book.chat.push({
     id: newId('m'),
@@ -19,10 +23,29 @@ function appendMessage(book, role, content, kind = 'text', extra = {}) {
   book.updatedAt = new Date().toISOString();
 }
 
-export function createDraft(userId) {
-  const books = readJson(BOOKS_FILE, []).map(normalizeBook);
+function replaceProcessing(book, content, kind = 'text', extra = {}) {
+  let index = -1;
+  for (let i = book.chat.length - 1; i >= 0; i -= 1) {
+    if (book.chat[i].kind === 'processing') {
+      index = i;
+      break;
+    }
+  }
+  if (index === -1) {
+    appendMessage(book, 'agent', content, kind, extra);
+    return;
+  }
+  const message = book.chat[index];
+  message.content = content;
+  message.kind = kind;
+  message.createdAt = new Date().toISOString();
+  Object.assign(message, extra);
+  book.updatedAt = new Date().toISOString();
+}
+
+function buildDraft(userId) {
   const now = new Date().toISOString();
-  const book = normalizeBook({
+  return normalizeBook({
     id: newId('b'),
     userId,
     status: 'draft',
@@ -35,6 +58,11 @@ export function createDraft(userId) {
     createdAt: now,
     updatedAt: now
   });
+}
+
+export function createDraft(userId) {
+  const books = readJson(BOOKS_FILE, []).map(normalizeBook);
+  const book = buildDraft(userId);
   books.push(book);
   writeJson(BOOKS_FILE, books);
   return book;
@@ -42,9 +70,26 @@ export function createDraft(userId) {
 
 export async function handleMessage(userId, bookId, content) {
   const books = readJson(BOOKS_FILE, []).map(normalizeBook);
-  const book = books.find((item) => item.id === bookId && item.userId === userId);
+  let book = books.find((item) => item.id === bookId && item.userId === userId);
+  let created = false;
+  if (!book && !bookId) {
+    book = buildDraft(userId);
+    books.push(book);
+    created = true;
+  }
   if (!book) throw new Error('书籍或创作会话不存在');
+  if (hasPending(book)) throw new Error('上一轮仍在处理中，请稍候');
+
   appendMessage(book, 'user', content, 'text');
+  if (created) {
+    const brief = content.slice(0, 18);
+    book.title = `构思：${brief}${content.length > 18 ? '…' : ''}`;
+  }
+  writeJson(BOOKS_FILE, books);
+
+  appendMessage(book, 'agent', '正在处理，请稍候…', 'processing');
+  writeJson(BOOKS_FILE, books);
+
   try {
     if (book.status === 'draft') {
       await handleDraftMessage(book, content);
@@ -52,7 +97,7 @@ export async function handleMessage(userId, bookId, content) {
       await handleReadyMessage(book, content);
     }
   } catch (err) {
-    appendMessage(book, 'agent', `处理失败：${err.message}`, 'error');
+    replaceProcessing(book, `处理失败：${err.message}`, 'error');
   }
   writeJson(BOOKS_FILE, books);
   return book;
@@ -61,7 +106,7 @@ export async function handleMessage(userId, bookId, content) {
 async function handleDraftMessage(book, content) {
   if (book.draft.summary && isConfirmation(content)) {
     await finalizeDraftBook(book);
-    appendMessage(book, 'agent', `《${book.title}》已生成，共 ${book.chapters.length} 章。`, 'book', { bookId: book.id });
+    replaceProcessing(book, `《${book.title}》已生成，共 ${book.chapters.length} 章。`, 'book', { bookId: book.id });
     return;
   }
   const conversation = book.chat.map((message) => `${message.role}: ${message.content}`).join('\n');
@@ -72,11 +117,11 @@ async function handleDraftMessage(book, content) {
   });
   if (result.summary && result.ready) {
     book.draft.summary = result.summary;
-    appendMessage(book, 'agent', `构思已整合：\n${result.summary}\n\n是否需要修改？回复“确认”开始生成，或直接提出修改意见。`, 'confirm');
+    replaceProcessing(book, `构思已整合：\n${result.summary}\n\n是否需要修改？回复“确认”开始生成，或直接提出修改意见。`, 'confirm');
   } else if (result.question) {
-    appendMessage(book, 'agent', result.question, 'question');
+    replaceProcessing(book, result.question, 'question');
   } else {
-    appendMessage(book, 'agent', '我还没有完全理解你的构思，请补充主角、故事背景或分类。', 'question');
+    replaceProcessing(book, '我还没有完全理解你的构思，请补充主角、故事背景或分类。', 'question');
   }
 }
 
@@ -92,12 +137,12 @@ async function handleReadyMessage(book, content) {
     if (!Number.isInteger(index) || !book.chapters[index]) throw new Error('模型返回的章节序号无效');
     const before = book.chapters[index];
     await rewriteChapter(book, index, result.instruction || content);
-    appendMessage(book, 'agent', `已修改第 ${index + 1} 章《${before.title}》，可打开并列窗口查看。`, 'text', { bookId: book.id });
+    replaceProcessing(book, `已修改第 ${index + 1} 章《${before.title}》，可打开并列窗口查看。`, 'text', { bookId: book.id });
   } else if (result.type === 'continue') {
     await continueBook(book, result.instruction || content);
     const last = book.chapters[book.chapters.length - 1];
-    appendMessage(book, 'agent', `已续写下一章《${last.title}》，可打开并列窗口查看。`, 'book', { bookId: book.id });
+    replaceProcessing(book, `已续写下一章《${last.title}》，可打开并列窗口查看。`, 'book', { bookId: book.id });
   } else {
-    appendMessage(book, 'agent', result.reply || '好的，我记下了。', 'text', { bookId: book.id });
+    replaceProcessing(book, result.reply || '好的，我记下了。', 'text', { bookId: book.id });
   }
 }

@@ -15,12 +15,12 @@ router.post('/sessions', (req, res) => {
 
 router.post('/message', async (req, res) => {
   const { bookId, content } = req.body || {};
-  if (!bookId || !String(content || '').trim()) {
-    return res.status(400).json({ error: '请选择书籍并输入内容' });
+  if (!String(content || '').trim()) {
+    return res.status(400).json({ error: '请输入内容' });
   }
   try {
-    const book = await handleMessage(req.user.id, bookId, String(content).trim());
-    return res.json({ book });
+    const book = await handleMessage(req.user.id, bookId || '', String(content).trim());
+    return res.status(bookId ? 200 : 201).json({ book });
   } catch (err) {
     return res.status(502).json({ error: err.message });
   }
