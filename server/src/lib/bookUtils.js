@@ -9,5 +9,6 @@ export function normalizeBook(book) {
   if (!book.status) book.status = book.chapters.length > 0 ? 'ready' : 'draft';
   if (!book.draft) book.draft = { concept: '', summary: '' };
   if (!book.relations) book.relations = { nodes: [], edges: [] };
+  if (!book.deletedAt) book.deletedAt = null;
   return book;
 }

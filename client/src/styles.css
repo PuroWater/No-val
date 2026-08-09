@@ -313,8 +313,19 @@ button, input, textarea, select {
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--panel);
+}
+
+.book-card-link {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   color: var(--text);
   text-decoration: none;
+}
+
+.book-card .danger {
+  align-self: flex-end;
+  padding: 6px 10px;
 }
 
 .tabs {
@@ -461,6 +472,51 @@ button, input, textarea, select {
   color: var(--muted);
 }
 
+.trash-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.trash-section h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.trash-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.trash-item > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.trash-item > div:last-child {
+  display: flex;
+  gap: 8px;
+}
+
+.trash-item button {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
 .workspace {
   display: flex;
   flex-direction: column;
@@ -492,6 +548,15 @@ button, input, textarea, select {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.danger {
+  padding: 8px 12px;
+  border: 1px solid #d64541;
+  border-radius: 6px;
+  background: transparent;
+  color: #d64541;
+  cursor: pointer;
 }
 
 .workspace-empty {

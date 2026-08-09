@@ -12,6 +12,7 @@ function summary(book) {
     title: book.title,
     status: book.status,
     chapterCount: book.chapters.length,
+    deletedAt: book.deletedAt,
     updatedAt: book.updatedAt
   };
 }
@@ -19,7 +20,15 @@ function summary(book) {
 router.get('/', (req, res) => {
   const books = readJson(BOOKS_FILE, [])
     .map(normalizeBook)
-    .filter((book) => book.userId === req.user.id)
+    .filter((book) => book.userId === req.user.id && !book.deletedAt)
+    .map(summary);
+  res.json({ books });
+});
+
+router.get('/trash', (req, res) => {
+  const books = readJson(BOOKS_FILE, [])
+    .map(normalizeBook)
+    .filter((book) => book.userId === req.user.id && book.deletedAt)
     .map(summary);
   res.json({ books });
 });
@@ -31,10 +40,39 @@ router.get('/:id', (req, res) => {
   res.json({ book });
 });
 
+router.delete('/:id/permanent', (req, res) => {
+  const books = readJson(BOOKS_FILE, []).map(normalizeBook);
+  const index = books.findIndex((item) => item.id === req.params.id && item.userId === req.user.id && item.deletedAt);
+  if (index === -1) return res.status(404).json({ error: '回收站中没有该项目' });
+  books.splice(index, 1);
+  writeJson(BOOKS_FILE, books);
+  res.json({ ok: true });
+});
+
+router.delete('/:id', (req, res) => {
+  const books = readJson(BOOKS_FILE, []).map(normalizeBook);
+  const book = books.find((item) => item.id === req.params.id && item.userId === req.user.id && !item.deletedAt);
+  if (!book) return res.status(404).json({ error: '书籍不存在' });
+  book.deletedAt = new Date().toISOString();
+  book.updatedAt = book.deletedAt;
+  writeJson(BOOKS_FILE, books);
+  res.json({ ok: true });
+});
+
+router.post('/:id/restore', (req, res) => {
+  const books = readJson(BOOKS_FILE, []).map(normalizeBook);
+  const book = books.find((item) => item.id === req.params.id && item.userId === req.user.id && item.deletedAt);
+  if (!book) return res.status(404).json({ error: '回收站中没有该项目' });
+  book.deletedAt = null;
+  book.updatedAt = new Date().toISOString();
+  writeJson(BOOKS_FILE, books);
+  res.json({ book });
+});
+
 router.put('/:id/chapters/:chapterId', (req, res) => {
   const books = readJson(BOOKS_FILE, []).map(normalizeBook);
   const book = books.find((item) => item.id === req.params.id && item.userId === req.user.id);
-  if (!book) return res.status(404).json({ error: '书籍不存在' });
+  if (!book || book.deletedAt) return res.status(404).json({ error: '书籍不存在' });
   const chapter = book.chapters.find((item) => item.id === req.params.chapterId);
   if (!chapter) return res.status(404).json({ error: '章节不存在' });
   const { title, content } = req.body || {};
