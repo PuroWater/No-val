@@ -381,3 +381,44 @@ button, input, textarea, select {
   resize: vertical;
   line-height: 1.7;
 }
+
+.relation-graph {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 12px;
+}
+
+.relation-graph svg {
+  width: 100%;
+  max-height: 520px;
+}
+
+.relation-graph line {
+  stroke: var(--muted);
+  stroke-width: 1.5;
+}
+
+.relation-graph .edge-label {
+  fill: var(--muted);
+  font-size: 12px;
+  text-anchor: middle;
+}
+
+.relation-graph .relation-node text {
+  fill: var(--text);
+  font-size: 13px;
+}
+
+.relation-graph .relation-node.person circle {
+  fill: var(--accent);
+}
+
+.relation-graph .relation-node.faction circle {
+  fill: #b7791f;
+}
+
+.relation-graph .relation-node circle {
+  stroke: var(--panel);
+  stroke-width: 3;
+}
