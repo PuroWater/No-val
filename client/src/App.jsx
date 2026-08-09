@@ -6,6 +6,7 @@ import MyPage from './pages/MyPage.jsx';
 import ShelfPage from './pages/ShelfPage.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
 import BookDetailPage from './pages/BookDetailPage.jsx';
+import ChatPanel from './components/ChatPanel.jsx';
 
 export default function App() {
   return (
@@ -14,8 +15,8 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<HomePage />}>
           <Route path="/" element={<Navigate to="/create" replace />} />
-          <Route path="/create" element={<div className="placeholder">创作</div>} />
-          <Route path="/continue" element={<div className="placeholder">续写</div>} />
+          <Route path="/create" element={<ChatPanel mode="create" />} />
+          <Route path="/continue" element={<ChatPanel mode="continue" />} />
           <Route path="/my" element={<MyPage />} />
           <Route path="/books/:id" element={<BookDetailPage />} />
           <Route path="/shelf" element={<ShelfPage />} />
