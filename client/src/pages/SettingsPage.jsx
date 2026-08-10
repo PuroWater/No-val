@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
+import ConfirmModal from '../components/ConfirmModal.jsx';
 
 const THEMES = [
   { value: 'light', label: '浅色' },
@@ -26,6 +27,7 @@ export default function SettingsPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [accountMessage, setAccountMessage] = useState('');
   const [accountError, setAccountError] = useState('');
+  const [permanentTarget, setPermanentTarget] = useState(null);
 
   async function loadTrash() {
     const data = await api('/books/trash');
@@ -58,10 +60,11 @@ export default function SettingsPage() {
     await loadTrash();
   }
 
-  async function permanentDelete(book) {
-    if (!window.confirm(`彻底删除“${book.title}”后无法恢复，确定继续吗？`)) return;
-    await api(`/books/${book.id}/permanent`, { method: 'DELETE' });
+  async function confirmPermanentDelete() {
+    if (!permanentTarget) return;
+    await api(`/books/${permanentTarget.id}/permanent`, { method: 'DELETE' });
     await loadTrash();
+    setPermanentTarget(null);
   }
 
   async function changePassword(event) {
@@ -151,7 +154,7 @@ export default function SettingsPage() {
                     </div>
                     <div>
                       <button onClick={() => restore(book)}>恢复</button>
-                      <button className="danger" onClick={() => permanentDelete(book)}>彻底删除</button>
+                      <button className="danger" onClick={() => setPermanentTarget(book)}>彻底删除</button>
                     </div>
                   </div>
                 ))}
@@ -167,7 +170,7 @@ export default function SettingsPage() {
                     </div>
                     <div>
                       <button onClick={() => restore(book)}>恢复</button>
-                      <button className="danger" onClick={() => permanentDelete(book)}>彻底删除</button>
+                      <button className="danger" onClick={() => setPermanentTarget(book)}>彻底删除</button>
                     </div>
                   </div>
                 ))}
@@ -189,6 +192,14 @@ export default function SettingsPage() {
           )}
         </div>
       </div>
+      <ConfirmModal
+        open={Boolean(permanentTarget)}
+        title="彻底删除确认"
+        message={`彻底删除“${permanentTarget?.title || ''}”后无法恢复，确定继续吗？`}
+        confirmText="彻底删除"
+        onConfirm={confirmPermanentDelete}
+        onCancel={() => setPermanentTarget(null)}
+      />
     </section>
   );
 }

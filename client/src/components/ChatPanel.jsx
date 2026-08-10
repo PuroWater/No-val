@@ -4,7 +4,7 @@ import BookWidget from './BookWidget.jsx';
 
 const SUGGESTIONS = ['今天有什么想法', '来聊聊吧！'];
 
-export default function ChatPanel({ bookId, onOpenBook, onSessionCreated }) {
+export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOpen, onToggleSide }) {
   const isNew = !bookId;
   const [book, setBook] = useState(null);
   const [input, setInput] = useState('');
@@ -122,7 +122,12 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated }) {
           </span>
         </div>
         {!isNew && book.status === 'ready' && (
-          <button className="primary" onClick={() => onOpenBook(book.id)}>并列查看</button>
+          <button
+            className={`primary side-toggle ${sideOpen ? 'active' : ''}`}
+            onClick={() => onToggleSide?.()}
+          >
+            {sideOpen ? '关闭并列' : '并列查看'}
+          </button>
         )}
       </div>
       <div className="chat-messages">

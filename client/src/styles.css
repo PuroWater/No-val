@@ -243,6 +243,22 @@ button, input, textarea, select {
 .chat-head {
   font-size: 18px;
   font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.side-toggle {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+}
+
+.side-toggle.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
 }
 
 .chat-messages {
@@ -665,6 +681,52 @@ button, input, textarea, select {
   align-self: flex-start;
 }
 
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal-card {
+  width: min(92vw, 420px);
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modal-card h3 {
+  margin: 0;
+}
+
+.modal-card p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.modal-actions button {
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
 .trash-section {
   display: flex;
   flex-direction: column;
@@ -895,6 +957,16 @@ button, input, textarea, select {
 
 .workspace-split > * {
   min-height: 0;
+}
+
+.split-divider {
+  cursor: col-resize;
+  border-radius: 3px;
+  background: var(--border);
+}
+
+.split-divider:hover {
+  background: var(--accent);
 }
 
 .status-badge {

@@ -2,14 +2,21 @@ import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import ChatPanel from '../components/ChatPanel.jsx';
 import BookSidePanel from '../components/BookSidePanel.jsx';
+import ConfirmModal from '../components/ConfirmModal.jsx';
 
 const STORAGE_KEY = 'novel_selected_book';
 const NEW_SESSION = '__new__';
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
 
 export default function WorkspacePage() {
   const [books, setBooks] = useState([]);
   const [selectedBookId, setSelectedBookId] = useState(() => localStorage.getItem(STORAGE_KEY) || '');
   const [sideBookId, setSideBookId] = useState('');
+  const [leftWidth, setLeftWidth] = useState(420);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [error, setError] = useState('');
   const [bookQuery, setBookQuery] = useState('');
 
@@ -54,18 +61,38 @@ export default function WorkspacePage() {
       .catch((err) => setError(err.message));
   }
 
-  async function handleDeleteBook(book) {
-    if (!window.confirm(`确定删除“${book.title}”吗？可在设置回收站中恢复。`)) return;
+  function toggleSide() {
+    setSideBookId((current) => (current ? '' : selectedBookId));
+  }
+
+  function startResize(event) {
+    const startX = event.clientX;
+    const startWidth = leftWidth;
+    const onMove = (moveEvent) => {
+      setLeftWidth(clamp(startWidth + moveEvent.clientX - startX, 260, 720));
+    };
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
     try {
-      await api(`/books/${book.id}`, { method: 'DELETE' });
+      await api(`/books/${deleteTarget.id}`, { method: 'DELETE' });
       await loadBooks();
-      if (selectedBookId === book.id) {
+      if (selectedBookId === deleteTarget.id) {
         setSelectedBookId('');
         localStorage.removeItem(STORAGE_KEY);
         setSideBookId('');
       }
+      setDeleteTarget(null);
     } catch (err) {
       setError(err.message);
+      setDeleteTarget(null);
     }
   }
 
@@ -101,7 +128,7 @@ export default function WorkspacePage() {
                   onClick={() => chooseBook(book.id)}
                 >
                   <span className="directory-label">{book.title}</span>
-                  <span className="directory-delete" onClick={(e) => { e.stopPropagation(); handleDeleteBook(book); }}>删除</span>
+                  <span className="directory-delete" onClick={(e) => { e.stopPropagation(); setDeleteTarget(book); }}>删除</span>
                 </button>
               ))}
             </div>
@@ -116,7 +143,7 @@ export default function WorkspacePage() {
                   onClick={() => chooseBook(book.id)}
                 >
                   <span className="directory-label">{book.title}</span>
-                  <span className="directory-delete" onClick={(e) => { e.stopPropagation(); handleDeleteBook(book); }}>删除</span>
+                  <span className="directory-delete" onClick={(e) => { e.stopPropagation(); setDeleteTarget(book); }}>删除</span>
                 </button>
               ))}
             </div>
@@ -134,13 +161,41 @@ export default function WorkspacePage() {
             <ChatPanel bookId="" onSessionCreated={handleSessionCreated} />
           )}
           {selectedBookId && selectedBookId !== NEW_SESSION && (
-            <div className={sideBookId ? 'workspace-split' : 'workspace-chat'}>
-              <ChatPanel bookId={selectedBookId} onOpenBook={setSideBookId} />
-              {sideBookId && <BookSidePanel bookId={sideBookId} onClose={() => setSideBookId('')} />}
+            <div
+              className={sideBookId ? 'workspace-split' : 'workspace-chat'}
+              style={sideBookId ? { gridTemplateColumns: `${leftWidth}px 6px minmax(0, 1fr)` } : undefined}
+            >
+              {sideBookId ? (
+                <>
+                  <BookSidePanel bookId={sideBookId} />
+                  <div className="split-divider" onPointerDown={startResize} />
+                  <ChatPanel
+                    bookId={selectedBookId}
+                    sideOpen={Boolean(sideBookId)}
+                    onToggleSide={toggleSide}
+                    onOpenBook={setSideBookId}
+                  />
+                </>
+              ) : (
+                <ChatPanel
+                  bookId={selectedBookId}
+                  sideOpen={false}
+                  onToggleSide={toggleSide}
+                  onOpenBook={setSideBookId}
+                />
+              )}
             </div>
           )}
         </div>
       </div>
+      <ConfirmModal
+        open={Boolean(deleteTarget)}
+        title="删除确认"
+        message={`确定删除“${deleteTarget?.title || ''}”吗？可在设置回收站中恢复。`}
+        confirmText="删除"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </section>
   );
 }
