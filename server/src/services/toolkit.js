@@ -35,6 +35,9 @@ export function validateArgs(parameters = {}, args) {
       if (schema.minLength && value.length < schema.minLength) errors.push(`${key} 过短`);
       if (schema.maxLength && value.length > schema.maxLength) errors.push(`${key} 过长`);
     }
+    if (Array.isArray(schema.enum) && !schema.enum.includes(value)) {
+      errors.push(`${key} 只能是 ${schema.enum.join(' / ')}`);
+    }
   }
   return { ok: errors.length === 0, errors };
 }
@@ -74,7 +77,7 @@ export async function runToolDecision({
   ask = chatCompletion,
   maxAttempts = 3,
   maxTokens = 1200,
-  maxSteps = 4
+  maxSteps = 40
 }) {
   const toolText = toolList
     .map((tool) => `- ${tool.name}：${tool.description}\n  参数：${JSON.stringify(tool.parameters)}`)

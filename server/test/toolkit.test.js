@@ -22,6 +22,13 @@ test('validateArgs enforces required and types', () => {
   assert.equal(validateArgs(echoTool.parameters, { text: 123 }).ok, false);
   assert.equal(validateArgs(echoTool.parameters, { text: 'hi', count: 2.5 }).ok, false);
   assert.equal(validateArgs(echoTool.parameters, 'not-an-object').ok, false);
+  const enumParams = {
+    type: 'object',
+    properties: { target: { type: 'string', enum: ['outline', 'content', 'title'] } },
+    required: ['target']
+  };
+  assert.equal(validateArgs(enumParams, { target: 'outline' }).ok, true);
+  assert.equal(validateArgs(enumParams, { target: '简介' }).ok, false);
 });
 
 test('callTool executes registered tool after validation', async () => {

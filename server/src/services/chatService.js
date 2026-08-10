@@ -147,85 +147,31 @@ function pickCandidate(candidates, reply) {
   return matches.length === 1 ? candidates[matches[0].index] : null;
 }
 
-export function extractInstruction(book, content, chapterIndex) {
-  const chapter = book.chapters[chapterIndex];
-  let text = String(content || '');
-  if (chapter?.title) text = text.split(chapter.title).join('');
-  text = text.replace(/(?:第\s*[0-9零一二两三四五六七八九十百千]+\s*章|[0-9零一二两三四五六七八九十百千]+\s*章)/g, '');
-  text = text.replace(/改写|修改|重写|润色|调整|改一下|改改|帮我|我想|把|的/g, '');
-  text = text.replace(/[，。、！？；：,.!?;:\s]/g, '');
-  return text;
-}
-
-export function renameChapters(book, target, title, changeLog = new Set()) {
-  const text = String(target || '').trim();
-  if (/全部|所有/.test(text) && /章节/.test(text)) {
-    let count = 0;
-    book.chapters.forEach((chapter, index) => {
-      const fixed = ensureChapterTitle(index, chapter.title);
-      if (fixed !== chapter.title) {
-        chapter.title = fixed;
-        chapter.updatedAt = new Date().toISOString();
-        changeLog.add(chapter.id);
-        count += 1;
-      }
-    });
-    return count > 0
-      ? { content: `已统一修复 ${count} 个章节的标题前缀。`, kind: 'text' }
-      : { content: '所有章节标题都已带“第X章”前缀，无需修改。', kind: 'text' };
-  }
-  const matches = searchChapters(book, text);
-  if (matches.length === 0) {
-    return {
-      content: '没有找到对应章节。请在下方书籍中打开并列查看或详情确认章节，然后回复章节号或章节名（支持模糊匹配）。',
-      kind: 'book',
-      extra: { bookId: book.id }
-    };
-  }
-  if (matches.length > 1) {
-    const list = matches.slice(0, 5).map((item, order) => `${order + 1}. ${item.title}`).join('\n');
-    return { content: `找到多个相似章节，请选择要修改哪一章：\n${list}`, kind: 'question' };
-  }
-  const match = matches[0];
-  const chapter = book.chapters[match.index];
-  const nextTitle = String(title || '').trim()
-    ? ensureChapterTitle(match.index, title)
-    : ensureChapterTitle(match.index, chapter.title);
-  if (nextTitle !== chapter.title) {
-    chapter.title = nextTitle;
-    chapter.updatedAt = new Date().toISOString();
-    changeLog.add(chapter.id);
-    return { content: `已修改第 ${match.index + 1} 章标题为《${nextTitle}》。`, kind: 'text' };
-  }
-  return { content: `第 ${match.index + 1} 章标题已是《${chapter.title}》，无需修改。`, kind: 'text' };
-}
-
 function buildReadyTools(book, settings, signal, changeLog) {
   return [
     {
-      name: 'rewrite_chapter',
-      description: '修改章节：instruction 修改内容，title 修改标题（可同时传则都改），mode 限定 content/title/both（默认接受两者）；target 为章节号/标题/描述，或“全部章节”（配合 mode=title 统一修复“第X章”前缀）。',
+      name: 'edit_book',
+      description: '修改书籍内容。target 为修改目标，只能是 title（章节标题）/ outline（简介）/ content（章节内容）三选一；target 为 content/title 时必须提供 chapter（章节号或标题）；value 为新的标题/简介/内容。修改标题后可继续调用本工具处理其它章节。',
       parameters: {
         type: 'object',
         properties: {
-          target: { type: 'string', description: '章节号或标题，如 "第二章"、"古卷传承"' },
-          instruction: { type: 'string', description: '内容修改意见，如 "扩写500字"' },
-          title: { type: 'string', description: '新标题（可选）' },
-          mode: { type: 'string', description: 'content | title | both' }
+          target: { type: 'string', enum: ['title', 'outline', 'content'], description: 'title=章节标题 / outline=简介 / content=章节内容' },
+          chapter: { type: 'string', description: '章节号或标题，如 "第二章"、"古卷传承"' },
+          value: { type: 'string', minLength: 1, description: '新的标题/简介/章节内容' }
         },
-        required: ['target']
+        required: ['target', 'value']
       },
-      handler: async ({ target, instruction, title, mode }, context) => {
-        const requestText = String(target || '').trim() || context.user || '';
-        const userText = context.user || '';
-        const modeText = String(mode || '');
-        const wantTitle = Boolean(String(title || '').trim()) && modeText !== 'content';
-        const wantContent = Boolean(String(instruction || '').trim()) && modeText !== 'title';
-        if (/全部|所有/.test(requestText) && /章节/.test(requestText)) {
-          if (wantTitle || /前缀/.test(requestText) || /前缀/.test(userText)) {
-            return renameChapters(book, '全部章节', '', changeLog.chapterIds);
-          }
-          return { content: '批量操作仅支持统一修复章节标题前缀，内容修改请指定具体章节。', kind: 'text' };
+      handler: async ({ target, chapter, value }, context) => {
+        if (target === 'outline') {
+          book.outline = String(value || '').trim();
+          return { content: '已更新书籍简介。', kind: 'text' };
+        }
+        const requestText = String(chapter || '').trim() || context.user || '';
+        if (!requestText) {
+          return {
+            content: '请提供要修改的章节号或标题，例如“第二章”。',
+            kind: 'text'
+          };
         }
         const matches = searchChapters(book, requestText);
         if (matches.length === 0) {
@@ -243,30 +189,28 @@ function buildReadyTools(book, settings, signal, changeLog) {
         }
         const match = matches[0];
         const index = match.index;
-        const instructionText = String(instruction || '').trim() || extractInstruction(book, context.user || '', index);
-        const contentRequested = wantContent || (instructionText && modeText !== 'title');
-        if (contentRequested) {
-          const rewrittenId = book.chapters[index]?.id;
-          await rewriteChapter(book, index, instructionText || '按原意润色本章', { ...settings, signal });
-          if (rewrittenId) changeLog.chapterIds.add(rewrittenId);
-          if (wantTitle) {
-            renameChapters(book, `第${index + 1}章`, title, changeLog.chapterIds);
+        if (target === 'title') {
+          const nextTitle = ensureChapterTitle(index, value);
+          const chapterObj = book.chapters[index];
+          if (chapterObj.title !== nextTitle) {
+            chapterObj.title = nextTitle;
+            chapterObj.updatedAt = new Date().toISOString();
+            changeLog.chapterIds.add(chapterObj.id);
           }
+          return { followUp: true, data: `第 ${index + 1} 章标题已更新为《${chapterObj.title}》。` };
+        }
+        if (target === 'content') {
+          const rewrittenId = book.chapters[index]?.id;
+          await rewriteChapter(book, index, String(value || '').trim(), { ...settings, signal });
+          if (rewrittenId) changeLog.chapterIds.add(rewrittenId);
           book.rewrite = { step: 'none', chapterIndex: -1, candidates: [] };
           return {
-            content: `已修改第 ${index + 1} 章《${book.chapters[index]?.title || '本章'}》${wantTitle ? '（含标题）' : ''}，可打开并列窗口查看。`,
+            content: `已修改第 ${index + 1} 章《${book.chapters[index]?.title || '本章'}》，可打开并列窗口查看。`,
             kind: 'book',
             extra: { bookId: book.id, chapter: index + 1 }
           };
         }
-        if (wantTitle) {
-          return renameChapters(book, `第${index + 1}章`, title, changeLog.chapterIds);
-        }
-        book.rewrite = { step: 'part', chapterIndex: index, candidates: [] };
-        return {
-          content: `好的，要修改《${match.title}》的哪一部分？例如：开头、人物描写、结尾，或直接输入具体修改意见。`,
-          kind: 'question'
-        };
+        return { content: '未知的修改目标，仅支持 title / outline / content。', kind: 'text' };
       }
     },
     {
