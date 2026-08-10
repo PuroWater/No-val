@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-- 当前版本：0.3.0
+- 当前版本：0.3.1
 - 当前分支：Develop
 - 技术栈：React 18 + Vite 5，Express 4，Node.js 18+，JSON 本地持久化
 - 大模型：DeepSeek，模型默认 `deepseek-v4-flash`
@@ -53,6 +53,7 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 - 书本组件显示书名、章节数，并提供“打开并列窗口”和“详情”入口。
 - 并列窗口与聊天界面同屏显示，可实时查看章节、关系网和编辑内容。
 - 章节编辑停止输入 1 秒后自动保存。
+- 关系网为空时自动生成，并支持手动重新生成。
 
 ### 生成后协作
 
@@ -163,6 +164,7 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 - `GET /api/books`
 - `GET /api/books/trash`
 - `GET /api/books/:id`
+- `POST /api/books/:id/relations`
 - `DELETE /api/books/:id`
 - `POST /api/books/:id/restore`
 - `DELETE /api/books/:id/permanent`
@@ -311,3 +313,14 @@ npm start
 - 版本号升级到 0.3.0。
 
 完成结果：历史聊天和生成图书可管理，回收站分类清晰，创作页不再混排草稿与成书。
+
+### 2026-08-10 v0.3.1 关系网修复
+
+更新内容：
+
+- 新增关系网重新生成接口 `POST /api/books/:id/relations`。
+- 旧图书关系网为空时，前端进入关系网栏位会自动生成。
+- 关系网栏位新增“重新生成关系网”按钮。
+- 版本号升级到 0.3.1。
+
+完成结果：旧图书和新增图书都能正常生成并展示人物与势力关系网。

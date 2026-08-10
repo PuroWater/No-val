@@ -6,7 +6,7 @@ function nextChapterId(book) {
   return `c_${book.id}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 }
 
-async function extractRelations(book) {
+export async function extractRelations(book) {
   const text = book.chapters.map((c) => `${c.title}\n${c.content}`).join('\n\n');
   const result = await chatCompletion({
     system: '你是小说关系网分析助手。始终只返回 JSON，不要包含 Markdown。',

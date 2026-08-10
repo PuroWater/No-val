@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { readJson, writeJson, BOOKS_FILE } from '../lib/store.js';
 import { normalizeBook } from '../lib/bookUtils.js';
 import { requireAuth } from '../middleware/auth.js';
+import { extractRelations } from '../services/bookService.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -38,6 +39,21 @@ router.get('/:id', (req, res) => {
   const book = books.find((item) => item.id === req.params.id && item.userId === req.user.id);
   if (!book) return res.status(404).json({ error: '书籍不存在' });
   res.json({ book });
+});
+
+router.post('/:id/relations', async (req, res) => {
+  const books = readJson(BOOKS_FILE, []).map(normalizeBook);
+  const book = books.find((item) => item.id === req.params.id && item.userId === req.user.id && !item.deletedAt);
+  if (!book) return res.status(404).json({ error: '书籍不存在' });
+  if (book.chapters.length === 0) return res.status(400).json({ error: '构思尚未生成章节，暂无法提取关系网' });
+  try {
+    book.relations = await extractRelations(book);
+    book.updatedAt = new Date().toISOString();
+    writeJson(BOOKS_FILE, books);
+    return res.json({ book });
+  } catch (err) {
+    return res.status(502).json({ error: `关系网生成失败：${err.message}` });
+  }
 });
 
 router.delete('/:id/permanent', (req, res) => {

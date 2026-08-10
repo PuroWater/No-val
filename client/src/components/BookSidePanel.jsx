@@ -8,6 +8,8 @@ export default function BookSidePanel({ bookId, onClose }) {
   const [tab, setTab] = useState('content');
   const [chapterIndex, setChapterIndex] = useState(0);
   const [error, setError] = useState('');
+  const [relationsLoading, setRelationsLoading] = useState(false);
+  const [relationsError, setRelationsError] = useState('');
 
   useEffect(() => {
     api(`/books/${bookId}`).then((data) => setBook(data.book)).catch((err) => setError(err.message));
@@ -25,6 +27,25 @@ export default function BookSidePanel({ bookId, onClose }) {
     });
     setBook(data.book);
   }
+
+  async function regenerateRelations() {
+    setRelationsLoading(true);
+    setRelationsError('');
+    try {
+      const data = await api(`/books/${book.id}/relations`, { method: 'POST' });
+      setBook(data.book);
+    } catch (err) {
+      setRelationsError(err.message);
+    } finally {
+      setRelationsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (tab === 'relations' && book && book.chapters.length > 0 && book.relations.nodes.length === 0 && !relationsLoading && !relationsError) {
+      regenerateRelations();
+    }
+  }, [tab, book?.id]);
 
   return (
     <aside className="book-side-panel">
@@ -53,7 +74,14 @@ export default function BookSidePanel({ bookId, onClose }) {
           )}
         </div>
       ) : (
-        <RelationGraph relations={book.relations} />
+        <>
+          {relationsLoading && <p className="muted">正在生成关系网…</p>}
+          {relationsError && <p className="form-error">{relationsError}</p>}
+          <RelationGraph relations={book.relations} />
+          {!relationsLoading && (
+            <button className="primary" onClick={regenerateRelations}>重新生成关系网</button>
+          )}
+        </>
       )}
     </aside>
   );
