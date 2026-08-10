@@ -40,16 +40,16 @@ function getDateRanges(book) {
   return [...byDate.entries()]
     .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
     .map(([date, info]) => {
-      const parts = [];
+      const lines = [];
       const modified = [...new Set(info.modified)].sort((a, b) => a - b);
       if (modified.length > 0) {
-        parts.push(`修改：${modified.join('、')}`);
+        lines.push(`修改：${modified.join('、')}`);
       }
       const hasAdded = info.end >= info.start;
       if (hasAdded) {
-        parts.push(info.start === info.end ? `新增${info.start}` : `新增${info.start}-${info.end}`);
+        lines.push(info.start === info.end ? `新增${info.start}` : `新增${info.start}-${info.end}`);
       }
-      return { date, label: parts.length > 0 ? `${date} ${parts.join('')}` : date };
+      return { date, lines };
     });
 }
 
@@ -61,6 +61,9 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
   const [error, setError] = useState('');
   const messagesRef = useRef(null);
   const [selectedDate, setSelectedDate] = useState('');
+  const [dateOpen, setDateOpen] = useState(false);
+  const [dateHover, setDateHover] = useState(null);
+  const dateWrapRef = useRef(null);
 
   async function loadBook() {
     setError('');
@@ -102,6 +105,17 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
     const el = messagesRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [book?.chat?.length, bookId, selectedDate]);
+
+  useEffect(() => {
+    if (!dateOpen) return undefined;
+    const onDown = (event) => {
+      if (dateWrapRef.current && !dateWrapRef.current.contains(event.target)) {
+        setDateOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [dateOpen]);
 
   async function sendMessage() {
     const content = input.trim();
@@ -196,16 +210,57 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
             </span>
           </div>
           {!isNew && dateOptions.length > 0 && (
-            <select
-              className="chat-date-select"
-              value={effectiveDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-            >
-              <option value="">全部日期</option>
-              {dateOptions.map((option) => (
-                <option key={option.date} value={option.date}>{option.label}</option>
-              ))}
-            </select>
+            <div className="chat-date-wrap" ref={dateWrapRef}>
+              <button
+                className="chat-date-select"
+                onClick={() => setDateOpen((open) => !open)}
+                aria-haspopup="listbox"
+              >
+                {effectiveDate || '全部日期'}
+                <span className="chat-date-caret">▾</span>
+              </button>
+              {dateOpen && (
+                <div className="chat-date-panel" role="listbox">
+                  <button
+                    className={`chat-date-option${effectiveDate === '' ? ' active' : ''}`}
+                    onClick={() => { setSelectedDate(''); setDateOpen(false); }}
+                  >
+                    全部日期
+                  </button>
+                  {dateOptions.map((option) => (
+                    <button
+                      key={option.date}
+                      className={`chat-date-option${effectiveDate === option.date ? ' active' : ''}`}
+                      onClick={() => { setSelectedDate(option.date); setDateOpen(false); }}
+                      onMouseEnter={(event) => {
+                        if (option.lines.length > 0) {
+                          setDateHover({ x: event.clientX, y: event.clientY, lines: option.lines });
+                        }
+                      }}
+                      onMouseMove={(event) => {
+                        if (option.lines.length > 0) {
+                          setDateHover({ x: event.clientX, y: event.clientY, lines: option.lines });
+                        }
+                      }}
+                      onMouseLeave={() => setDateHover(null)}
+                    >
+                      {option.date}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {dateHover && dateHover.lines.length > 0 && (
+                <div
+                  className="chat-date-tooltip"
+                  style={{
+                    left: Math.min(dateHover.x + 14, window.innerWidth - 270),
+                    top: Math.min(dateHover.y + 16, window.innerHeight - 90)
+                  }}
+                >
+                  {dateHover.lines.map((line) => <div key={line}>{line}</div>)}
+                </div>
+              )}
+            </div>
           )}
         </div>
         {!isNew && book.status === 'ready' && (
