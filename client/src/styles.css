@@ -136,65 +136,97 @@ button, input, textarea, select {
 
 .app-shell {
   min-height: 100vh;
-  display: grid;
-  grid-template-columns: 220px 1fr;
-}
-
-.sidebar {
-  background: var(--panel);
-  border-right: 1px solid var(--border);
-  padding: 18px 12px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
 }
 
-.sidebar-brand {
+.top-nav {
+  flex: none;
+  height: 56px;
+  display: grid;
+  grid-template-columns: 220px 1fr 220px;
+  align-items: center;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+  position: relative;
+  z-index: 10;
+}
+
+.top-brand {
   font-weight: 700;
   font-size: 18px;
-  padding: 0 8px;
 }
 
-.sidebar nav {
+.top-links {
   display: flex;
-  flex-direction: column;
+  justify-content: center;
   gap: 6px;
 }
 
-.sidebar nav a {
-  display: block;
-  padding: 9px 10px;
+.top-links a {
+  padding: 8px 14px;
   border-radius: 6px;
   color: var(--text);
   text-decoration: none;
 }
 
-.sidebar nav a.active {
+.top-links a.active {
   background: var(--accent);
   color: #ffffff;
 }
 
-.sidebar-user {
-  margin-top: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 0 8px;
-  color: var(--muted);
+.user-menu {
+  justify-self: end;
+  position: relative;
 }
 
-.sidebar-user button {
+.user-button {
   border: 1px solid var(--border);
   border-radius: 6px;
   background: transparent;
   color: var(--text);
-  padding: 7px;
+  padding: 7px 12px;
   cursor: pointer;
 }
 
+.user-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  min-width: 120px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.user-dropdown a,
+.user-dropdown button {
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.user-dropdown a:hover,
+.user-dropdown button:hover {
+  background: var(--bg);
+}
+
 .app-main {
-  min-width: 0;
-  padding: 24px;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 20px 24px;
 }
 
 .chat-panel {
@@ -280,7 +312,7 @@ button, input, textarea, select {
 }
 
 .page-fixed {
-  height: calc(100vh - 48px);
+  height: calc(100vh - 104px);
   min-height: 0;
   overflow: hidden;
 }
@@ -567,6 +599,25 @@ button, input, textarea, select {
   color: var(--muted);
 }
 
+.account-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 360px;
+}
+
+.account-form input {
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+}
+
+.account-form .primary {
+  align-self: flex-start;
+}
+
 .trash-section {
   display: flex;
   flex-direction: column;
@@ -616,7 +667,7 @@ button, input, textarea, select {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  height: calc(100vh - 48px);
+  height: calc(100vh - 104px);
   min-height: 560px;
 }
 

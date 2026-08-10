@@ -20,6 +20,11 @@ export default function SettingsPage() {
   const [fontSize, setFontSize] = useState('medium');
   const [trash, setTrash] = useState([]);
   const [saved, setSaved] = useState(false);
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [accountMessage, setAccountMessage] = useState('');
+  const [accountError, setAccountError] = useState('');
 
   async function loadTrash() {
     const data = await api('/books/trash');
@@ -58,6 +63,28 @@ export default function SettingsPage() {
     await loadTrash();
   }
 
+  async function changePassword(event) {
+    event.preventDefault();
+    setAccountMessage('');
+    setAccountError('');
+    if (newPassword !== confirmPassword) {
+      setAccountError('两次输入的新密码不一致');
+      return;
+    }
+    try {
+      await api('/auth/password', {
+        method: 'PUT',
+        body: JSON.stringify({ oldPassword, newPassword })
+      });
+      setAccountMessage('密码已修改');
+      setOldPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err) {
+      setAccountError(err.message);
+    }
+  }
+
   const trashBooks = trash.filter((book) => book.status === 'ready');
   const trashDrafts = trash.filter((book) => book.status === 'draft');
 
@@ -83,6 +110,17 @@ export default function SettingsPage() {
             </button>
           ))}
         </div>
+      </div>
+      <div className="settings-group">
+        <span>账户设置</span>
+        <form className="account-form" onSubmit={changePassword}>
+          <input type="password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} placeholder="原密码" />
+          <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="新密码（至少 6 位）" />
+          <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="确认新密码" />
+          {accountError && <p className="form-error">{accountError}</p>}
+          {accountMessage && <p className="saved-tip">{accountMessage}</p>}
+          <button className="primary" type="submit">修改密码</button>
+        </form>
       </div>
       <div className="settings-group">
         <span>回收站</span>

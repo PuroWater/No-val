@@ -51,4 +51,19 @@ router.get('/me', requireAuth, (req, res) => {
   res.json({ user: req.user });
 });
 
+router.put('/password', requireAuth, async (req, res) => {
+  const { oldPassword, newPassword } = req.body || {};
+  if (typeof newPassword !== 'string' || newPassword.length < 6) {
+    return res.status(400).json({ error: '新密码至少 6 位' });
+  }
+  const users = readJson(USERS_FILE, []);
+  const user = users.find((item) => item.id === req.user.id);
+  if (!user || !(await verifyPassword(String(oldPassword || ''), user.passwordHash))) {
+    return res.status(401).json({ error: '原密码错误' });
+  }
+  user.passwordHash = await hashPassword(newPassword);
+  writeJson(USERS_FILE, users);
+  return res.json({ ok: true });
+});
+
 export default router;

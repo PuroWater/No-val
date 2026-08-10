@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-- 当前版本：0.3.13
+- 当前版本：0.3.14
 - 当前分支：Develop
 - 技术栈：React 18 + Vite 5，Express 4，Node.js 18+，JSON 本地持久化
 - 大模型：DeepSeek，模型默认 `deepseek-v4-flash`
@@ -176,6 +176,7 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 - `POST /api/auth/register`
 - `POST /api/auth/login`
 - `GET /api/auth/me`
+- `PUT /api/auth/password`
 - `GET /api/books`
 - `GET /api/books/trash`
 - `GET /api/books/:id`
@@ -478,3 +479,15 @@ npm start
 - 版本号升级到 0.3.13。
 
 完成结果：图书和章节导航更直观，目录式布局适配并列窗口。
+
+### 2026-08-10 v0.3.14 顶部导航与账户设置
+
+更新内容：
+
+- 应用左侧栏改为顶部导航：品牌在左、功能居中、用户账号在右上角。
+- 点击用户账号展开下拉菜单，设置和退出移入菜单。
+- 设置页新增账户设置，支持修改密码。
+- 后端新增 `PUT /api/auth/password`。
+- 版本号升级到 0.3.14。
+
+完成结果：导航层级更清晰，账户设置入口统一，可在线修改密码。
