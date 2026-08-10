@@ -6,20 +6,14 @@ const SUGGESTIONS = ['今天有什么想法', '来聊聊吧！'];
 
 function formatDate(iso) {
   try {
-    return new Date(iso).toLocaleDateString('zh-CN');
+    const date = new Date(iso);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   } catch {
     return '';
   }
-}
-
-function compareDate(a, b) {
-  const pa = a.split('/').map(Number);
-  const pb = b.split('/').map(Number);
-  for (let i = 0; i < 3; i += 1) {
-    const diff = (pa[i] || 0) - (pb[i] || 0);
-    if (diff !== 0) return diff;
-  }
-  return 0;
 }
 
 function getDateRanges(book) {
@@ -44,7 +38,7 @@ function getDateRanges(book) {
     }
   });
   return [...byDate.entries()]
-    .sort((a, b) => compareDate(a[0], b[0]))
+    .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
     .map(([date, info]) => {
       const parts = [];
       const modified = [...new Set(info.modified)].sort((a, b) => a - b);
@@ -154,6 +148,21 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
     }
   }
 
+  async function abortSend() {
+    if (sending) return;
+    setSending(true);
+    try {
+      await api('/chat/abort', {
+        method: 'POST',
+        body: JSON.stringify(bookId ? { bookId } : {})
+      });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSending(false);
+    }
+  }
+
   if (error && !book) {
     return (
       <div className="chat-panel">
@@ -170,8 +179,9 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
   }
 
   const dateOptions = getDateRanges(book);
-  const visibleMessages = selectedDate
-    ? book.chat.filter((message) => formatDate(message.createdAt) === selectedDate)
+  const effectiveDate = dateOptions.some((option) => option.date === selectedDate) ? selectedDate : '';
+  const visibleMessages = effectiveDate
+    ? book.chat.filter((message) => formatDate(message.createdAt) === effectiveDate)
     : book.chat;
   let lastDate = null;
 
@@ -188,7 +198,7 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
           {!isNew && dateOptions.length > 0 && (
             <select
               className="chat-date-select"
-              value={selectedDate}
+              value={effectiveDate}
               onChange={(e) => setSelectedDate(e.target.value)}
             >
               <option value="">全部日期</option>
@@ -215,7 +225,7 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
             ))}
           </div>
         )}
-        {selectedDate && visibleMessages.length === 0 && (
+        {effectiveDate && visibleMessages.length === 0 && (
           <p className="muted">该日期暂无消息</p>
         )}
         {visibleMessages.map((message) => {
@@ -247,11 +257,12 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
           disabled={sending || hasProcessing}
         />
         <button
-          className="primary"
-          onClick={sendMessage}
-          disabled={sending || hasProcessing || !input.trim()}
+          className={`primary${hasProcessing ? ' stop' : ''}`}
+          onClick={hasProcessing ? abortSend : sendMessage}
+          disabled={sending || (!hasProcessing && !input.trim())}
+          title={hasProcessing ? '中断输出' : '发送'}
         >
-          {sending || hasProcessing ? '处理中…' : '发送'}
+          {hasProcessing ? '■' : sending ? '处理中…' : '发送'}
         </button>
       </div>
     </div>

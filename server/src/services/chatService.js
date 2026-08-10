@@ -3,6 +3,8 @@ import { newId, normalizeBook, parseTargetWords } from '../lib/bookUtils.js';
 import { chatCompletion } from './deepseek.js';
 import { finalizeDraftBook, continueBook, rewriteChapter } from './bookService.js';
 
+const activeJobs = new Map();
+
 export function isConfirmation(text) {
   return /确认|确定|可以|没问题|不用改|不需要修改|就这样|开始生成|生成吧/.test(String(text));
 }
@@ -96,6 +98,84 @@ function continueMessage(book, count) {
   return `已续写 ${count} 章：《${titles}》，可打开并列窗口查看。`;
 }
 
+export function mergeBookState(latest, mutated, changedChapterIds = new Set()) {
+  latest.title = mutated.title;
+  latest.outline = mutated.outline;
+  latest.status = mutated.status;
+  latest.storySummary = mutated.storySummary;
+  latest.targetWords = mutated.targetWords;
+  latest.draft = mutated.draft;
+  latest.rewrite = mutated.rewrite;
+  latest.updatedAt = mutated.updatedAt;
+  const mutatedChapters = new Map(mutated.chapters.map((chapter) => [chapter.id, chapter]));
+  const seen = new Set();
+  latest.chapters = latest.chapters.map((chapter) => {
+    seen.add(chapter.id);
+    const ours = mutatedChapters.get(chapter.id);
+    return ours && changedChapterIds.has(chapter.id) ? Object.assign(chapter, ours) : chapter;
+  });
+  for (const chapter of mutated.chapters) {
+    if (!seen.has(chapter.id)) {
+      latest.chapters.push(chapter);
+      seen.add(chapter.id);
+    }
+  }
+  const mutatedChat = new Map(mutated.chat.map((message) => [message.id, message]));
+  latest.chat = latest.chat.map((message) => {
+    const ours = mutatedChat.get(message.id);
+    if (!ours) return message;
+    const latestFinalized = message.kind !== 'processing';
+    const mutatedFinalized = ours.kind !== 'processing';
+    return latestFinalized && !mutatedFinalized ? message : Object.assign(message, ours);
+  });
+  const latestIds = new Set(latest.chat.map((message) => message.id));
+  for (const message of mutated.chat) {
+    if (!latestIds.has(message.id)) latest.chat.push(message);
+  }
+}
+
+function writeMergedBook(userId, mutated, changedChapterIds = new Set()) {
+  const books = readJson(BOOKS_FILE, []).map(normalizeBook);
+  const latest = books.find((item) => item.id === mutated.id && item.userId === userId);
+  if (latest) {
+    mergeBookState(latest, mutated, changedChapterIds);
+  } else {
+    books.push(mutated);
+  }
+  writeJson(BOOKS_FILE, books);
+}
+
+export function interruptProcessing(userId, bookId = '') {
+  const prefix = `${userId}:`;
+  const targets = [];
+  for (const [key, job] of activeJobs.entries()) {
+    if (!key.startsWith(prefix)) continue;
+    if (bookId && !key.endsWith(`:${bookId}`)) continue;
+    job.controller.abort(new Error('用户中断'));
+    activeJobs.delete(key);
+    targets.push(key.slice(prefix.length));
+  }
+  const books = readJson(BOOKS_FILE, []).map(normalizeBook);
+  let changed = false;
+  for (const book of books) {
+    if (book.userId !== userId) continue;
+    if (bookId && book.id !== bookId) continue;
+    for (let i = book.chat.length - 1; i >= 0; i -= 1) {
+      const message = book.chat[i];
+      if (message.kind === 'processing') {
+        message.content = '输出已中断';
+        message.kind = 'text';
+        message.createdAt = new Date().toISOString();
+        book.updatedAt = message.createdAt;
+        changed = true;
+        break;
+      }
+    }
+  }
+  if (changed) writeJson(BOOKS_FILE, books);
+  return { interrupted: targets.length > 0 };
+}
+
 export function startRewriteSession(userId, bookId) {
   const books = readJson(BOOKS_FILE, []).map(normalizeBook);
   const book = books.find((item) => item.id === bookId && item.userId === userId);
@@ -131,22 +211,36 @@ export async function handleMessage(userId, bookId, content, settings = {}) {
   appendMessage(book, 'agent', '正在处理，请稍候…', 'processing');
   writeJson(BOOKS_FILE, books);
 
+  const jobKey = `${userId}:${book.id}`;
+  const controller = new AbortController();
+  const changeLog = { chapterIds: new Set() };
+  activeJobs.set(jobKey, { controller });
   try {
     if (book.status === 'draft') {
-      await handleDraftMessage(book, content, settings);
+      await handleDraftMessage(book, content, settings, controller.signal);
     } else {
-      await handleReadyMessage(book, content, settings);
+      await handleReadyMessage(book, content, settings, controller.signal, changeLog);
     }
   } catch (err) {
-    replaceProcessing(book, `处理失败：${err.message}`, 'error');
+    const message = String(err.message || '');
+    const stillProcessing = book.chat.some((item) => item.kind === 'processing');
+    if (stillProcessing) {
+      if (/中断/.test(message)) {
+        replaceProcessing(book, '输出已中断', 'text');
+      } else {
+        replaceProcessing(book, `处理失败：${message}`, 'error');
+      }
+    }
+  } finally {
+    activeJobs.delete(jobKey);
+    writeMergedBook(userId, book, changeLog.chapterIds);
   }
-  writeJson(BOOKS_FILE, books);
   return book;
 }
 
-async function handleDraftMessage(book, content, settings) {
+async function handleDraftMessage(book, content, settings, signal) {
   if (book.draft.summary && isConfirmation(content)) {
-    await finalizeDraftBook(book, settings);
+    await finalizeDraftBook(book, { ...settings, signal });
     replaceProcessing(book, `《${book.title}》已生成，共 ${book.chapters.length} 章。`, 'book', { bookId: book.id });
     return;
   }
@@ -154,7 +248,8 @@ async function handleDraftMessage(book, content, settings) {
   const result = await chatCompletion({
     system: '你是小说构思采集助手。根据对话判断缺少主角、故事背景、分类、小说总字数（千字/万字/10万/20万/50万/百万）中的哪些信息。缺少时只返回 JSON：{"question":"只问当前最需要的一个问题"}；信息齐全时返回 JSON：{"summary":"整合后的完整小说构思","ready":true,"targetWords":100000}。不要包含 Markdown。',
     user: conversation,
-    maxTokens: 1200
+    maxTokens: 1200,
+    signal
   });
   if (result.summary && result.ready) {
     book.draft.summary = result.summary;
@@ -167,7 +262,7 @@ async function handleDraftMessage(book, content, settings) {
   }
 }
 
-async function handleReadyMessage(book, content, settings) {
+async function handleReadyMessage(book, content, settings, signal, changeLog) {
   if (book.rewrite?.step === 'chapter') {
     const index = findChapterIndex(book, content);
     if (index === -1) {
@@ -185,7 +280,9 @@ async function handleReadyMessage(book, content, settings) {
   }
   if (book.rewrite?.step === 'part') {
     const index = book.rewrite.chapterIndex;
-    await rewriteChapter(book, index, content, settings);
+    const rewrittenId = book.chapters[index]?.id;
+    await rewriteChapter(book, index, content, { ...settings, signal });
+    if (rewrittenId) changeLog.chapterIds.add(rewrittenId);
     const title = book.chapters[index]?.title || '本章';
     book.rewrite = { step: 'none', chapterIndex: -1 };
     replaceProcessing(book, `已修改第 ${index + 1} 章《${title}》，可打开并列窗口查看。`, 'text', { bookId: book.id });
@@ -200,7 +297,7 @@ async function handleReadyMessage(book, content, settings) {
   }
   if (continueIntent) {
     const before = book.chapters.length;
-    await continueBook(book, content, settings);
+    await continueBook(book, content, { ...settings, signal });
     replaceProcessing(book, continueMessage(book, book.chapters.length - before), 'book', { bookId: book.id });
     return;
   }
@@ -213,14 +310,15 @@ async function handleReadyMessage(book, content, settings) {
   const result = await chatCompletion({
     system: '你是小说协作助手。根据书籍内容和用户消息判断意图，只返回 JSON。',
     user: `书籍摘要上下文：\n${context}\n\n用户消息：${content}\n返回格式：续写 {"type":"continue","instruction":"..."}；修改章节 {"type":"rewrite","chapterIndex":0,"instruction":"..."}；回答问题 {"type":"question","reply":"..."}`,
-    maxTokens: 1200
+    maxTokens: 1200,
+    signal
   });
   if (result.type === 'rewrite') {
     book.rewrite = { step: 'chapter', chapterIndex: -1 };
     replaceProcessing(book, `想改写哪一章？\n${chapterList(book)}`, 'question');
   } else if (result.type === 'continue') {
     const before = book.chapters.length;
-    await continueBook(book, result.instruction || content, settings);
+    await continueBook(book, result.instruction || content, { ...settings, signal });
     replaceProcessing(book, continueMessage(book, book.chapters.length - before), 'book', { bookId: book.id });
   } else {
     replaceProcessing(book, result.reply || '好的，我记下了。', 'text', { bookId: book.id });

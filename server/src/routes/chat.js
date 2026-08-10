@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { readJson, writeJson, BOOKS_FILE } from '../lib/store.js';
 import { normalizeBook } from '../lib/bookUtils.js';
 import { requireAuth } from '../middleware/auth.js';
-import { createDraft, handleMessage, startRewriteSession } from '../services/chatService.js';
+import { createDraft, handleMessage, startRewriteSession, interruptProcessing } from '../services/chatService.js';
 import { createBookFromConcept, continueBook } from '../services/bookService.js';
 import { getUserSettings } from '../services/settingsService.js';
 
@@ -25,6 +25,16 @@ router.post('/message', async (req, res) => {
     return res.status(bookId ? 200 : 201).json({ book });
   } catch (err) {
     return res.status(502).json({ error: err.message });
+  }
+});
+
+router.post('/abort', (req, res) => {
+  const bookId = String(req.body?.bookId || '').trim();
+  try {
+    const result = interruptProcessing(req.user.id, bookId);
+    res.json(result);
+  } catch (err) {
+    res.status(502).json({ error: err.message });
   }
 });
 

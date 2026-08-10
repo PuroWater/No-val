@@ -340,6 +340,11 @@ button, input, textarea, select {
   color: var(--text);
 }
 
+.chat-input .primary.stop {
+  width: 56px;
+  font-size: 14px;
+}
+
 .page {
   width: 100%;
   max-width: none;

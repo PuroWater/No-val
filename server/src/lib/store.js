@@ -17,5 +17,14 @@ export function readJson(file, fallback = []) {
 
 export function writeJson(file, data) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8');
+  const tmp = `${file}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify(data, null, 2), 'utf8');
+  if (fs.existsSync(file)) {
+    try {
+      fs.copyFileSync(file, `${file}.bak`);
+    } catch {
+      // 备份失败不阻塞主写入
+    }
+  }
+  fs.renameSync(tmp, file);
 }

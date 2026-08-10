@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { readJson, writeJson, BOOKS_FILE } from '../lib/store.js';
 import { normalizeBook } from '../lib/bookUtils.js';
 import { requireAuth } from '../middleware/auth.js';
-import { extractRelations, regenerateChapterSummary } from '../services/bookService.js';
+import { extractRelations, regenerateChapterSummary, updateBook } from '../services/bookService.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -36,7 +36,7 @@ router.get('/trash', (req, res) => {
 
 router.get('/:id', (req, res) => {
   const books = readJson(BOOKS_FILE, []).map(normalizeBook);
-  const book = books.find((item) => item.id === req.params.id && item.userId === req.user.id);
+  const book = books.find((item) => item.id === req.params.id && item.userId === req.user.id && !item.deletedAt);
   if (!book) return res.status(404).json({ error: '书籍不存在' });
   res.json({ book });
 });
@@ -48,9 +48,11 @@ router.post('/:id/relations', async (req, res) => {
   if (book.chapters.length === 0) return res.status(400).json({ error: '构思尚未生成章节，暂无法提取关系网' });
   try {
     book.relations = await extractRelations(book);
-    book.updatedAt = new Date().toISOString();
-    writeJson(BOOKS_FILE, books);
-    return res.json({ book });
+    const saved = updateBook(req.user.id, book.id, (latest) => {
+      latest.relations = book.relations;
+      latest.updatedAt = new Date().toISOString();
+    });
+    return res.json({ book: saved });
   } catch (err) {
     return res.status(502).json({ error: `关系网生成失败：${err.message}` });
   }
@@ -62,9 +64,17 @@ router.post('/:id/chapters/:chapterId/summary', async (req, res) => {
   if (!book) return res.status(404).json({ error: '书籍不存在' });
   try {
     await regenerateChapterSummary(book, req.params.chapterId);
-    book.updatedAt = new Date().toISOString();
-    writeJson(BOOKS_FILE, books);
-    return res.json({ book });
+    const saved = updateBook(req.user.id, book.id, (latest) => {
+      const chapter = latest.chapters.find((item) => item.id === req.params.chapterId);
+      const stale = book.chapters.find((item) => item.id === req.params.chapterId);
+      if (chapter && stale) {
+        chapter.summary = stale.summary;
+        chapter.updatedAt = stale.updatedAt;
+      }
+      latest.storySummary = book.storySummary;
+      latest.updatedAt = new Date().toISOString();
+    });
+    return res.json({ book: saved });
   } catch (err) {
     return res.status(502).json({ error: `章节摘要更新失败：${err.message}` });
   }
@@ -100,21 +110,24 @@ router.post('/:id/restore', (req, res) => {
 });
 
 router.put('/:id/chapters/:chapterId', (req, res) => {
-  const books = readJson(BOOKS_FILE, []).map(normalizeBook);
-  const book = books.find((item) => item.id === req.params.id && item.userId === req.user.id);
-  if (!book || book.deletedAt) return res.status(404).json({ error: '书籍不存在' });
-  const chapter = book.chapters.find((item) => item.id === req.params.chapterId);
-  if (!chapter) return res.status(404).json({ error: '章节不存在' });
   const { title, content } = req.body || {};
   if (typeof title !== 'string' || typeof content !== 'string') {
     return res.status(400).json({ error: '标题和内容必须是字符串' });
   }
-  chapter.title = title;
-  chapter.content = content;
-  chapter.updatedAt = new Date().toISOString();
-  book.updatedAt = chapter.updatedAt;
-  writeJson(BOOKS_FILE, books);
-  res.json({ book });
+  try {
+    const book = updateBook(req.user.id, req.params.id, (latest) => {
+      if (latest.deletedAt) throw new Error('书籍不存在');
+      const chapter = latest.chapters.find((item) => item.id === req.params.chapterId);
+      if (!chapter) throw new Error('章节不存在');
+      chapter.title = title;
+      chapter.content = content;
+      chapter.updatedAt = new Date().toISOString();
+      latest.updatedAt = chapter.updatedAt;
+    });
+    res.json({ book });
+  } catch (err) {
+    res.status(err.message === '书籍不存在' || err.message === '章节不存在' ? 404 : 400).json({ error: err.message });
+  }
 });
 
 export default router;

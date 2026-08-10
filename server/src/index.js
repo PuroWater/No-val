@@ -36,6 +36,14 @@ app.use((req, res) => res.status(404).json({ error: `接口不存在: ${req.meth
 
 const port = Number(process.env.PORT || 3001);
 await ensureInitialData();
-app.listen(port, () => {
+const server = app.listen(port, () => {
   console.log(`Novel Agent server listening on http://localhost:${port}`);
+});
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`端口 ${port} 已被占用，请先关闭占用该端口的进程，或通过 PORT 环境变量换一个端口。`);
+  } else {
+    console.error('服务器启动失败：', err);
+  }
+  process.exit(1);
 });

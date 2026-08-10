@@ -3,4 +3,6 @@ dist/
 .vite/
 .env
 data/*.json
+data/*.bak
+data/*.tmp
 *.log
