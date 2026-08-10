@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { sanitizeRelations } from '../src/services/bookService.js';
+import { sanitizeRelations, ensureChapterTitle } from '../src/services/bookService.js';
 
 test('sanitizeRelations keeps valid nodes and edges', () => {
   const result = sanitizeRelations({
@@ -19,4 +19,11 @@ test('sanitizeRelations keeps valid nodes and edges', () => {
   assert.equal(result.edges[0].label, '调查');
   assert.equal(result.nodes[0].weight >= 1, true);
   assert.equal(typeof result.nodes[0].isMain, 'boolean');
+});
+
+test('ensureChapterTitle keeps existing prefix and adds missing one', () => {
+  assert.equal(ensureChapterTitle(0, '第一章 少年'), '第一章 少年');
+  assert.equal(ensureChapterTitle(1, '第二章：秘藏'), '第二章：秘藏');
+  assert.equal(ensureChapterTitle(2, '古卷传承'), '第3章 古卷传承');
+  assert.equal(ensureChapterTitle(3, ''), '第4章');
 });

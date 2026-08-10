@@ -21,6 +21,12 @@ function maxTokensForWords(chapterWords) {
   return Math.min(8192, Math.max(3000, Math.round(Number(chapterWords) * 2.2)));
 }
 
+export function ensureChapterTitle(index, title) {
+  const text = String(title || '').trim();
+  if (/^第\s*(\d+|[零一二两三四五六七八九十百千]+)\s*章/.test(text)) return text;
+  return `第${index + 1}章 ${text}`.trim();
+}
+
 async function callModel(makeOptions, validate, retries = 1, signal) {
   let lastError;
   for (let attempt = 0; attempt <= retries; attempt += 1) {
@@ -151,8 +157,8 @@ export async function generateBookContent(concept, options = {}) {
       () => ({
         system: '你是小说创作助手。始终只返回 JSON，不要包含 Markdown。',
         user: index === 0
-          ? `根据构思创作小说的第 1 章，本章约 ${chapterWords} 字。${ratioText}\n返回 JSON：{"title":"书名","outline":"简介","chapter":{"title":"章节标题","content":"章节正文","summary":"本章 80-150 字剧情摘要"}}。构思：${concept}`
-          : `继续创作第 ${index + 1} 章，本章约 ${chapterWords} 字。${ratioText}\n书名：${title}\n简介：${outline}\n上一章摘要：${chapters[index - 1]?.summary || '暂无'}\n返回 JSON：{"chapter":{"title":"章节标题","content":"章节正文","summary":"本章 80-150 字剧情摘要"}}。`,
+          ? `根据构思创作小说的第 1 章，本章约 ${chapterWords} 字。${ratioText}\n章节标题统一为“第X章 + 标题”格式（如“第一章 少年”）。\n返回 JSON：{"title":"书名","outline":"简介","chapter":{"title":"章节标题","content":"章节正文","summary":"本章 80-150 字剧情摘要"}}。构思：${concept}`
+          : `继续创作第 ${index + 1} 章，本章约 ${chapterWords} 字。${ratioText}\n章节标题统一为“第X章 + 标题”格式（如“第${index + 1}章 标题”）。\n书名：${title}\n简介：${outline}\n上一章摘要：${chapters[index - 1]?.summary || '暂无'}\n返回 JSON：{"chapter":{"title":"章节标题","content":"章节正文","summary":"本章 80-150 字剧情摘要"}}。`,
         maxTokens: maxTokensForWords(chapterWords)
       }),
       (result) => result.chapter && result.chapter.content,
@@ -164,7 +170,7 @@ export async function generateBookContent(concept, options = {}) {
       outline = String(result.outline || '').trim();
     }
     chapters.push({
-      title: String(result.chapter.title || `第 ${index + 1} 章`).trim(),
+      title: ensureChapterTitle(index, result.chapter.title),
       content: String(result.chapter.content).trim(),
       summary: String(result.chapter.summary || '').trim()
     });
@@ -188,7 +194,7 @@ export async function createBookFromConcept(userId, concept, settings = {}) {
     outline: content.outline,
     chapters: content.chapters.map((chapter, index) => ({
       id: nextChapterId({ id: newId('b') }),
-      title: String(chapter.title || `第 ${index + 1} 章`).trim(),
+      title: ensureChapterTitle(index, chapter.title),
       content: String(chapter.content || '').trim(),
       summary: String(chapter.summary || '').trim(),
       createdAt: now,
@@ -218,7 +224,7 @@ export async function finalizeDraftBook(book, settings = {}) {
   book.outline = content.outline;
   book.chapters = content.chapters.map((chapter, index) => ({
     id: nextChapterId(book),
-    title: String(chapter.title || `第 ${index + 1} 章`).trim(),
+    title: ensureChapterTitle(index, chapter.title),
     content: String(chapter.content || '').trim(),
     summary: String(chapter.summary || '').trim(),
     createdAt: now,
@@ -258,7 +264,7 @@ export async function continueBook(book, instruction, settings = {}) {
       const result = await callModel(
         () => ({
           system: '你是小说续写助手。始终只返回 JSON，不要包含 Markdown。',
-          user: `根据全书摘要和关系网续写下一章（第 ${book.chapters.length + 1} 章），本章约 ${chapterWords} 字。${ratioText}\n返回 JSON：{"chapter":{"title":"章节标题","content":"章节正文","summary":"本章 80-150 字剧情摘要"}}。用户指令：${instruction}\n${context}`,
+          user: `根据全书摘要和关系网续写下一章（第 ${book.chapters.length + 1} 章），本章约 ${chapterWords} 字。${ratioText}\n章节标题统一为“第X章 + 标题”格式（如“第${book.chapters.length + 1}章 标题”）。\n返回 JSON：{"chapter":{"title":"章节标题","content":"章节正文","summary":"本章 80-150 字剧情摘要"}}。用户指令：${instruction}\n${context}`,
           maxTokens: maxTokensForWords(chapterWords)
         }),
         (result) => result.chapter && result.chapter.content,
@@ -267,7 +273,7 @@ export async function continueBook(book, instruction, settings = {}) {
       );
       const newChapter = {
         id: nextChapterId(book),
-        title: String(result.chapter.title || `第 ${book.chapters.length + 1} 章`).trim(),
+        title: ensureChapterTitle(book.chapters.length, result.chapter.title),
         content: String(result.chapter.content).trim(),
         summary: String(result.chapter.summary || '').trim(),
         createdAt: now,

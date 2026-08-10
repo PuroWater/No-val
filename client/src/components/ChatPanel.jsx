@@ -2,7 +2,7 @@ import { Fragment, useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import BookWidget from './BookWidget.jsx';
 
-const SUGGESTIONS = ['今天有什么想法', '来聊聊吧！'];
+const SUGGESTIONS = ['今天有什么想法？', '来聊聊吧！'];
 
 function formatDate(iso) {
   try {

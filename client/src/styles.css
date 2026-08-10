@@ -1084,9 +1084,11 @@ button, input, textarea, select {
 }
 
 .workspace-empty {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 14px;
   padding: 60px 20px;
   border: 1px dashed var(--border);
