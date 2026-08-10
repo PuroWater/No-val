@@ -1357,12 +1357,23 @@ button, input, textarea, select {
 
 .side-panel-head {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
+  flex-direction: column;
+  gap: 32px;
 }
 
-.side-panel-head h3 {
+.side-panel-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.side-panel-title-row h3 {
+  margin: 0;
+}
+
+.side-panel-head p {
   margin: 0;
 }
 

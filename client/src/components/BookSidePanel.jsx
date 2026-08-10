@@ -76,15 +76,15 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter }) 
   return (
     <aside className="book-side-panel">
       <div className="side-panel-head">
-        <div>
+        <div className="side-panel-title-row">
           <h3>{book.title}</h3>
-          <p className="muted">{book.outline}</p>
+          {(onClose || onBack) && (
+            <button className="close-button" onClick={onBack || onClose}>
+              {onBack ? '返回' : '关闭'}
+            </button>
+          )}
         </div>
-        {(onClose || onBack) && (
-          <button className="close-button" onClick={onBack || onClose}>
-            {onBack ? '← 返回' : '关闭'}
-          </button>
-        )}
+        <p className="muted">{book.outline}</p>
       </div>
       <div className="tabs">
         <button className={tab === 'content' ? 'active' : ''} onClick={() => setTab('content')}>内容</button>

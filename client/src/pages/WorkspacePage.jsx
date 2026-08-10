@@ -183,7 +183,7 @@ export default function WorkspacePage() {
             >
               {sideBookId ? (
                 <>
-                  <BookSidePanel bookId={sideBookId} openChapter={sideChapter} />
+                  <BookSidePanel bookId={sideBookId} openChapter={sideChapter} onClose={toggleSide} />
                   <div className="split-divider" onPointerDown={startResize} />
                   <ChatPanel
                     bookId={selectedBookId}
