@@ -1,6 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isConfirmation, mergeBookState, extractInstruction, searchChapters } from '../src/services/chatService.js';
+import {
+  isConfirmation,
+  mergeBookState,
+  extractInstruction,
+  searchChapters,
+  renameChapters
+} from '../src/services/chatService.js';
 
 test('isConfirmation recognizes confirmation phrases', () => {
   assert.equal(isConfirmation('确认'), true);
@@ -49,6 +55,29 @@ test('extractInstruction strips chapter and verbs from rewrite request', () => {
   };
   assert.equal(extractInstruction(book, '修改第二章，扩写500字', 1), '扩写500字');
   assert.equal(extractInstruction(book, '改写第一章', 0), '');
+});
+
+test('renameChapters fixes prefixes for all chapters or a single chapter', () => {
+  const book = {
+    id: 'b_test',
+    chapters: [
+      { id: 'c1', title: '初得玉佩', updatedAt: 'T0' },
+      { id: 'c2', title: '第二章 初试灵光', updatedAt: 'T0' },
+      { id: 'c3', title: '暗夜引灵', updatedAt: 'T0' }
+    ]
+  };
+  const changeLog = new Set();
+  const all = renameChapters(book, '全部章节', '', changeLog);
+  assert.equal(all.content.includes('2'), true);
+  assert.equal(book.chapters[0].title, '第1章 初得玉佩');
+  assert.equal(book.chapters[1].title, '第二章 初试灵光');
+  assert.equal(book.chapters[2].title, '第3章 暗夜引灵');
+  assert.equal(changeLog.has('c1'), true);
+  assert.equal(changeLog.has('c2'), false);
+
+  const single = renameChapters(book, '第一章', '少年时代');
+  assert.equal(single.content, '已修改第 1 章标题为《第1章 少年时代》。');
+  assert.equal(book.chapters[0].title, '第1章 少年时代');
 });
 
 test('mergeBookState preserves concurrent edits and applies AI changes', () => {

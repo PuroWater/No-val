@@ -1,7 +1,7 @@
 import { readJson, writeJson, BOOKS_FILE } from '../lib/store.js';
 import { newId, normalizeBook, parseTargetWords } from '../lib/bookUtils.js';
 import { chatCompletion } from './deepseek.js';
-import { finalizeDraftBook, continueBook, rewriteChapter } from './bookService.js';
+import { finalizeDraftBook, continueBook, rewriteChapter, ensureChapterTitle } from './bookService.js';
 import { runToolDecision } from './toolkit.js';
 
 const activeJobs = new Map();
@@ -157,21 +157,77 @@ export function extractInstruction(book, content, chapterIndex) {
   return text;
 }
 
+export function renameChapters(book, target, title, changeLog = new Set()) {
+  const text = String(target || '').trim();
+  if (/全部|所有/.test(text) && /章节/.test(text)) {
+    let count = 0;
+    book.chapters.forEach((chapter, index) => {
+      const fixed = ensureChapterTitle(index, chapter.title);
+      if (fixed !== chapter.title) {
+        chapter.title = fixed;
+        chapter.updatedAt = new Date().toISOString();
+        changeLog.add(chapter.id);
+        count += 1;
+      }
+    });
+    return count > 0
+      ? { content: `已统一修复 ${count} 个章节的标题前缀。`, kind: 'text' }
+      : { content: '所有章节标题都已带“第X章”前缀，无需修改。', kind: 'text' };
+  }
+  const matches = searchChapters(book, text);
+  if (matches.length === 0) {
+    return {
+      content: '没有找到对应章节。请在下方书籍中打开并列查看或详情确认章节，然后回复章节号或章节名（支持模糊匹配）。',
+      kind: 'book',
+      extra: { bookId: book.id }
+    };
+  }
+  if (matches.length > 1) {
+    const list = matches.slice(0, 5).map((item, order) => `${order + 1}. ${item.title}`).join('\n');
+    return { content: `找到多个相似章节，请选择要修改哪一章：\n${list}`, kind: 'question' };
+  }
+  const match = matches[0];
+  const chapter = book.chapters[match.index];
+  const nextTitle = String(title || '').trim()
+    ? ensureChapterTitle(match.index, title)
+    : ensureChapterTitle(match.index, chapter.title);
+  if (nextTitle !== chapter.title) {
+    chapter.title = nextTitle;
+    chapter.updatedAt = new Date().toISOString();
+    changeLog.add(chapter.id);
+    return { content: `已修改第 ${match.index + 1} 章标题为《${nextTitle}》。`, kind: 'text' };
+  }
+  return { content: `第 ${match.index + 1} 章标题已是《${chapter.title}》，无需修改。`, kind: 'text' };
+}
+
 function buildReadyTools(book, settings, signal, changeLog) {
   return [
     {
       name: 'rewrite_chapter',
-      description: '改写章节。target 为章节号/标题/描述，instruction 为修改意见（可省略）。',
+      description: '修改章节：instruction 修改内容，title 修改标题（可同时传则都改），mode 限定 content/title/both（默认接受两者）；target 为章节号/标题/描述，或“全部章节”（配合 mode=title 统一修复“第X章”前缀）。',
       parameters: {
         type: 'object',
         properties: {
           target: { type: 'string', description: '章节号或标题，如 "第二章"、"古卷传承"' },
-          instruction: { type: 'string', description: '修改意见，如 "扩写500字"' }
+          instruction: { type: 'string', description: '内容修改意见，如 "扩写500字"' },
+          title: { type: 'string', description: '新标题（可选）' },
+          mode: { type: 'string', description: 'content | title | both' }
         },
         required: ['target']
       },
-      handler: async ({ target, instruction }, context) => {
-        const matches = searchChapters(book, String(target || '').trim() || context.user || '');
+      handler: async ({ target, instruction, title, mode }, context) => {
+        const requestText = String(target || '').trim() || context.user || '';
+        const userText = context.user || '';
+        const modeText = String(mode || '');
+        const wantTitle = Boolean(String(title || '').trim()) && modeText !== 'content';
+        const wantContent = Boolean(String(instruction || '').trim()) && modeText !== 'title';
+        if (/全部|所有/.test(requestText) && /章节/.test(requestText)) {
+          if (wantTitle || /前缀/.test(requestText) || /前缀/.test(userText)) {
+            return renameChapters(book, '全部章节', '', changeLog.chapterIds);
+          }
+          return { content: '批量操作仅支持统一修复章节标题前缀，内容修改请指定具体章节。', kind: 'text' };
+        }
+        const matches = searchChapters(book, requestText);
         if (matches.length === 0) {
           book.rewrite = { step: 'chapter', chapterIndex: -1, candidates: [] };
           return {
@@ -186,20 +242,27 @@ function buildReadyTools(book, settings, signal, changeLog) {
           return { content: `找到多个相似章节，请选择要修改哪一章：\n${list}`, kind: 'question' };
         }
         const match = matches[0];
-        const instructionText = String(instruction || '').trim() || extractInstruction(book, context.user || '', match.index);
-        if (instructionText) {
-          const index = match.index;
+        const index = match.index;
+        const instructionText = String(instruction || '').trim() || extractInstruction(book, context.user || '', index);
+        const contentRequested = wantContent || (instructionText && modeText !== 'title');
+        if (contentRequested) {
           const rewrittenId = book.chapters[index]?.id;
-          await rewriteChapter(book, index, instructionText, { ...settings, signal });
+          await rewriteChapter(book, index, instructionText || '按原意润色本章', { ...settings, signal });
           if (rewrittenId) changeLog.chapterIds.add(rewrittenId);
+          if (wantTitle) {
+            renameChapters(book, `第${index + 1}章`, title, changeLog.chapterIds);
+          }
           book.rewrite = { step: 'none', chapterIndex: -1, candidates: [] };
           return {
-            content: `已修改第 ${index + 1} 章《${book.chapters[index]?.title || '本章'}》，可打开并列窗口查看。`,
+            content: `已修改第 ${index + 1} 章《${book.chapters[index]?.title || '本章'}》${wantTitle ? '（含标题）' : ''}，可打开并列窗口查看。`,
             kind: 'book',
             extra: { bookId: book.id, chapter: index + 1 }
           };
         }
-        book.rewrite = { step: 'part', chapterIndex: match.index, candidates: [] };
+        if (wantTitle) {
+          return renameChapters(book, `第${index + 1}章`, title, changeLog.chapterIds);
+        }
+        book.rewrite = { step: 'part', chapterIndex: index, candidates: [] };
         return {
           content: `好的，要修改《${match.title}》的哪一部分？例如：开头、人物描写、结尾，或直接输入具体修改意见。`,
           kind: 'question'
