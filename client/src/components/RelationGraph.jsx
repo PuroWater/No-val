@@ -89,6 +89,7 @@ function RelationGraphInner({ relations }) {
   const layout = useMemo(() => computeLayout(nodes, edges), [relations]);
   const [view, setView] = useState({ x: VIEW_W / 2, y: VIEW_H / 2, scale: 1 });
   const drag = useRef(null);
+  const dragHandlers = useRef(null);
   const containerRef = useRef(null);
 
   function zoom(factor) {
@@ -107,24 +108,40 @@ function RelationGraphInner({ relations }) {
     return () => el.removeEventListener('wheel', handler);
   }, []);
 
+  useEffect(() => () => {
+    if (dragHandlers.current) {
+      window.removeEventListener('pointermove', dragHandlers.current.onMove);
+      window.removeEventListener('pointerup', dragHandlers.current.onUp);
+      window.removeEventListener('pointercancel', dragHandlers.current.onUp);
+    }
+    drag.current = null;
+  }, []);
+
   function handlePointerDown(event) {
     if (event.target?.closest?.('button')) return;
     if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) return;
     drag.current = { startX: event.clientX - view.x, startY: event.clientY - view.y };
-  }
-
-  function handlePointerMove(event) {
-    if (!drag.current) return;
-    if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) return;
-    setView((current) => ({
-      ...current,
-      x: event.clientX - drag.current.startX,
-      y: event.clientY - drag.current.startY
-    }));
-  }
-
-  function handlePointerUp() {
-    drag.current = null;
+    const onMove = (moveEvent) => {
+      const state = drag.current;
+      if (!state) return;
+      if (!Number.isFinite(moveEvent.clientX) || !Number.isFinite(moveEvent.clientY)) return;
+      setView((current) => ({
+        ...current,
+        x: moveEvent.clientX - state.startX,
+        y: moveEvent.clientY - state.startY
+      }));
+    };
+    const onUp = () => {
+      drag.current = null;
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+      dragHandlers.current = null;
+    };
+    dragHandlers.current = { onMove, onUp };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
   }
 
   if (nodes.length === 0) return <p className="muted">关系网暂无数据，完成章节创作后会生成。</p>;
@@ -136,9 +153,6 @@ function RelationGraphInner({ relations }) {
       ref={containerRef}
       className="relation-graph"
       onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
       style={{ touchAction: 'none' }}
     >
       <div className="graph-toolbar">
