@@ -20,8 +20,11 @@ export default function SettingsPage() {
   const [activeSetting, setActiveSetting] = useState('appearance');
   const [theme, setTheme] = useState('light');
   const [fontSize, setFontSize] = useState('medium');
+  const [chaptersPerOutput, setChaptersPerOutput] = useState(3);
+  const [chapterWords, setChapterWords] = useState(2000);
   const [trash, setTrash] = useState([]);
   const [saved, setSaved] = useState(false);
+  const [appearanceError, setAppearanceError] = useState('');
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -38,21 +41,33 @@ export default function SettingsPage() {
     api('/settings').then((data) => {
       setTheme(data.settings.theme);
       setFontSize(data.settings.fontSize);
+      setChaptersPerOutput(Number(data.settings.chaptersPerOutput) || 3);
+      setChapterWords(Number(data.settings.chapterWords) || 2000);
       document.documentElement.dataset.theme = data.settings.theme;
       document.documentElement.style.fontSize = FONT_MAP[data.settings.fontSize] || '16px';
     });
     loadTrash();
   }, []);
 
-  async function save(nextTheme, nextSize) {
-    const data = await api('/settings', {
-      method: 'PUT',
-      body: JSON.stringify({ theme: nextTheme, fontSize: nextSize })
-    });
-    document.documentElement.dataset.theme = data.settings.theme;
-    document.documentElement.style.fontSize = FONT_MAP[data.settings.fontSize] || '16px';
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1200);
+  async function save(nextTheme, nextSize, nextChapters, nextWords) {
+    try {
+      setAppearanceError('');
+      const data = await api('/settings', {
+        method: 'PUT',
+        body: JSON.stringify({
+          theme: nextTheme,
+          fontSize: nextSize,
+          chaptersPerOutput: nextChapters,
+          chapterWords: nextWords
+        })
+      });
+      document.documentElement.dataset.theme = data.settings.theme;
+      document.documentElement.style.fontSize = FONT_MAP[data.settings.fontSize] || '16px';
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1200);
+    } catch (err) {
+      setAppearanceError(err.message);
+    }
   }
 
   async function restore(book) {
@@ -122,7 +137,7 @@ export default function SettingsPage() {
                 <span>背景风格</span>
                 <div className="option-row">
                   {THEMES.map((item) => (
-                    <button key={item.value} className={theme === item.value ? 'active' : ''} onClick={() => { setTheme(item.value); save(item.value, fontSize); }}>
+                    <button key={item.value} className={theme === item.value ? 'active' : ''} onClick={() => { setTheme(item.value); save(item.value, fontSize, chaptersPerOutput, chapterWords); }}>
                       {item.label}
                     </button>
                   ))}
@@ -132,13 +147,47 @@ export default function SettingsPage() {
                 <span>字号</span>
                 <div className="option-row">
                   {SIZES.map((item) => (
-                    <button key={item.value} className={fontSize === item.value ? 'active' : ''} onClick={() => { setFontSize(item.value); save(theme, item.value); }}>
+                    <button key={item.value} className={fontSize === item.value ? 'active' : ''} onClick={() => { setFontSize(item.value); save(theme, item.value, chaptersPerOutput, chapterWords); }}>
                       {item.label}
                     </button>
                   ))}
                 </div>
               </div>
+              <div className="settings-group">
+                <span>每次输出章节数</span>
+                <input
+                  className="setting-number"
+                  type="number"
+                  min="1"
+                  max="5"
+                  value={chaptersPerOutput}
+                  onChange={(e) => setChaptersPerOutput(Number(e.target.value))}
+                  onBlur={() => {
+                    const value = Math.min(5, Math.max(1, Math.round(Number(chaptersPerOutput) || 1)));
+                    setChaptersPerOutput(value);
+                    save(theme, fontSize, value, chapterWords);
+                  }}
+                />
+              </div>
+              <div className="settings-group">
+                <span>每章大致字数</span>
+                <input
+                  className="setting-number"
+                  type="number"
+                  min="1000"
+                  max="10000"
+                  step="500"
+                  value={chapterWords}
+                  onChange={(e) => setChapterWords(Number(e.target.value))}
+                  onBlur={() => {
+                    const value = Math.min(10000, Math.max(1000, Math.round(Number(chapterWords) || 1000)));
+                    setChapterWords(value);
+                    save(theme, fontSize, chaptersPerOutput, value);
+                  }}
+                />
+              </div>
               {saved && <p className="saved-tip">已保存</p>}
+              {appearanceError && <p className="form-error">{appearanceError}</p>}
             </>
           )}
           {activeSetting === 'trash' && (

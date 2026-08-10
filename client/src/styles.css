@@ -263,6 +263,15 @@ button, input, textarea, select {
   color: #ffffff;
 }
 
+.chat-date-select {
+  max-width: 220px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+}
+
 .chat-messages {
   flex: 1;
   min-height: 0;
@@ -684,6 +693,15 @@ button, input, textarea, select {
   color: var(--text);
 }
 
+.setting-number {
+  max-width: 180px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+}
+
 .account-form .primary {
   align-self: flex-start;
 }
@@ -1016,6 +1034,15 @@ button, input, textarea, select {
 .chat-message.processing {
   color: var(--muted);
   font-style: italic;
+}
+
+.chat-date-separator {
+  align-self: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .book-widget {

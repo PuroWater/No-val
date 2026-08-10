@@ -92,11 +92,18 @@ export async function extractRelations(book) {
   return sanitizeRelations(result);
 }
 
-export async function generateBookContent(concept) {
+export async function generateBookContent(concept, options = {}) {
+  const chaptersPerOutput = Math.min(5, Math.max(1, Number(options.chaptersPerOutput) || 3));
+  const chapterWords = options.chapterWords || 2000;
+  const targetWords = options.targetWords || 0;
+  const batchWords = chaptersPerOutput * chapterWords;
+  const ratioText = targetWords > 0
+    ? `本次输出约 ${batchWords} 字，占全书目标 ${targetWords} 字的 ${Math.round((batchWords / targetWords) * 100)}%。请按此比例安排剧情发展，不要一口气写完整个故事。`
+    : '请按本次输出规模安排剧情发展。';
   const result = await chatCompletion({
     system: '你是小说创作助手。始终只返回 JSON，不要包含 Markdown。',
-    user: `根据构思创作一本小说，返回 JSON：{"title":"书名","outline":"简介","chapters":[{"title":"章节标题","content":"章节正文","summary":"本章 80-150 字剧情摘要"}]}。构思：${concept}`,
-    maxTokens: 4500
+    user: `根据构思创作一本小说，本次输出 ${chaptersPerOutput} 章，每章约 ${chapterWords} 字。${ratioText}\n返回 JSON：{"title":"书名","outline":"简介","chapters":[{"title":"章节标题","content":"章节正文","summary":"本章 80-150 字剧情摘要"}]}。构思：${concept}`,
+    maxTokens: Math.min(8192, chaptersPerOutput * 2800)
   });
   if (!result.title || !Array.isArray(result.chapters) || result.chapters.length === 0) {
     throw new Error('模型未返回完整小说结构');
@@ -108,8 +115,8 @@ export async function generateBookContent(concept) {
   };
 }
 
-export async function createBookFromConcept(userId, concept) {
-  const content = await generateBookContent(concept);
+export async function createBookFromConcept(userId, concept, settings = {}) {
+  const content = await generateBookContent(concept, settings);
   const now = new Date().toISOString();
   const book = normalizeBook({
     id: newId('b'),
@@ -127,6 +134,7 @@ export async function createBookFromConcept(userId, concept) {
     relations: { nodes: [], edges: [] },
     chat: [],
     draft: { concept, summary: concept },
+    targetWords: settings.targetWords || 0,
     createdAt: now,
     updatedAt: now
   });
@@ -137,8 +145,11 @@ export async function createBookFromConcept(userId, concept) {
   return book;
 }
 
-export async function finalizeDraftBook(book) {
-  const content = await generateBookContent(book.draft.summary || book.draft.concept);
+export async function finalizeDraftBook(book, settings = {}) {
+  const content = await generateBookContent(book.draft.summary || book.draft.concept, {
+    ...settings,
+    targetWords: book.draft.targetWords || book.targetWords || 0
+  });
   const now = new Date().toISOString();
   book.title = content.title;
   book.outline = content.outline;
@@ -151,43 +162,65 @@ export async function finalizeDraftBook(book) {
   }));
   book.storySummary = buildStorySummary(book.chapters);
   book.status = 'ready';
+  book.targetWords = book.draft.targetWords || book.targetWords || 0;
   book.updatedAt = now;
   return book;
 }
 
-export async function continueBook(book, instruction) {
+export async function continueBook(book, instruction, settings = {}) {
+  const chaptersPerOutput = Math.min(5, Math.max(1, Number(settings.chaptersPerOutput) || 1));
   const last = book.chapters[book.chapters.length - 1];
+  const chapterWords = settings.chapterWords || 2000;
+  const targetWords = book.targetWords || 0;
+  const currentWords = book.chapters.reduce((sum, chapter) => sum + (chapter.content || '').length, 0);
+  const batchWords = chaptersPerOutput * chapterWords;
+  const remaining = targetWords > 0 ? Math.max(0, targetWords - currentWords) : 0;
+  const ratioText = targetWords > 0
+    ? `本次续写 ${chaptersPerOutput} 章，约 ${batchWords} 字，占全书目标 ${targetWords} 字的 ${Math.round((batchWords / targetWords) * 100)}%` +
+      (remaining > 0 ? `，约占剩余篇幅 ${Math.round((batchWords / remaining) * 100)}%` : '') +
+      '。请按此比例推进剧情，既不要仓促完结，也不要拖沓。'
+    : '请按本次输出规模稳步推进剧情。';
   const context = [
     `全书摘要：${book.storySummary || '暂无'}`,
     last ? `最近章节摘要：${last.summary || `${last.title}\n${last.content.slice(0, 500)}`}` : '',
-    `现有关系网：${JSON.stringify(book.relations || { nodes: [], edges: [] })}`
+    `现有关系网：${JSON.stringify(book.relations || { nodes: [], edges: [] })}`,
+    targetWords > 0 ? `全书目标约 ${targetWords} 字，当前已写约 ${currentWords} 字。` : ''
   ].filter(Boolean).join('\n');
   const result = await chatCompletion({
     system: '你是小说续写助手。始终只返回 JSON，不要包含 Markdown。',
-    user: `根据全书摘要和关系网续写下一章，返回 JSON：{"chapter":{"title":"章节标题","content":"章节正文","summary":"本章 80-150 字剧情摘要"}}。用户指令：${instruction}\n${context}`,
-    maxTokens: 2600
+    user: `根据全书摘要和关系网续写下一批共 ${chaptersPerOutput} 章，每章约 ${chapterWords} 字。${ratioText}\n返回 JSON：{"chapters":[{"title":"章节标题","content":"章节正文","summary":"本章 80-150 字剧情摘要"}]}。用户指令：${instruction}\n${context}`,
+    maxTokens: Math.min(8192, chaptersPerOutput * 2800)
   });
-  const chapter = result.chapter;
-  if (!chapter || !chapter.content) throw new Error('模型未返回有效章节');
-  const newChapter = {
-    id: nextChapterId(book),
-    title: String(chapter.title || `第 ${book.chapters.length + 1} 章`).trim(),
-    content: String(chapter.content).trim(),
-    summary: String(chapter.summary || '').trim(),
-    updatedAt: new Date().toISOString()
-  };
-  book.chapters.push(newChapter);
-  book.updatedAt = new Date().toISOString();
-  await updateStorySummary(book, newChapter.summary).catch(() => {});
+  const candidates = Array.isArray(result.chapters)
+    ? result.chapters
+    : result.chapter ? [result.chapter] : [];
+  const now = new Date().toISOString();
+  const added = [];
+  for (const chapter of candidates) {
+    if (!chapter || !chapter.content) continue;
+    const newChapter = {
+      id: nextChapterId(book),
+      title: String(chapter.title || `第 ${book.chapters.length + 1} 章`).trim(),
+      content: String(chapter.content).trim(),
+      summary: String(chapter.summary || '').trim(),
+      updatedAt: now
+    };
+    book.chapters.push(newChapter);
+    added.push(newChapter);
+  }
+  if (added.length === 0) throw new Error('模型未返回有效章节');
+  book.updatedAt = now;
+  await updateStorySummary(book, added.map((chapter) => chapter.summary).filter(Boolean).join('\n')).catch(() => {});
   return book;
 }
 
-export async function rewriteChapter(book, chapterIndex, instruction) {
+export async function rewriteChapter(book, chapterIndex, instruction, settings = {}) {
   const target = book.chapters[chapterIndex];
   if (!target) throw new Error('章节不存在');
+  const chapterWords = settings.chapterWords || 2000;
   const result = await chatCompletion({
     system: '你是小说改写助手。始终只返回 JSON，不要包含 Markdown。',
-    user: `根据修改意见改写章节，返回 JSON：{"title":"章节标题","content":"新内容","summary":"本章 80-150 字剧情摘要"}。原章节：\n${target.title}\n${target.content}\n修改意见：${instruction}\n全书摘要：${book.storySummary || '暂无'}`,
+    user: `根据修改意见改写章节，本章约 ${chapterWords} 字。返回 JSON：{"title":"章节标题","content":"新内容","summary":"本章 80-150 字剧情摘要"}。原章节：\n${target.title}\n${target.content}\n修改意见：${instruction}\n全书摘要：${book.storySummary || '暂无'}`,
     maxTokens: 2600
   });
   target.title = String(result.title || target.title).trim();

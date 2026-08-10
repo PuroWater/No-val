@@ -1,8 +1,54 @@
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import BookWidget from './BookWidget.jsx';
 
 const SUGGESTIONS = ['今天有什么想法', '来聊聊吧！'];
+
+function formatDate(iso) {
+  try {
+    return new Date(iso).toLocaleDateString('zh-CN');
+  } catch {
+    return '';
+  }
+}
+
+function compareDate(a, b) {
+  const pa = a.split('/').map(Number);
+  const pb = b.split('/').map(Number);
+  for (let i = 0; i < 3; i += 1) {
+    const diff = (pa[i] || 0) - (pb[i] || 0);
+    if (diff !== 0) return diff;
+  }
+  return 0;
+}
+
+function getDateRanges(book) {
+  const byDate = new Map();
+  (book.chat || []).forEach((message) => {
+    const date = formatDate(message.createdAt);
+    if (!date) return;
+    byDate.set(date, byDate.get(date) || { active: true, start: Infinity, end: 0 });
+  });
+  (book.chapters || []).forEach((chapter, index) => {
+    const date = formatDate(chapter.updatedAt);
+    if (!date) return;
+    const info = byDate.get(date) || { active: false, start: Infinity, end: 0 };
+    info.start = Math.min(info.start, index + 1);
+    info.end = Math.max(info.end, index + 1);
+    byDate.set(date, info);
+  });
+  return [...byDate.entries()]
+    .sort((a, b) => compareDate(a[0], b[0]))
+    .map(([date, info]) => {
+      const hasRange = info.end >= info.start;
+      const range = hasRange
+        ? info.start === info.end
+          ? `${info.start}章`
+          : `${info.start}-${info.end}章`
+        : '';
+      return { date, label: range ? `${date} ${range}` : date };
+    });
+}
 
 export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOpen, onToggleSide }) {
   const isNew = !bookId;
@@ -11,6 +57,7 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const messagesRef = useRef(null);
+  const [selectedDate, setSelectedDate] = useState('');
 
   async function loadBook() {
     setError('');
@@ -51,7 +98,7 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
   useEffect(() => {
     const el = messagesRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [book?.chat?.length, bookId]);
+  }, [book?.chat?.length, bookId, selectedDate]);
 
   async function sendMessage() {
     const content = input.trim();
@@ -113,6 +160,12 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
     );
   }
 
+  const dateOptions = getDateRanges(book);
+  const visibleMessages = selectedDate
+    ? book.chat.filter((message) => formatDate(message.createdAt) === selectedDate)
+    : book.chat;
+  let lastDate = null;
+
   return (
     <div className="chat-panel">
       <div className="chat-head">
@@ -122,6 +175,18 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
             {hasProcessing ? '处理中' : isNew ? '等待构思' : book.status === 'draft' ? '创作中' : '已生成'}
           </span>
         </div>
+        {!isNew && dateOptions.length > 0 && (
+          <select
+            className="chat-date-select"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+          >
+            <option value="">全部日期</option>
+            {dateOptions.map((option) => (
+              <option key={option.date} value={option.date}>{option.label}</option>
+            ))}
+          </select>
+        )}
         {!isNew && book.status === 'ready' && (
           <button
             className={`primary side-toggle ${sideOpen ? 'active' : ''}`}
@@ -139,17 +204,27 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
             ))}
           </div>
         )}
-        {book.chat.map((message) => {
-          if (message.kind === 'book') {
-            return <BookWidget key={message.id} book={book} onOpen={onOpenBook} />;
-          }
-          return (
+        {selectedDate && visibleMessages.length === 0 && (
+          <p className="muted">该日期暂无消息</p>
+        )}
+        {visibleMessages.map((message) => {
+          const date = formatDate(message.createdAt);
+          const showSeparator = !lastDate || date !== lastDate;
+          lastDate = date;
+          const bubble = message.kind === 'book' ? (
+            <BookWidget book={book} onOpen={onOpenBook} />
+          ) : (
             <div
-              key={message.id}
               className={`chat-message ${message.role}${message.kind === 'error' ? ' error' : ''}${message.kind === 'processing' ? ' processing' : ''}`}
             >
               {message.content}
             </div>
+          );
+          return (
+            <Fragment key={message.id}>
+              {showSeparator && date && <div className="chat-date-separator">{date}</div>}
+              {bubble}
+            </Fragment>
           );
         })}
       </div>
