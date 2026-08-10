@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { sanitizeRelations, ensureChapterTitle } from '../src/services/bookService.js';
+import { ensureChapterTitle } from '../src/lib/chapterUtils.js';
+import { sanitizeRelations } from '../src/services/bookService.js';
 
 test('sanitizeRelations keeps valid nodes and edges', () => {
   const result = sanitizeRelations({

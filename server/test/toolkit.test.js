@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validateArgs, registerTool, callTool, runToolDecision } from '../src/services/toolkit.js';
+import { validateArgs, registerTool, callTool, runToolDecision, prefilterIntent } from '../src/services/toolkit.js';
 
 const echoTool = {
   name: 'echo',
@@ -164,4 +164,34 @@ test('runToolDecision stops after maxSteps', async () => {
     }),
     /步数已达上限/
   );
+});
+
+test('prefilterIntent returns only valid group names', async () => {
+  const groups = [
+    { name: 'read', summary: '读取' },
+    { name: 'edit', summary: '编辑' },
+    { name: 'write', summary: '续写' }
+  ];
+  const asked = [];
+  const decision = await prefilterIntent({
+    groups,
+    user: '把第二章标题改一下',
+    ask: async (options) => {
+      asked.push(options);
+      return { groups: ['edit', 'unknown', 'edit'] };
+    }
+  });
+  assert.deepEqual(decision, ['edit']);
+  assert.equal(asked[0].model, undefined);
+});
+
+test('prefilterIntent retries then falls back to empty on invalid results', async () => {
+  const groups = [{ name: 'read', summary: '读取' }];
+  const decision = await prefilterIntent({
+    groups,
+    user: 'hi',
+    ask: async () => ({ groups: ['nope'] }),
+    maxAttempts: 2
+  });
+  assert.deepEqual(decision, []);
 });

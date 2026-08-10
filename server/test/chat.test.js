@@ -1,10 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { searchChapters, fixChapterPrefixes } from '../src/lib/chapterUtils.js';
 import {
   isConfirmation,
   mergeBookState,
-  searchChapters,
-  fixChapterPrefixes
 } from '../src/services/chatService.js';
 
 test('isConfirmation recognizes confirmation phrases', () => {

@@ -141,3 +141,38 @@ export async function runToolDecision({
   }
   throw new Error('工具调用步数已达上限，请换个说法再试');
 }
+
+export async function prefilterIntent({
+  groups = [],
+  user,
+  signal,
+  ask = chatCompletion,
+  maxAttempts = 2,
+  maxTokens = 120
+}) {
+  const names = groups.map((group) => group.name);
+  const groupText = groups.map((group) => `- ${group.name}：${group.summary}`).join('\n');
+  const prompt = [
+    '你是工具筛选 Agent。根据用户消息判断最可能需要哪个能力组，最多返回 2 个。',
+    '可用能力组：',
+    groupText,
+    `必须返回 JSON：{"groups":["组名", ...]}，只能使用上面的组名。不要包含 Markdown。`,
+    `用户消息：${user}`
+  ].join('\n');
+  let lastError = '';
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    try {
+      const result = await ask({ system: '你是工具筛选 Agent。', user: prompt, maxTokens, signal });
+      const picked = (Array.isArray(result?.groups) ? result.groups : [])
+        .map((name) => String(name))
+        .filter((name) => names.includes(name));
+      const unique = [...new Set(picked)];
+      if (unique.length > 0) return unique;
+      lastError = '未返回有效能力组';
+    } catch (err) {
+      if (/中断|超时/.test(err.message)) throw err;
+      lastError = err.message;
+    }
+  }
+  return [];
+}

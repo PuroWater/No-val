@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-- 当前版本：0.5.11
+- 当前版本：0.5.12
 - 当前分支：Develop
 - 技术栈：React 18 + Vite 5，Express 4，Node.js 18+，JSON 本地持久化
 - 大模型：DeepSeek，模型默认 `deepseek-v4-flash`
@@ -125,6 +125,8 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
   - `src/services/bookService.js`：生成、续写、改写、关系网提取。
   - `src/services/deepseek.js`：DeepSeek API 调用与 JSON 解析。
   - `src/services/toolkit.js`：Agent 工具协议层（schema 校验、ReAct 多步循环调用与失败重试）。
+  - `src/services/tools.js`：已生成图书工具定义（按 read/edit/write/navigate 分组，供意图预筛加载）。
+  - `src/lib/chapterUtils.js`：章节定位、标题前缀、中文数字转换等通用工具函数。
   - `src/lib/store.js`：JSON 读写。
   - `src/lib/security.js`：bcrypt 密码哈希。
   - `src/lib/token.js`：JWT 签发与校验。
@@ -852,3 +854,14 @@ npm start
 - 单元测试 28/28；真实模型验证批量阿拉伯/汉字前缀一次完成；版本号升级到 0.5.11。
 
 完成结果：极端批量改名收敛为单个小工具，不依赖逐章循环，不影响正常编辑路径。
+
+### 2026-08-11 v0.5.12 工具意图预筛与结构拆分
+
+更新内容：
+
+- 新增 `prefilterIntent` 意图预筛：每条消息先由 AI 选择能力组（read/edit/write/navigate，最多 2 个），只把对应组工具加载进决策提示词；预筛失败自动回退全量工具。
+- 工具定义拆到 `services/tools.js`（按组注册），章节文本工具拆到 `lib/chapterUtils.js`，消除循环依赖、职责清晰。
+- 预筛与主流程同模型，仅用轻量小提示词（一轮对话只返回能力组），无需额外配置或换模型。
+- 单元测试 30/30；真实模型验证：查询走 read 组、改名走 edit 组均正常；版本号升级到 0.5.12。
+
+完成结果：工具渐进式披露落地，正常路径每次只带少量工具，结构更清晰。

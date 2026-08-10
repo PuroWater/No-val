@@ -1,5 +1,6 @@
 import { readJson, writeJson, BOOKS_FILE } from '../lib/store.js';
 import { newId, normalizeBook } from '../lib/bookUtils.js';
+import { ensureChapterTitle } from '../lib/chapterUtils.js';
 import { chatCompletion } from './deepseek.js';
 
 export function updateBook(userId, bookId, apply) {
@@ -19,12 +20,6 @@ function clampOutput(value, min, max, fallback) {
 
 function maxTokensForWords(chapterWords) {
   return Math.min(8192, Math.max(3000, Math.round(Number(chapterWords) * 2.2)));
-}
-
-export function ensureChapterTitle(index, title) {
-  const text = String(title || '').trim();
-  if (/^第\s*(\d+|[零一二两三四五六七八九十百千]+)\s*章/.test(text)) return text;
-  return `第${index + 1}章 ${text}`.trim();
 }
 
 async function callModel(makeOptions, validate, retries = 1, signal) {
