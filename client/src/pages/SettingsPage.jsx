@@ -16,6 +16,7 @@ const SIZES = [
 const FONT_MAP = { small: '14px', medium: '16px', large: '18px' };
 
 export default function SettingsPage() {
+  const [activeSetting, setActiveSetting] = useState('appearance');
   const [theme, setTheme] = useState('light');
   const [fontSize, setFontSize] = useState('medium');
   const [trash, setTrash] = useState([]);
@@ -90,74 +91,104 @@ export default function SettingsPage() {
 
   return (
     <section className="page settings-page">
-      <h2>设置</h2>
-      <div className="settings-group">
-        <span>背景风格</span>
-        <div className="option-row">
-          {THEMES.map((item) => (
-            <button key={item.value} className={theme === item.value ? 'active' : ''} onClick={() => { setTheme(item.value); save(item.value, fontSize); }}>
-              {item.label}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div className="settings-group">
-        <span>字号</span>
-        <div className="option-row">
-          {SIZES.map((item) => (
-            <button key={item.value} className={fontSize === item.value ? 'active' : ''} onClick={() => { setFontSize(item.value); save(theme, item.value); }}>
-              {item.label}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div className="settings-group">
-        <span>账户设置</span>
-        <form className="account-form" onSubmit={changePassword}>
-          <input type="password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} placeholder="原密码" />
-          <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="新密码（至少 6 位）" />
-          <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="确认新密码" />
-          {accountError && <p className="form-error">{accountError}</p>}
-          {accountMessage && <p className="saved-tip">{accountMessage}</p>}
-          <button className="primary" type="submit">修改密码</button>
-        </form>
-      </div>
-      <div className="settings-group">
-        <span>回收站</span>
-        <div className="trash-section">
-          <h3>图书（已生成）</h3>
-          {trashBooks.length === 0 && <p className="muted">暂无回收图书</p>}
-          {trashBooks.map((book) => (
-            <div key={book.id} className="trash-item">
-              <div>
-                <strong>{book.title}</strong>
-                <span className="muted">{book.chapterCount} 章</span>
+      <div className="settings-layout">
+        <aside className="settings-directory">
+          <button
+            className={`directory-item ${activeSetting === 'appearance' ? 'active' : ''}`}
+            onClick={() => setActiveSetting('appearance')}
+          >
+            外观
+          </button>
+          <button
+            className={`directory-item ${activeSetting === 'trash' ? 'active' : ''}`}
+            onClick={() => setActiveSetting('trash')}
+          >
+            回收站
+          </button>
+          <button
+            className={`directory-item ${activeSetting === 'account' ? 'active' : ''}`}
+            onClick={() => setActiveSetting('account')}
+          >
+            账户设置
+          </button>
+        </aside>
+        <div className="settings-content">
+          {activeSetting === 'appearance' && (
+            <>
+              <div className="settings-group">
+                <span>背景风格</span>
+                <div className="option-row">
+                  {THEMES.map((item) => (
+                    <button key={item.value} className={theme === item.value ? 'active' : ''} onClick={() => { setTheme(item.value); save(item.value, fontSize); }}>
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div>
-                <button onClick={() => restore(book)}>恢复</button>
-                <button className="danger" onClick={() => permanentDelete(book)}>彻底删除</button>
+              <div className="settings-group">
+                <span>字号</span>
+                <div className="option-row">
+                  {SIZES.map((item) => (
+                    <button key={item.value} className={fontSize === item.value ? 'active' : ''} onClick={() => { setFontSize(item.value); save(theme, item.value); }}>
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
               </div>
+              {saved && <p className="saved-tip">已保存</p>}
+            </>
+          )}
+          {activeSetting === 'trash' && (
+            <>
+              <div className="trash-section">
+                <h3>图书（已生成）</h3>
+                {trashBooks.length === 0 && <p className="muted">暂无回收图书</p>}
+                {trashBooks.map((book) => (
+                  <div key={book.id} className="trash-item">
+                    <div>
+                      <strong>{book.title}</strong>
+                      <span className="muted">{book.chapterCount} 章</span>
+                    </div>
+                    <div>
+                      <button onClick={() => restore(book)}>恢复</button>
+                      <button className="danger" onClick={() => permanentDelete(book)}>彻底删除</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="trash-section">
+                <h3>构思（未生成）</h3>
+                {trashDrafts.length === 0 && <p className="muted">暂无回收构思</p>}
+                {trashDrafts.map((book) => (
+                  <div key={book.id} className="trash-item">
+                    <div>
+                      <strong>{book.title}</strong>
+                      <span className="muted">创作中</span>
+                    </div>
+                    <div>
+                      <button onClick={() => restore(book)}>恢复</button>
+                      <button className="danger" onClick={() => permanentDelete(book)}>彻底删除</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+          {activeSetting === 'account' && (
+            <div className="settings-group">
+              <span>账户设置</span>
+              <form className="account-form" onSubmit={changePassword}>
+                <input type="password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} placeholder="原密码" />
+                <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="新密码（至少 6 位）" />
+                <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="确认新密码" />
+                {accountError && <p className="form-error">{accountError}</p>}
+                {accountMessage && <p className="saved-tip">{accountMessage}</p>}
+                <button className="primary" type="submit">修改密码</button>
+              </form>
             </div>
-          ))}
-        </div>
-        <div className="trash-section">
-          <h3>构思（未生成）</h3>
-          {trashDrafts.length === 0 && <p className="muted">暂无回收构思</p>}
-          {trashDrafts.map((book) => (
-            <div key={book.id} className="trash-item">
-              <div>
-                <strong>{book.title}</strong>
-                <span className="muted">创作中</span>
-              </div>
-              <div>
-                <button onClick={() => restore(book)}>恢复</button>
-                <button className="danger" onClick={() => permanentDelete(book)}>彻底删除</button>
-              </div>
-            </div>
-          ))}
+          )}
         </div>
       </div>
-      {saved && <p className="saved-tip">已保存</p>}
     </section>
   );
 }

@@ -12,7 +12,7 @@ export default function BookList({ books, onDelete }) {
             <span className="muted">更新于 {new Date(book.updatedAt).toLocaleString()}</span>
           </Link>
           {onDelete && (
-            <button className="danger" onClick={() => onDelete(book)}>删除</button>
+            <button className="book-delete" title="删除" onClick={() => onDelete(book)}>删除</button>
           )}
         </div>
       ))}

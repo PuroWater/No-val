@@ -3,7 +3,7 @@ import { api } from '../api.js';
 import ChapterEditor from './ChapterEditor.jsx';
 import RelationGraph from './RelationGraph.jsx';
 
-export default function BookSidePanel({ bookId, onClose }) {
+export default function BookSidePanel({ bookId, onClose, onBack }) {
   const [book, setBook] = useState(null);
   const [tab, setTab] = useState('content');
   const [chapterIndex, setChapterIndex] = useState(0);
@@ -65,7 +65,11 @@ export default function BookSidePanel({ bookId, onClose }) {
           <h3>{book.title}</h3>
           <p className="muted">{book.outline}</p>
         </div>
-        {onClose && <button className="close-button" onClick={onClose}>关闭</button>}
+        {(onClose || onBack) && (
+          <button className="close-button" onClick={onBack || onClose}>
+            {onBack ? '← 返回' : '关闭'}
+          </button>
+        )}
       </div>
       <div className="tabs">
         <button className={tab === 'content' ? 'active' : ''} onClick={() => setTab('content')}>内容</button>
