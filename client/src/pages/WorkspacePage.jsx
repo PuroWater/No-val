@@ -62,14 +62,24 @@ export default function WorkspacePage() {
   }
 
   function toggleSide() {
-    setSideBookId((current) => (current ? '' : selectedBookId));
+    if (sideBookId) {
+      setSideBookId('');
+      return;
+    }
+    const container = document.querySelector('.workspace-main');
+    const width = container?.clientWidth || window.innerWidth;
+    setLeftWidth(Math.max(260, Math.floor(width / 2)));
+    setSideBookId(selectedBookId);
   }
 
   function startResize(event) {
     const startX = event.clientX;
     const startWidth = leftWidth;
+    const container = document.querySelector('.workspace-main');
+    const containerWidth = container?.clientWidth || window.innerWidth;
+    const maxWidth = Math.max(260, containerWidth - 320);
     const onMove = (moveEvent) => {
-      setLeftWidth(clamp(startWidth + moveEvent.clientX - startX, 260, 720));
+      setLeftWidth(clamp(startWidth + moveEvent.clientX - startX, 260, maxWidth));
     };
     const onUp = () => {
       window.removeEventListener('pointermove', onMove);

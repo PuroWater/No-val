@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isConfirmation, mergeBookState, searchChapters } from '../src/services/chatService.js';
+import { isConfirmation, mergeBookState, searchChapters, startRewriteSelection } from '../src/services/chatService.js';
 
 test('isConfirmation recognizes confirmation phrases', () => {
   assert.equal(isConfirmation('确认'), true);
@@ -36,6 +36,26 @@ test('searchChapters returns multiple candidates for similar titles', () => {
   const matches = searchChapters(book, '风起');
   assert.ok(matches.length >= 2);
   assert.equal(matches[0].index, 0);
+});
+
+test('startRewriteSelection connects directly when request contains a chapter', () => {
+  const book = {
+    chapters: [
+      { title: '第一章 循环开始' },
+      { title: '第二章 线索浮现' },
+      { title: '第三章 真相逼近' }
+    ],
+    chat: [],
+    id: 'b_test'
+  };
+  startRewriteSelection(book, '改写第一章');
+  assert.equal(book.rewrite.step, 'part');
+  assert.equal(book.rewrite.chapterIndex, 0);
+  assert.equal(book.chat[book.chat.length - 1].kind, 'question');
+
+  startRewriteSelection(book, '我想修改');
+  assert.equal(book.rewrite.step, 'chapter');
+  assert.equal(book.chat[book.chat.length - 1].kind, 'book');
 });
 
 test('mergeBookState preserves concurrent edits and applies AI changes', () => {

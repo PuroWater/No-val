@@ -85,12 +85,34 @@ function fuzzyScore(title, query) {
   return Math.round((overlap / setQ.size) * 60);
 }
 
+function chineseNumberToInt(text) {
+  const digits = { 零: 0, 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 };
+  const units = { 十: 10, 百: 100, 千: 1000 };
+  let total = 0;
+  let current = 0;
+  for (const ch of String(text)) {
+    if (ch in digits) {
+      current = digits[ch];
+    } else if (ch in units) {
+      if (current === 0) current = 1;
+      total += current * units[ch];
+      current = 0;
+    }
+  }
+  return total + current;
+}
+
 export function searchChapters(book, text) {
   const value = String(text || '').trim();
   if (!value) return [];
   const numberMatch = value.match(/\d+/);
-  if (numberMatch) {
-    const index = Number(numberMatch[0]) - 1;
+  let chapterNumber = numberMatch ? Number(numberMatch[0]) : 0;
+  if (!chapterNumber) {
+    const cnMatch = value.match(/第\s*([零一二两三四五六七八九十百千]+)\s*章/);
+    if (cnMatch) chapterNumber = chineseNumberToInt(cnMatch[1]);
+  }
+  if (chapterNumber > 0) {
+    const index = chapterNumber - 1;
     if (book.chapters[index]) {
       return [{ index, title: book.chapters[index].title, score: 100 }];
     }
@@ -105,13 +127,39 @@ function pickCandidate(candidates, reply) {
   const value = String(reply || '').trim();
   if (!value) return null;
   const numberMatch = value.match(/\d+/);
-  if (numberMatch) {
-    const order = Number(numberMatch[0]);
+  let order = numberMatch ? Number(numberMatch[0]) : 0;
+  if (!order) {
+    const cnMatch = value.match(/第\s*([零一二两三四五六七八九十百千]+)\s*章/);
+    if (cnMatch) order = chineseNumberToInt(cnMatch[1]);
+  }
+  if (order > 0) {
     const candidate = candidates[order - 1];
     if (candidate) return candidate;
   }
   const matches = searchChapters({ chapters: candidates.map((item) => ({ title: item.title })) }, value);
   return matches.length === 1 ? candidates[matches[0].index] : null;
+}
+
+export function startRewriteSelection(book, content) {
+  const matches = searchChapters(book, content);
+  if (matches.length === 1) {
+    const match = matches[0];
+    book.rewrite = { step: 'part', chapterIndex: match.index, candidates: [] };
+    replaceProcessing(
+      book,
+      `好的，要修改《${match.title}》的哪一部分？例如：开头、人物描写、结尾，或直接输入具体修改意见。`,
+      'question'
+    );
+    return;
+  }
+  if (matches.length > 1) {
+    book.rewrite = { step: 'chapter', chapterIndex: -1, candidates: matches.slice(0, 5) };
+    const list = book.rewrite.candidates.map((item, order) => `${order + 1}. ${item.title}`).join('\n');
+    replaceProcessing(book, `找到多个相似章节，请选择要修改哪一章：\n${list}`, 'question');
+    return;
+  }
+  book.rewrite = { step: 'chapter', chapterIndex: -1, candidates: [] };
+  replaceProcessing(book, '想改写哪一章？请在下方书籍中打开并列查看或详情浏览章节，然后回复章节号或章节名（支持模糊匹配）。', 'book', { bookId: book.id });
 }
 
 function continueMessage(book, count) {
@@ -257,6 +305,7 @@ export async function handleMessage(userId, bookId, content, settings = {}) {
         replaceProcessing(book, `处理失败：${message}`, 'error');
       }
     }
+    book.rewrite = { step: 'none', chapterIndex: -1, candidates: [] };
   } finally {
     activeJobs.delete(jobKey);
     writeMergedBook(userId, book, changeLog.chapterIds);
@@ -340,9 +389,7 @@ async function handleReadyMessage(book, content, settings, signal, changeLog) {
   const rewriteIntent = /改写|修改|重写|改一下|调整一下|改改|润色/.test(content);
   const continueIntent = /续写|继续写|接着写|写下一章|继续创作|下一章|接着创作/.test(content);
   if (rewriteIntent) {
-    book.rewrite = { step: 'chapter', chapterIndex: -1 };
-    book.rewrite.candidates = [];
-    replaceProcessing(book, '想改写哪一章？请在下方书籍中打开并列查看或详情浏览章节，然后回复章节号或章节名（支持模糊匹配）。', 'book', { bookId: book.id });
+    startRewriteSelection(book, content);
     return;
   }
   if (continueIntent) {
@@ -364,9 +411,17 @@ async function handleReadyMessage(book, content, settings, signal, changeLog) {
     signal
   });
   if (result.type === 'rewrite') {
-    book.rewrite = { step: 'chapter', chapterIndex: -1 };
-    book.rewrite.candidates = [];
-    replaceProcessing(book, '想改写哪一章？请在下方书籍中打开并列查看或详情浏览章节，然后回复章节号或章节名（支持模糊匹配）。', 'book', { bookId: book.id });
+    const suggested = Number(result.chapterIndex);
+    if (Number.isInteger(suggested) && book.chapters[suggested]) {
+      book.rewrite = { step: 'part', chapterIndex: suggested, candidates: [] };
+      replaceProcessing(
+        book,
+        `好的，要修改《${book.chapters[suggested].title}》的哪一部分？例如：开头、人物描写、结尾，或直接输入具体修改意见。`,
+        'question'
+      );
+    } else {
+      startRewriteSelection(book, content);
+    }
   } else if (result.type === 'continue') {
     const before = book.chapters.length;
     await continueBook(book, result.instruction || content, { ...settings, signal });
