@@ -253,6 +253,8 @@ button, input, textarea, select {
   border: 1px solid var(--border);
   background: transparent;
   color: var(--text);
+  padding: 5px 10px;
+  font-size: 13px;
 }
 
 .side-toggle.active {

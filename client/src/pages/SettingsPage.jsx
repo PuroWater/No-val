@@ -14,7 +14,7 @@ const SIZES = [
   { value: 'large', label: '大' }
 ];
 
-const FONT_MAP = { small: '14px', medium: '16px', large: '18px' };
+const FONT_MAP = { small: '12px', medium: '14px', large: '16px' };
 
 export default function SettingsPage() {
   const [activeSetting, setActiveSetting] = useState('appearance');
