@@ -355,6 +355,9 @@ button, input, textarea, select {
 }
 
 .book-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -370,6 +373,8 @@ button, input, textarea, select {
 }
 
 .chapter-editor {
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -389,7 +394,8 @@ button, input, textarea, select {
 }
 
 .chapter-editor textarea {
-  min-height: 420px;
+  flex: 1;
+  min-height: 160px;
   padding: 12px;
   border: 1px solid var(--border);
   border-radius: 6px;
