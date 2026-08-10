@@ -312,10 +312,29 @@ button, input, textarea, select {
   gap: 18px;
 }
 
+.settings-page {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
 .page-fixed {
   height: calc(100vh - 104px);
   min-height: 0;
   overflow: hidden;
+}
+
+.detail-topbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.detail-topbar button {
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
 }
 
 .page-head {
@@ -363,7 +382,7 @@ button, input, textarea, select {
 }
 
 .book-card .danger {
-  align-self: flex-end;
+  align-self: center;
   padding: 6px 10px;
 }
 
@@ -775,8 +794,8 @@ button, input, textarea, select {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 1em;
+  font-weight: 600;
 }
 
 .directory-item:hover {
@@ -802,8 +821,17 @@ button, input, textarea, select {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 1em;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.directory-search {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
   color: var(--text);
 }
 

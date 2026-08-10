@@ -11,6 +11,7 @@ export default function WorkspacePage() {
   const [selectedBookId, setSelectedBookId] = useState(() => localStorage.getItem(STORAGE_KEY) || '');
   const [sideBookId, setSideBookId] = useState('');
   const [error, setError] = useState('');
+  const [bookQuery, setBookQuery] = useState('');
 
   async function loadBooks() {
     const data = await api('/books');
@@ -68,14 +69,22 @@ export default function WorkspacePage() {
     }
   }
 
-  const drafts = books.filter((book) => book.status === 'draft');
-  const readyBooks = books.filter((book) => book.status === 'ready');
+  const query = bookQuery.trim().toLowerCase();
+  const matchesQuery = (book) => !query || book.title.toLowerCase().includes(query);
+  const drafts = books.filter((book) => book.status === 'draft').filter(matchesQuery);
+  const readyBooks = books.filter((book) => book.status === 'ready').filter(matchesQuery);
 
   return (
     <section className="workspace">
       {error && <p className="form-error">{error}</p>}
       <div className="workspace-body">
         <aside className="book-directory">
+          <input
+            className="directory-search"
+            placeholder="搜索书名 / 构思…"
+            value={bookQuery}
+            onChange={(e) => setBookQuery(e.target.value)}
+          />
           <button
             className={`directory-item new ${selectedBookId === NEW_SESSION ? 'active' : ''}`}
             onClick={startNew}

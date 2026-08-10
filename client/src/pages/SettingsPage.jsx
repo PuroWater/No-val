@@ -89,7 +89,7 @@ export default function SettingsPage() {
   const trashDrafts = trash.filter((book) => book.status === 'draft');
 
   return (
-    <section className="page">
+    <section className="page settings-page">
       <h2>设置</h2>
       <div className="settings-group">
         <span>背景风格</span>

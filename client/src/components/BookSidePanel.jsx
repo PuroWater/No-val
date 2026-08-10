@@ -7,6 +7,7 @@ export default function BookSidePanel({ bookId, onClose }) {
   const [book, setBook] = useState(null);
   const [tab, setTab] = useState('content');
   const [chapterIndex, setChapterIndex] = useState(0);
+  const [chapterQuery, setChapterQuery] = useState('');
   const [error, setError] = useState('');
   const [relationsLoading, setRelationsLoading] = useState(false);
   const [relationsError, setRelationsError] = useState('');
@@ -32,6 +33,12 @@ export default function BookSidePanel({ bookId, onClose }) {
   if (!book) return <aside className="book-side-panel"><p className="muted">加载中…</p></aside>;
 
   const chapter = book.chapters[chapterIndex];
+  const chapterQueryText = chapterQuery.trim().toLowerCase();
+  const filteredChapters = book.chapters.filter((item, index) => (
+    !chapterQueryText
+    || item.title.toLowerCase().includes(chapterQueryText)
+    || String(index + 1).includes(chapterQueryText)
+  ));
 
   async function saveChapter(patch) {
     const data = await api(`/books/${book.id}/chapters/${chapter.id}`, {
@@ -67,16 +74,22 @@ export default function BookSidePanel({ bookId, onClose }) {
       {tab === 'content' ? (
         <div className="book-content">
           <aside className="chapter-directory">
-            {book.chapters.map((item, index) => (
+            <input
+              className="directory-search"
+              placeholder="搜索章节…"
+              value={chapterQuery}
+              onChange={(e) => setChapterQuery(e.target.value)}
+            />
+            {filteredChapters.map((item, index) => (
               <button
                 key={item.id}
-                className={`directory-item ${chapterIndex === index ? 'active' : ''}`}
-                onClick={() => setChapterIndex(index)}
+                className={`directory-item ${chapterIndex === book.chapters.indexOf(item) ? 'active' : ''}`}
+                onClick={() => setChapterIndex(book.chapters.indexOf(item))}
               >
                 {item.title}
               </button>
             ))}
-            {book.chapters.length === 0 && <p className="muted">暂无章节</p>}
+            {filteredChapters.length === 0 && <p className="muted">没有匹配的章节</p>}
           </aside>
           <div className="chapter-editor-area">
             {chapter ? (
