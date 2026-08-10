@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isConfirmation, mergeBookState, resolveRewrite, searchChapters } from '../src/services/chatService.js';
+import { isConfirmation, mergeBookState, extractInstruction, searchChapters } from '../src/services/chatService.js';
 
 test('isConfirmation recognizes confirmation phrases', () => {
   assert.equal(isConfirmation('确认'), true);
@@ -39,27 +39,16 @@ test('searchChapters returns multiple candidates for similar titles', () => {
   assert.equal(matches[0].index, 0);
 });
 
-test('resolveRewrite connects directly when request contains a chapter', () => {
+test('extractInstruction strips chapter and verbs from rewrite request', () => {
   const book = {
     chapters: [
       { title: '第一章 循环开始' },
       { title: '第二章 线索浮现' },
       { title: '第三章 真相逼近' }
-    ],
-    chat: [],
-    id: 'b_test'
+    ]
   };
-  const direct = resolveRewrite(book, '修改第二章，扩写500字');
-  assert.equal(direct.type, 'direct');
-  assert.equal(direct.index, 1);
-  assert.equal(direct.instruction, '扩写500字');
-
-  const askPart = resolveRewrite(book, '改写第一章');
-  assert.equal(askPart.type, 'askPart');
-  assert.equal(askPart.index, 0);
-
-  const none = resolveRewrite(book, '我想修改');
-  assert.equal(none.type, 'none');
+  assert.equal(extractInstruction(book, '修改第二章，扩写500字', 1), '扩写500字');
+  assert.equal(extractInstruction(book, '改写第一章', 0), '');
 });
 
 test('mergeBookState preserves concurrent edits and applies AI changes', () => {

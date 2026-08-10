@@ -2,6 +2,7 @@ import { readJson, writeJson, BOOKS_FILE } from '../lib/store.js';
 import { newId, normalizeBook, parseTargetWords } from '../lib/bookUtils.js';
 import { chatCompletion } from './deepseek.js';
 import { finalizeDraftBook, continueBook, rewriteChapter } from './bookService.js';
+import { runToolDecision } from './toolkit.js';
 
 const activeJobs = new Map();
 
@@ -146,7 +147,7 @@ function pickCandidate(candidates, reply) {
   return matches.length === 1 ? candidates[matches[0].index] : null;
 }
 
-function extractInstruction(book, content, chapterIndex) {
+export function extractInstruction(book, content, chapterIndex) {
   const chapter = book.chapters[chapterIndex];
   let text = String(content || '');
   if (chapter?.title) text = text.split(chapter.title).join('');
@@ -156,45 +157,98 @@ function extractInstruction(book, content, chapterIndex) {
   return text;
 }
 
-export function resolveRewrite(book, content) {
-  const matches = searchChapters(book, content);
-  if (matches.length === 1) {
-    const match = matches[0];
-    const instruction = extractInstruction(book, content, match.index);
-    return instruction
-      ? { type: 'direct', index: match.index, instruction }
-      : { type: 'askPart', index: match.index, title: match.title };
-  }
-  if (matches.length > 1) {
-    return { type: 'candidates', candidates: matches.slice(0, 5) };
-  }
-  return { type: 'none' };
-}
-
-async function applyRewriteRequest(book, content, settings, signal, changeLog) {
-  const resolved = resolveRewrite(book, content);
-  if (resolved.type === 'direct') {
-    const index = resolved.index;
-    const rewrittenId = book.chapters[index]?.id;
-    await rewriteChapter(book, index, resolved.instruction, { ...settings, signal });
-    if (rewrittenId) changeLog.chapterIds.add(rewrittenId);
-    book.rewrite = { step: 'none', chapterIndex: -1, candidates: [] };
-    replaceProcessing(book, `已修改第 ${index + 1} 章《${book.chapters[index]?.title || '本章'}》，可打开并列窗口查看。`, 'book', { bookId: book.id });
-    return;
-  }
-  if (resolved.type === 'candidates') {
-    book.rewrite = { step: 'chapter', chapterIndex: -1, candidates: resolved.candidates };
-    const list = resolved.candidates.map((item, order) => `${order + 1}. ${item.title}`).join('\n');
-    replaceProcessing(book, `找到多个相似章节，请选择要修改哪一章：\n${list}`, 'question');
-    return;
-  }
-  if (resolved.type === 'askPart') {
-    book.rewrite = { step: 'part', chapterIndex: resolved.index, candidates: [] };
-    replaceProcessing(book, `好的，要修改《${resolved.title}》的哪一部分？例如：开头、人物描写、结尾，或直接输入具体修改意见。`, 'question');
-    return;
-  }
-  book.rewrite = { step: 'chapter', chapterIndex: -1, candidates: [] };
-  replaceProcessing(book, '想改写哪一章？请在下方书籍中打开并列查看或详情浏览章节，然后回复章节号或章节名（支持模糊匹配）。', 'book', { bookId: book.id });
+function buildReadyTools(book, settings, signal, changeLog) {
+  return [
+    {
+      name: 'rewrite_chapter',
+      description: '改写章节。target 为章节号/标题/描述，instruction 为修改意见（可省略）。',
+      parameters: {
+        type: 'object',
+        properties: {
+          target: { type: 'string', description: '章节号或标题，如 "第二章"、"古卷传承"' },
+          instruction: { type: 'string', description: '修改意见，如 "扩写500字"' }
+        },
+        required: ['target']
+      },
+      handler: async ({ target, instruction }, context) => {
+        const matches = searchChapters(book, String(target || '').trim() || context.user || '');
+        if (matches.length === 0) {
+          book.rewrite = { step: 'chapter', chapterIndex: -1, candidates: [] };
+          return {
+            content: '没有找到对应章节。请在下方书籍中打开并列查看或详情确认章节，然后回复章节号或章节名（支持模糊匹配）。',
+            kind: 'book',
+            extra: { bookId: book.id }
+          };
+        }
+        if (matches.length > 1) {
+          book.rewrite = { step: 'chapter', chapterIndex: -1, candidates: matches.slice(0, 5) };
+          const list = matches.slice(0, 5).map((item, order) => `${order + 1}. ${item.title}`).join('\n');
+          return { content: `找到多个相似章节，请选择要修改哪一章：\n${list}`, kind: 'question' };
+        }
+        const match = matches[0];
+        const instructionText = String(instruction || '').trim() || extractInstruction(book, context.user || '', match.index);
+        if (instructionText) {
+          const index = match.index;
+          const rewrittenId = book.chapters[index]?.id;
+          await rewriteChapter(book, index, instructionText, { ...settings, signal });
+          if (rewrittenId) changeLog.chapterIds.add(rewrittenId);
+          book.rewrite = { step: 'none', chapterIndex: -1, candidates: [] };
+          return {
+            content: `已修改第 ${index + 1} 章《${book.chapters[index]?.title || '本章'}》，可打开并列窗口查看。`,
+            kind: 'book',
+            extra: { bookId: book.id }
+          };
+        }
+        book.rewrite = { step: 'part', chapterIndex: match.index, candidates: [] };
+        return {
+          content: `好的，要修改《${match.title}》的哪一部分？例如：开头、人物描写、结尾，或直接输入具体修改意见。`,
+          kind: 'question'
+        };
+      }
+    },
+    {
+      name: 'continue_book',
+      description: '续写小说下一批章节。instruction 为续写方向（可省略）。',
+      parameters: {
+        type: 'object',
+        properties: { instruction: { type: 'string' } },
+        required: []
+      },
+      handler: async ({ instruction }) => {
+        const before = book.chapters.length;
+        await continueBook(book, String(instruction || '').trim() || '继续写', { ...settings, signal });
+        return {
+          content: continueMessage(book, book.chapters.length - before),
+          kind: 'book',
+          extra: { bookId: book.id }
+        };
+      }
+    },
+    {
+      name: 'answer_question',
+      description: '回答用户关于剧情、设定、角色等的问题。reply 为回答文本。',
+      parameters: {
+        type: 'object',
+        properties: { reply: { type: 'string', minLength: 1 } },
+        required: ['reply']
+      },
+      handler: async ({ reply }) => ({
+        content: String(reply || '').trim() || '好的，我记下了。',
+        kind: 'text',
+        extra: { bookId: book.id }
+      })
+    },
+    {
+      name: 'open_book_widget',
+      description: '当用户需要查看书籍、选择章节，或改写目标不明确时，展示书籍卡片并提供并列查看/详情入口。',
+      parameters: { type: 'object', properties: {}, required: [] },
+      handler: async () => ({
+        content: '请在下方书籍中打开并列查看或详情浏览章节，然后回复章节号或章节名（支持模糊匹配）。',
+        kind: 'book',
+        extra: { bookId: book.id }
+      })
+    }
+  ];
 }
 
 function continueMessage(book, count) {
@@ -421,48 +475,21 @@ async function handleReadyMessage(book, content, settings, signal, changeLog) {
     replaceProcessing(book, `已修改第 ${index + 1} 章《${title}》，可打开并列窗口查看。`, 'book', { bookId: book.id });
     return;
   }
-  const rewriteIntent = /改写|修改|重写|改一下|调整一下|改改|润色/.test(content);
-  const continueIntent = /续写|继续写|接着写|写下一章|继续创作|下一章|接着创作/.test(content);
-  if (rewriteIntent) {
-    await applyRewriteRequest(book, content, settings, signal, changeLog);
-    return;
-  }
-  if (continueIntent) {
-    const before = book.chapters.length;
-    await continueBook(book, content, { ...settings, signal });
-    replaceProcessing(book, continueMessage(book, book.chapters.length - before), 'book', { bookId: book.id });
-    return;
-  }
   const last = book.chapters[book.chapters.length - 1];
-  const context = [
-    `全书摘要：${book.storySummary || '暂无'}`,
-    last ? `最近章节摘要：${last.summary || last.title}` : '暂无章节',
-    `现有关系网：${JSON.stringify(book.relations || { nodes: [], edges: [] })}`
-  ].join('\n');
-  const result = await chatCompletion({
-    system: '你是小说协作助手。根据书籍内容和用户消息判断意图，只返回 JSON。',
-    user: `书籍摘要上下文：\n${context}\n\n用户消息：${content}\n返回格式：续写 {"type":"continue","instruction":"..."}；修改章节 {"type":"rewrite","chapterIndex":0,"instruction":"..."}；回答问题 {"type":"question","reply":"..."}`,
-    maxTokens: 1200,
+  const decision = await runToolDecision({
+    system: [
+      '你是小说协作 Agent，根据用户消息选择一个工具调用。',
+      `全书摘要：${book.storySummary || '暂无'}`,
+      `最近章节摘要：${last?.summary || last?.title || '暂无'}`
+    ].join('\n'),
+    tools: buildReadyTools(book, settings, signal, changeLog),
+    user: content,
     signal
   });
-  if (result.type === 'rewrite') {
-    const suggested = Number(result.chapterIndex);
-    const instruction = String(result.instruction || '').trim();
-    if (Number.isInteger(suggested) && book.chapters[suggested] && instruction) {
-      const index = suggested;
-      const rewrittenId = book.chapters[index]?.id;
-      await rewriteChapter(book, index, instruction, { ...settings, signal });
-      if (rewrittenId) changeLog.chapterIds.add(rewrittenId);
-      book.rewrite = { step: 'none', chapterIndex: -1, candidates: [] };
-      replaceProcessing(book, `已修改第 ${index + 1} 章《${book.chapters[index]?.title || '本章'}》，可打开并列窗口查看。`, 'book', { bookId: book.id });
-    } else {
-      await applyRewriteRequest(book, content, settings, signal, changeLog);
-    }
-  } else if (result.type === 'continue') {
-    const before = book.chapters.length;
-    await continueBook(book, result.instruction || content, { ...settings, signal });
-    replaceProcessing(book, continueMessage(book, book.chapters.length - before), 'book', { bookId: book.id });
-  } else {
-    replaceProcessing(book, result.reply || '好的，我记下了。', 'text', { bookId: book.id });
+  if (!decision.tool) {
+    replaceProcessing(book, '好的，我记下了。', 'text', { bookId: book.id });
+    return;
   }
+  const outcome = decision.outcome || {};
+  replaceProcessing(book, outcome.content || '好的，我记下了。', outcome.kind || 'text', outcome.extra || { bookId: book.id });
 }
