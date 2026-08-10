@@ -126,6 +126,43 @@ export function searchChapters(book, text) {
     .sort((a, b) => b.score - a.score || a.index - b.index);
 }
 
+function intToChinese(number) {
+  const digits = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+  const n = Math.max(1, Math.floor(number));
+  if (n < 10) return digits[n];
+  if (n < 20) return n === 10 ? '十' : `十${digits[n - 10]}`;
+  if (n < 100) {
+    const tens = Math.floor(n / 10);
+    const ones = n % 10;
+    return `${digits[tens]}十${ones ? digits[ones] : ''}`;
+  }
+  if (n < 1000) {
+    const hundreds = Math.floor(n / 100);
+    const rest = n % 100;
+    return `${digits[hundreds]}百${rest ? (rest < 10 ? `零${digits[rest]}` : intToChinese(rest)) : ''}`;
+  }
+  const thousands = Math.floor(n / 1000);
+  const rest = n % 1000;
+  return `${digits[thousands]}千${rest ? (rest < 100 ? `零${intToChinese(rest)}` : intToChinese(rest)) : ''}`;
+}
+
+export function fixChapterPrefixes(book, format, changeLog = new Set()) {
+  let count = 0;
+  book.chapters.forEach((chapter, index) => {
+    const original = chapter.title;
+    let title = ensureChapterTitle(index, original);
+    const prefix = format === 'chinese' ? `第${intToChinese(index + 1)}章` : `第${index + 1}章`;
+    title = title.replace(/^第\s*[0-9零一二两三四五六七八九十百千]+\s*章/, prefix);
+    if (title !== original) {
+      chapter.title = title;
+      chapter.updatedAt = new Date().toISOString();
+      changeLog.add(chapter.id);
+      count += 1;
+    }
+  });
+  return count;
+}
+
 const EDIT_FIELDS = {
   title: {
     needsChapter: true,
@@ -164,6 +201,23 @@ const EDIT_FIELDS = {
 
 function buildReadyTools(book, settings, signal, changeLog) {
   return [
+    {
+      name: 'fix_chapter_prefixes',
+      description: '批量修复全部章节标题的“第X章”前缀，一次性处理，无需逐章调用。format 只能是 arabic（阿拉伯数字，如 第1章）或 chinese（汉字，如 第一章）。',
+      parameters: {
+        type: 'object',
+        properties: {
+          format: { type: 'string', enum: ['arabic', 'chinese'], description: 'arabic=第1章 / chinese=第一章' }
+        },
+        required: ['format']
+      },
+      handler: async ({ format }) => {
+        const count = fixChapterPrefixes(book, format, changeLog.chapterIds);
+        return count > 0
+          ? { content: `已统一处理 ${count} 个章节标题前缀（${format === 'chinese' ? '汉字' : '阿拉伯数字'}标号）。`, kind: 'text' }
+          : { content: '章节标题前缀已是目标格式，无需修改。', kind: 'text' };
+      }
+    },
     {
       name: 'edit_book',
       description: '修改书籍内容。target 为修改目标，只能是 title（章节标题）/ outline（简介）/ content（章节内容）三选一；target 为 content/title 时必须提供 chapter（章节号或标题）；value 为新的标题/简介/内容。修改标题后可继续调用本工具处理其它章节。',

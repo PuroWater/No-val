@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {
   isConfirmation,
   mergeBookState,
-  searchChapters
+  searchChapters,
+  fixChapterPrefixes
 } from '../src/services/chatService.js';
 
 test('isConfirmation recognizes confirmation phrases', () => {
@@ -41,6 +42,40 @@ test('searchChapters returns multiple candidates for similar titles', () => {
   const matches = searchChapters(book, '风起');
   assert.ok(matches.length >= 2);
   assert.equal(matches[0].index, 0);
+});
+
+test('fixChapterPrefixes batches prefixes in arabic or chinese format', () => {
+  const book = {
+    chapters: [
+      { id: 'p1', title: '第一章 雾起', updatedAt: 'T0' },
+      { id: 'p2', title: '雾中寻踪', updatedAt: 'T0' },
+      { id: 'p3', title: '第十二章 尾声', updatedAt: 'T0' }
+    ]
+  };
+  const changeLog = new Set();
+  const arabic = fixChapterPrefixes(book, 'arabic', changeLog);
+  assert.equal(arabic, 3);
+  assert.deepEqual(
+    book.chapters.map((c) => c.title),
+    ['第1章 雾起', '第2章 雾中寻踪', '第3章 尾声']
+  );
+  assert.equal(changeLog.size, 3);
+
+  const chineseBook = {
+    chapters: [
+      { id: 'q1', title: '第1章 雾起', updatedAt: 'T0' },
+      { id: 'q2', title: '试炼', updatedAt: 'T0' }
+    ]
+  };
+  const chineseCount = fixChapterPrefixes(chineseBook, 'chinese');
+  assert.equal(chineseCount, 2);
+  assert.deepEqual(
+    chineseBook.chapters.map((c) => c.title),
+    ['第一章 雾起', '第二章 试炼']
+  );
+
+  const noop = fixChapterPrefixes(book, 'arabic');
+  assert.equal(noop, 0);
 });
 
 
