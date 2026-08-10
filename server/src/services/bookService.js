@@ -282,10 +282,19 @@ export async function rewriteChapter(book, chapterIndex, instruction, settings =
   const target = book.chapters[chapterIndex];
   if (!target) throw new Error('章节不存在');
   const chapterWords = clampOutput(settings.chapterWords, 1000, 10000, 2000);
+  const prev = chapterIndex > 0 ? book.chapters[chapterIndex - 1] : null;
+  const next = chapterIndex < book.chapters.length - 1 ? book.chapters[chapterIndex + 1] : null;
+  const context = [
+    `上一章摘要：${prev?.summary || '无'}`,
+    prev ? `上一章结尾（节选）：${prev.content.slice(-400)}` : '',
+    `下一章摘要：${next?.summary || '无'}`,
+    next ? `下一章开头（节选）：${next.content.slice(0, 400)}` : '',
+    `现有关系网：${JSON.stringify(book.relations || { nodes: [], edges: [] })}`
+  ].filter(Boolean).join('\n');
   const result = await callModel(
     () => ({
       system: '你是小说改写助手。始终只返回 JSON，不要包含 Markdown。',
-      user: `根据修改意见改写章节，本章约 ${chapterWords} 字。返回 JSON：{"title":"章节标题","content":"新内容","summary":"本章 80-150 字剧情摘要"}。原章节：\n${target.title}\n${target.content}\n修改意见：${instruction}\n全书摘要：${book.storySummary || '暂无'}`,
+      user: `根据修改意见改写章节，本章约 ${chapterWords} 字。返回 JSON：{"title":"章节标题","content":"新内容","summary":"本章 80-150 字剧情摘要"}。原章节：\n${target.title}\n${target.content}\n修改意见：${instruction}\n全书摘要：${book.storySummary || '暂无'}\n附近章节语境：\n${context}`,
       maxTokens: maxTokensForWords(chapterWords)
     }),
     (result) => result.content,

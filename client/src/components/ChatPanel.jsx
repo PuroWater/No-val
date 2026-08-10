@@ -111,6 +111,7 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
     const onDown = (event) => {
       if (dateWrapRef.current && !dateWrapRef.current.contains(event.target)) {
         setDateOpen(false);
+        setDateHover(null);
       }
     };
     document.addEventListener('mousedown', onDown);
@@ -225,7 +226,10 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
             <div className="chat-date-wrap" ref={dateWrapRef}>
               <button
                 className="chat-date-select"
-                onClick={() => setDateOpen((open) => !open)}
+                onClick={() => {
+                  setDateHover(null);
+                  setDateOpen((open) => !open);
+                }}
                 aria-haspopup="listbox"
               >
                 {mode === '__today__' ? '当前日期' : mode || '全部日期'}
@@ -235,13 +239,13 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
                 <div className="chat-date-panel" role="listbox">
                   <button
                     className={`chat-date-option${mode === '__today__' ? ' active' : ''}`}
-                    onClick={() => { setSelectedDate('__today__'); setDateOpen(false); }}
+                    onClick={() => { setSelectedDate('__today__'); setDateOpen(false); setDateHover(null); }}
                   >
                     当前日期
                   </button>
                   <button
                     className={`chat-date-option${mode === '' ? ' active' : ''}`}
-                    onClick={() => { setSelectedDate(''); setDateOpen(false); }}
+                    onClick={() => { setSelectedDate(''); setDateOpen(false); setDateHover(null); }}
                   >
                     全部日期
                   </button>
@@ -249,7 +253,7 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
                     <button
                       key={option.date}
                       className={`chat-date-option${mode === option.date ? ' active' : ''}`}
-                      onClick={() => { setSelectedDate(option.date); setDateOpen(false); }}
+                      onClick={() => { setSelectedDate(option.date); setDateOpen(false); setDateHover(null); }}
                       onMouseEnter={(event) => {
                         if (option.lines.length > 0) {
                           setDateHover({ x: event.clientX, y: event.clientY, lines: option.lines });

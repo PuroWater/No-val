@@ -70,23 +70,48 @@ export function createDraft(userId) {
   return book;
 }
 
-function chapterList(book) {
-  return book.chapters.map((chapter, index) => `${index + 1}. ${chapter.title}`).join('\n');
+function fuzzyScore(title, query) {
+  const t = String(title || '').toLowerCase();
+  const q = String(query || '').toLowerCase();
+  if (!t || !q) return 0;
+  if (t === q) return 100;
+  if (t.includes(q) || q.includes(t)) return 90;
+  const setT = new Set(t.split(''));
+  const setQ = new Set(q.split(''));
+  let overlap = 0;
+  for (const ch of setQ) {
+    if (setT.has(ch)) overlap += 1;
+  }
+  return Math.round((overlap / setQ.size) * 60);
 }
 
-function findChapterIndex(book, text) {
+export function searchChapters(book, text) {
   const value = String(text || '').trim();
-  if (!value) return -1;
-  const byTitle = book.chapters.findIndex(
-    (chapter) => value.includes(chapter.title) || chapter.title.includes(value)
-  );
-  if (byTitle !== -1) return byTitle;
-  const match = value.match(/\d+/);
-  if (match) {
-    const index = Number(match[0]) - 1;
-    if (book.chapters[index]) return index;
+  if (!value) return [];
+  const numberMatch = value.match(/\d+/);
+  if (numberMatch) {
+    const index = Number(numberMatch[0]) - 1;
+    if (book.chapters[index]) {
+      return [{ index, title: book.chapters[index].title, score: 100 }];
+    }
   }
-  return -1;
+  return book.chapters
+    .map((chapter, index) => ({ index, title: chapter.title, score: fuzzyScore(chapter.title, value) }))
+    .filter((item) => item.score >= 40)
+    .sort((a, b) => b.score - a.score || a.index - b.index);
+}
+
+function pickCandidate(candidates, reply) {
+  const value = String(reply || '').trim();
+  if (!value) return null;
+  const numberMatch = value.match(/\d+/);
+  if (numberMatch) {
+    const order = Number(numberMatch[0]);
+    const candidate = candidates[order - 1];
+    if (candidate) return candidate;
+  }
+  const matches = searchChapters({ chapters: candidates.map((item) => ({ title: item.title })) }, value);
+  return matches.length === 1 ? candidates[matches[0].index] : null;
 }
 
 function continueMessage(book, count) {
@@ -184,7 +209,8 @@ export function startRewriteSession(userId, bookId) {
     throw new Error('这本书还没有可改写的章节');
   }
   book.rewrite = { step: 'chapter', chapterIndex: -1 };
-  appendMessage(book, 'agent', `想改写哪一章？\n${chapterList(book)}`, 'question');
+  book.rewrite.candidates = [];
+  appendMessage(book, 'agent', '想改写哪一章？请在下方书籍中打开并列查看或详情浏览章节，然后回复章节号或章节名（支持模糊匹配）。', 'book', { bookId: book.id });
   writeJson(BOOKS_FILE, books);
   return book;
 }
@@ -264,18 +290,41 @@ async function handleDraftMessage(book, content, settings, signal) {
 
 async function handleReadyMessage(book, content, settings, signal, changeLog) {
   if (book.rewrite?.step === 'chapter') {
-    const index = findChapterIndex(book, content);
-    if (index === -1) {
-      replaceProcessing(book, `没有找到对应章节，请选择：\n${chapterList(book)}`, 'question');
+    if (Array.isArray(book.rewrite.candidates) && book.rewrite.candidates.length > 0) {
+      const picked = pickCandidate(book.rewrite.candidates, content);
+      if (picked) {
+        book.rewrite.chapterIndex = picked.index;
+        book.rewrite.step = 'part';
+        book.rewrite.candidates = [];
+        replaceProcessing(
+          book,
+          `好的，要修改《${picked.title}》的哪一部分？例如：开头、人物描写、结尾，或直接输入具体修改意见。`,
+          'question'
+        );
+        return;
+      }
+    }
+    const matches = searchChapters(book, content);
+    if (matches.length === 1) {
+      const match = matches[0];
+      book.rewrite.chapterIndex = match.index;
+      book.rewrite.step = 'part';
+      book.rewrite.candidates = [];
+      replaceProcessing(
+        book,
+        `好的，要修改《${match.title}》的哪一部分？例如：开头、人物描写、结尾，或直接输入具体修改意见。`,
+        'question'
+      );
       return;
     }
-    book.rewrite.chapterIndex = index;
-    book.rewrite.step = 'part';
-    replaceProcessing(
-      book,
-      `好的，要修改《${book.chapters[index].title}》的哪一部分？例如：开头、人物描写、结尾，或直接输入具体修改意见。`,
-      'question'
-    );
+    if (matches.length > 1) {
+      book.rewrite.candidates = matches.slice(0, 5);
+      const list = book.rewrite.candidates.map((item, order) => `${order + 1}. ${item.title}`).join('\n');
+      replaceProcessing(book, `找到多个相似章节，请选择要修改哪一章：\n${list}`, 'question');
+      return;
+    }
+    book.rewrite.candidates = [];
+    replaceProcessing(book, '没有找到对应章节。请在下方书籍中打开并列查看或详情确认章节，然后回复章节号或章节名（支持模糊匹配）。', 'question');
     return;
   }
   if (book.rewrite?.step === 'part') {
@@ -292,7 +341,8 @@ async function handleReadyMessage(book, content, settings, signal, changeLog) {
   const continueIntent = /续写|继续写|接着写|写下一章|继续创作|下一章|接着创作/.test(content);
   if (rewriteIntent) {
     book.rewrite = { step: 'chapter', chapterIndex: -1 };
-    replaceProcessing(book, `想改写哪一章？\n${chapterList(book)}`, 'question');
+    book.rewrite.candidates = [];
+    replaceProcessing(book, '想改写哪一章？请在下方书籍中打开并列查看或详情浏览章节，然后回复章节号或章节名（支持模糊匹配）。', 'book', { bookId: book.id });
     return;
   }
   if (continueIntent) {
@@ -315,7 +365,8 @@ async function handleReadyMessage(book, content, settings, signal, changeLog) {
   });
   if (result.type === 'rewrite') {
     book.rewrite = { step: 'chapter', chapterIndex: -1 };
-    replaceProcessing(book, `想改写哪一章？\n${chapterList(book)}`, 'question');
+    book.rewrite.candidates = [];
+    replaceProcessing(book, '想改写哪一章？请在下方书籍中打开并列查看或详情浏览章节，然后回复章节号或章节名（支持模糊匹配）。', 'book', { bookId: book.id });
   } else if (result.type === 'continue') {
     const before = book.chapters.length;
     await continueBook(book, result.instruction || content, { ...settings, signal });
