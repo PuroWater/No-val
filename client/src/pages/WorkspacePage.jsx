@@ -81,46 +81,65 @@ export default function WorkspacePage() {
           {selectedBookId && selectedBookId !== NEW_SESSION && (
             <button className="danger" onClick={handleDeleteSelected}>删除当前</button>
           )}
-          <select
-            value={selectedBookId === NEW_SESSION ? '' : selectedBookId}
-            onChange={(e) => {
-              if (e.target.value) chooseBook(e.target.value);
-            }}
-          >
-            <option value="">选择历史图书</option>
-            {drafts.length > 0 && (
-              <optgroup label="构思中">
-                {drafts.map((book) => (
-                  <option key={book.id} value={book.id}>{book.title}</option>
-                ))}
-              </optgroup>
-            )}
-            {readyBooks.length > 0 && (
-              <optgroup label="已生成图书">
-                {readyBooks.map((book) => (
-                  <option key={book.id} value={book.id}>{book.title}</option>
-                ))}
-              </optgroup>
-            )}
-          </select>
         </div>
       </div>
       {error && <p className="form-error">{error}</p>}
-      {!selectedBookId && (
-        <div className="workspace-empty">
-          <p className="muted">从一本新书开始，或选择历史图书继续创作。</p>
-          <button className="primary" onClick={startNew}>开始创作</button>
+      <div className="workspace-body">
+        <aside className="book-directory">
+          <button
+            className={`directory-item new ${selectedBookId === NEW_SESSION ? 'active' : ''}`}
+            onClick={startNew}
+          >
+            ＋ 新创作
+          </button>
+          {drafts.length > 0 && (
+            <div className="directory-group">
+              <span>构思中</span>
+              {drafts.map((book) => (
+                <button
+                  key={book.id}
+                  className={`directory-item ${selectedBookId === book.id ? 'active' : ''}`}
+                  onClick={() => chooseBook(book.id)}
+                >
+                  {book.title}
+                </button>
+              ))}
+            </div>
+          )}
+          {readyBooks.length > 0 && (
+            <div className="directory-group">
+              <span>已生成图书</span>
+              {readyBooks.map((book) => (
+                <button
+                  key={book.id}
+                  className={`directory-item ${selectedBookId === book.id ? 'active' : ''}`}
+                  onClick={() => chooseBook(book.id)}
+                >
+                  {book.title}
+                </button>
+              ))}
+            </div>
+          )}
+          {books.length === 0 && <p className="muted">还没有图书，点击“＋ 新创作”开始。</p>}
+        </aside>
+        <div className="workspace-main">
+          {!selectedBookId && (
+            <div className="workspace-empty">
+              <p className="muted">从左侧选择一本图书，或点击“＋ 新创作”。</p>
+              <button className="primary" onClick={startNew}>开始创作</button>
+            </div>
+          )}
+          {selectedBookId === NEW_SESSION && (
+            <ChatPanel bookId="" onSessionCreated={handleSessionCreated} />
+          )}
+          {selectedBookId && selectedBookId !== NEW_SESSION && (
+            <div className={sideBookId ? 'workspace-split' : 'workspace-chat'}>
+              <ChatPanel bookId={selectedBookId} onOpenBook={setSideBookId} />
+              {sideBookId && <BookSidePanel bookId={sideBookId} onClose={() => setSideBookId('')} />}
+            </div>
+          )}
         </div>
-      )}
-      {selectedBookId === NEW_SESSION && (
-        <ChatPanel bookId="" onSessionCreated={handleSessionCreated} />
-      )}
-      {selectedBookId && selectedBookId !== NEW_SESSION && (
-        <div className={sideBookId ? 'workspace-split' : 'workspace-chat'}>
-          <ChatPanel bookId={selectedBookId} onOpenBook={setSideBookId} />
-          {sideBookId && <BookSidePanel bookId={sideBookId} onClose={() => setSideBookId('')} />}
-        </div>
-      )}
+      </div>
     </section>
   );
 }

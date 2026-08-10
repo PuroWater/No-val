@@ -66,16 +66,25 @@ export default function BookSidePanel({ bookId, onClose }) {
       </div>
       {tab === 'content' ? (
         <div className="book-content">
-          <select value={chapterIndex} onChange={(e) => setChapterIndex(Number(e.target.value))}>
+          <aside className="chapter-directory">
             {book.chapters.map((item, index) => (
-              <option key={item.id} value={index}>{item.title}</option>
+              <button
+                key={item.id}
+                className={`directory-item ${chapterIndex === index ? 'active' : ''}`}
+                onClick={() => setChapterIndex(index)}
+              >
+                {item.title}
+              </button>
             ))}
-          </select>
-          {chapter ? (
-            <ChapterEditor key={chapter.id} chapter={chapter} onSave={saveChapter} onCommit={commitSummary} />
-          ) : (
-            <p className="muted">这本书还在构思中，生成后可以在这里编辑。</p>
-          )}
+            {book.chapters.length === 0 && <p className="muted">暂无章节</p>}
+          </aside>
+          <div className="chapter-editor-area">
+            {chapter ? (
+              <ChapterEditor key={chapter.id} chapter={chapter} onSave={saveChapter} onCommit={commitSummary} />
+            ) : (
+              <p className="muted">这本书还在构思中，生成后可以在这里编辑。</p>
+            )}
+          </div>
         </div>
       ) : (
         <div className="relation-tab">
