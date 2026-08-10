@@ -152,7 +152,7 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated }) {
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={isNew ? '输入小说构思，开始新的创作会话…' : '输入续写、修改或剧情问题…'}
+          placeholder={isNew || book.status === 'draft' ? '谈谈你的想法…' : '输入续写、修改或剧情问题…'}
           disabled={sending || hasProcessing}
         />
         <button

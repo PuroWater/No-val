@@ -305,7 +305,8 @@ button, input, textarea, select {
 }
 
 .page {
-  max-width: 960px;
+  width: 100%;
+  max-width: none;
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -770,6 +771,10 @@ button, input, textarea, select {
   background: transparent;
   color: var(--text);
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .directory-item:hover {
@@ -784,6 +789,29 @@ button, input, textarea, select {
 .directory-item.new {
   border-style: dashed;
   border-color: var(--border);
+}
+
+.directory-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.directory-delete {
+  flex: none;
+  opacity: 0;
+  pointer-events: none;
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: rgba(214, 69, 65, 0.12);
+  color: #d64541;
+  font-size: 12px;
+}
+
+.directory-item:hover .directory-delete {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .workspace-chat {

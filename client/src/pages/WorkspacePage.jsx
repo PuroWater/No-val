@@ -53,17 +53,16 @@ export default function WorkspacePage() {
       .catch((err) => setError(err.message));
   }
 
-  async function handleDeleteSelected() {
-    if (!selectedBookId || selectedBookId === NEW_SESSION) return;
-    const book = books.find((item) => item.id === selectedBookId);
-    if (!book) return;
+  async function handleDeleteBook(book) {
     if (!window.confirm(`确定删除“${book.title}”吗？可在设置回收站中恢复。`)) return;
     try {
-      await api(`/books/${selectedBookId}`, { method: 'DELETE' });
+      await api(`/books/${book.id}`, { method: 'DELETE' });
       await loadBooks();
-      setSelectedBookId('');
-      localStorage.removeItem(STORAGE_KEY);
-      setSideBookId('');
+      if (selectedBookId === book.id) {
+        setSelectedBookId('');
+        localStorage.removeItem(STORAGE_KEY);
+        setSideBookId('');
+      }
     } catch (err) {
       setError(err.message);
     }
@@ -74,15 +73,6 @@ export default function WorkspacePage() {
 
   return (
     <section className="workspace">
-      <div className="workspace-top">
-        <h2>创作工作台</h2>
-        <div className="workspace-actions">
-          <button className="primary" onClick={startNew}>＋ 新创作</button>
-          {selectedBookId && selectedBookId !== NEW_SESSION && (
-            <button className="danger" onClick={handleDeleteSelected}>删除当前</button>
-          )}
-        </div>
-      </div>
       {error && <p className="form-error">{error}</p>}
       <div className="workspace-body">
         <aside className="book-directory">
@@ -90,7 +80,7 @@ export default function WorkspacePage() {
             className={`directory-item new ${selectedBookId === NEW_SESSION ? 'active' : ''}`}
             onClick={startNew}
           >
-            ＋ 新创作
+            <span className="directory-label">＋ 新创作</span>
           </button>
           {drafts.length > 0 && (
             <div className="directory-group">
@@ -101,7 +91,8 @@ export default function WorkspacePage() {
                   className={`directory-item ${selectedBookId === book.id ? 'active' : ''}`}
                   onClick={() => chooseBook(book.id)}
                 >
-                  {book.title}
+                  <span className="directory-label">{book.title}</span>
+                  <span className="directory-delete" onClick={(e) => { e.stopPropagation(); handleDeleteBook(book); }}>删除</span>
                 </button>
               ))}
             </div>
@@ -115,7 +106,8 @@ export default function WorkspacePage() {
                   className={`directory-item ${selectedBookId === book.id ? 'active' : ''}`}
                   onClick={() => chooseBook(book.id)}
                 >
-                  {book.title}
+                  <span className="directory-label">{book.title}</span>
+                  <span className="directory-delete" onClick={(e) => { e.stopPropagation(); handleDeleteBook(book); }}>删除</span>
                 </button>
               ))}
             </div>
