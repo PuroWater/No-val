@@ -62,20 +62,24 @@ export default function WorkspacePage() {
   }
 
   function toggleSide() {
-    if (sideBookId) {
+    toggleSideFor(selectedBookId);
+  }
+
+  function toggleSideFor(bookId) {
+    if (sideBookId === bookId) {
       setSideBookId('');
       return;
     }
-    const container = document.querySelector('.workspace-main');
+    const container = document.querySelector('.workspace-body');
     const width = container?.clientWidth || window.innerWidth;
     setLeftWidth(Math.max(260, Math.floor(width / 2)));
-    setSideBookId(selectedBookId);
+    setSideBookId(bookId);
   }
 
   function startResize(event) {
     const startX = event.clientX;
     const startWidth = leftWidth;
-    const container = document.querySelector('.workspace-main');
+    const container = document.querySelector('.workspace-body');
     const containerWidth = container?.clientWidth || window.innerWidth;
     const maxWidth = Math.max(260, containerWidth - 320);
     const onMove = (moveEvent) => {
@@ -183,7 +187,7 @@ export default function WorkspacePage() {
                     bookId={selectedBookId}
                     sideOpen={Boolean(sideBookId)}
                     onToggleSide={toggleSide}
-                    onOpenBook={setSideBookId}
+                    onOpenBook={toggleSideFor}
                   />
                 </>
               ) : (
@@ -191,7 +195,7 @@ export default function WorkspacePage() {
                   bookId={selectedBookId}
                   sideOpen={false}
                   onToggleSide={toggleSide}
-                  onOpenBook={setSideBookId}
+                  onOpenBook={toggleSideFor}
                 />
               )}
             </div>

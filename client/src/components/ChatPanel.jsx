@@ -310,7 +310,12 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
           const showSeparator = !lastDate || date !== lastDate;
           lastDate = date;
           const bubble = message.kind === 'book' ? (
-            <BookWidget book={book} onOpen={onOpenBook} />
+            <Fragment>
+              {message.content && (
+                <div className={`chat-message ${message.role}`}>{message.content}</div>
+              )}
+              <BookWidget book={book} onOpen={onOpenBook} active={sideOpen} />
+            </Fragment>
           ) : (
             <div
               className={`chat-message ${message.role}${message.kind === 'error' ? ' error' : ''}${message.kind === 'processing' ? ' processing' : ''}`}

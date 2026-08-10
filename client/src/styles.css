@@ -52,7 +52,7 @@ button, input, textarea, select {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: 24px 24px 48px;
   background: var(--bg);
 }
 
@@ -226,14 +226,14 @@ button, input, textarea, select {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 20px 24px;
+  padding: 20px 24px 40px;
 }
 
 .chat-panel {
   height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 20px;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -241,6 +241,7 @@ button, input, textarea, select {
 }
 
 .chat-head {
+  min-height: 40px;
   font-size: 18px;
   font-weight: 700;
   display: flex;
@@ -250,11 +251,16 @@ button, input, textarea, select {
 }
 
 .side-toggle {
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
   border: 1px solid var(--border);
   background: transparent;
   color: var(--text);
-  padding: 5px 10px;
+  padding: 0 12px;
   font-size: 13px;
+  border-radius: 6px;
 }
 
 .side-toggle.active {
@@ -270,6 +276,21 @@ button, input, textarea, select {
   min-width: 0;
 }
 
+.chat-head-left > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.chat-head-left strong {
+  font-size: 16px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .chat-date-wrap {
   position: relative;
 }
@@ -278,8 +299,9 @@ button, input, textarea, select {
   display: flex;
   align-items: center;
   gap: 4px;
+  height: 28px;
   max-width: 200px;
-  padding: 3px 8px;
+  padding: 0 8px;
   font-size: 12px;
   font-weight: 400;
   border: 1px solid var(--border);
@@ -395,22 +417,42 @@ button, input, textarea, select {
 .chat-input {
   display: flex;
   gap: 10px;
+  align-items: flex-end;
 }
 
 .chat-input textarea {
   flex: 1;
-  min-height: 80px;
-  resize: vertical;
+  height: 56px;
+  min-height: 56px;
+  max-height: 56px;
+  resize: none;
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 10px;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
+  line-height: 20px;
   background: var(--panel);
   color: var(--text);
 }
 
+.chat-input textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.chat-input .primary {
+  flex: none;
+  height: 56px;
+  min-width: 88px;
+  padding: 0 20px;
+  font-size: 14px;
+  border-radius: 8px;
+  align-self: flex-end;
+}
+
 .chat-input .primary.stop {
   width: 56px;
-  font-size: 14px;
+  min-width: 56px;
 }
 
 .page {
@@ -454,7 +496,7 @@ button, input, textarea, select {
 }
 
 .page-fixed {
-  height: calc(100vh - 104px);
+  height: calc(100vh - 124px);
   min-height: 0;
   overflow: hidden;
 }
@@ -603,7 +645,7 @@ button, input, textarea, select {
   border-radius: 6px;
   background: var(--panel);
   color: var(--text);
-  resize: vertical;
+  resize: none;
   line-height: 1.7;
 }
 
@@ -760,6 +802,50 @@ button, input, textarea, select {
   color: var(--muted);
 }
 
+.toast-layer {
+  position: fixed;
+  top: 22%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.saved-toast {
+  padding: 8px 18px;
+  border-radius: 8px;
+  background: #1f2328;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 400;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  white-space: nowrap;
+  animation: toast-fade 1s ease forwards;
+}
+
+@keyframes toast-fade {
+  0% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  80% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+}
+
 .account-form {
   display: flex;
   flex-direction: column;
@@ -883,7 +969,7 @@ button, input, textarea, select {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  height: calc(100vh - 104px);
+  height: calc(100vh - 124px);
   min-height: 560px;
 }
 
@@ -1090,10 +1176,13 @@ button, input, textarea, select {
 }
 
 .status-badge {
-  margin-left: 8px;
-  padding: 3px 8px;
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
   border-radius: 999px;
   font-size: 12px;
+  line-height: 1;
   background: var(--bg);
   color: var(--muted);
 }

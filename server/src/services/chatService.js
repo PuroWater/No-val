@@ -383,7 +383,7 @@ async function handleReadyMessage(book, content, settings, signal, changeLog) {
     if (rewrittenId) changeLog.chapterIds.add(rewrittenId);
     const title = book.chapters[index]?.title || '本章';
     book.rewrite = { step: 'none', chapterIndex: -1 };
-    replaceProcessing(book, `已修改第 ${index + 1} 章《${title}》，可打开并列窗口查看。`, 'text', { bookId: book.id });
+    replaceProcessing(book, `已修改第 ${index + 1} 章《${title}》，可打开并列窗口查看。`, 'book', { bookId: book.id });
     return;
   }
   const rewriteIntent = /改写|修改|重写|改一下|调整一下|改改|润色/.test(content);

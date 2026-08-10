@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import ConfirmModal from '../components/ConfirmModal.jsx';
 import { applySettings } from '../components/SettingsApplier.jsx';
@@ -22,7 +22,8 @@ export default function SettingsPage() {
   const [chaptersPerOutput, setChaptersPerOutput] = useState(3);
   const [chapterWords, setChapterWords] = useState(2000);
   const [trash, setTrash] = useState([]);
-  const [saved, setSaved] = useState(false);
+  const [toasts, setToasts] = useState([]);
+  const toastIdRef = useRef(0);
   const [appearanceError, setAppearanceError] = useState('');
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -60,8 +61,11 @@ export default function SettingsPage() {
         })
       });
       applySettings(data.settings);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 1200);
+      const id = ++toastIdRef.current;
+      setToasts((list) => [...list, id]);
+      setTimeout(() => {
+        setToasts((list) => list.filter((item) => item !== id));
+      }, 1000);
     } catch (err) {
       setAppearanceError(err.message);
     }
@@ -183,7 +187,6 @@ export default function SettingsPage() {
                   }}
                 />
               </div>
-              {saved && <p className="saved-tip">已保存</p>}
               {appearanceError && <p className="form-error">{appearanceError}</p>}
             </>
           )}
@@ -246,6 +249,13 @@ export default function SettingsPage() {
         onConfirm={confirmPermanentDelete}
         onCancel={() => setPermanentTarget(null)}
       />
+      {toasts.length > 0 && (
+        <div className="toast-layer">
+          {toasts.map((id) => (
+            <div key={id} className="saved-toast">已保存</div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
