@@ -74,14 +74,14 @@ export default function BookSidePanel({ bookId, onClose }) {
           )}
         </div>
       ) : (
-        <>
+        <div className="relation-tab">
           {relationsLoading && <p className="muted">正在生成关系网…</p>}
           {relationsError && <p className="form-error">{relationsError}</p>}
           <RelationGraph relations={book.relations} />
           {!relationsLoading && (
             <button className="primary" onClick={regenerateRelations}>重新生成关系网</button>
           )}
-        </>
+        </div>
       )}
     </aside>
   );

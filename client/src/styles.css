@@ -279,6 +279,12 @@ button, input, textarea, select {
   gap: 18px;
 }
 
+.page-fixed {
+  height: calc(100vh - 48px);
+  min-height: 0;
+  overflow: hidden;
+}
+
 .page-head {
   display: flex;
   align-items: baseline;
@@ -396,6 +402,8 @@ button, input, textarea, select {
 .relation-graph {
   position: relative;
   overflow: hidden;
+  flex: 1;
+  min-height: 0;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--panel);
@@ -406,7 +414,8 @@ button, input, textarea, select {
 
 .relation-graph svg {
   width: 100%;
-  min-height: 560px;
+  height: 100%;
+  min-height: 0;
   display: block;
 }
 
@@ -736,11 +745,20 @@ button, input, textarea, select {
   gap: 14px;
   height: 100%;
   min-height: 0;
-  overflow-y: auto;
+  overflow: hidden;
   padding: 16px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--panel);
+}
+
+.relation-tab {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
 }
 
 .side-panel-head {
