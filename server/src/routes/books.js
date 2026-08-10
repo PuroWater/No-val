@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { readJson, writeJson, BOOKS_FILE } from '../lib/store.js';
 import { normalizeBook } from '../lib/bookUtils.js';
 import { requireAuth } from '../middleware/auth.js';
-import { extractRelations } from '../services/bookService.js';
+import { extractRelations, regenerateChapterSummary } from '../services/bookService.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -53,6 +53,20 @@ router.post('/:id/relations', async (req, res) => {
     return res.json({ book });
   } catch (err) {
     return res.status(502).json({ error: `关系网生成失败：${err.message}` });
+  }
+});
+
+router.post('/:id/chapters/:chapterId/summary', async (req, res) => {
+  const books = readJson(BOOKS_FILE, []).map(normalizeBook);
+  const book = books.find((item) => item.id === req.params.id && item.userId === req.user.id && !item.deletedAt);
+  if (!book) return res.status(404).json({ error: '书籍不存在' });
+  try {
+    await regenerateChapterSummary(book, req.params.chapterId);
+    book.updatedAt = new Date().toISOString();
+    writeJson(BOOKS_FILE, books);
+    return res.json({ book });
+  } catch (err) {
+    return res.status(502).json({ error: `章节摘要更新失败：${err.message}` });
   }
 });
 

@@ -28,12 +28,6 @@ export default function BookSidePanel({ bookId, onClose }) {
     }
   }
 
-  useEffect(() => {
-    if (tab === 'relations' && book && book.chapters.length > 0 && book.relations.nodes.length === 0 && !relationsLoading && !relationsError) {
-      regenerateRelations();
-    }
-  }, [tab, book?.id]);
-
   if (error) return <aside className="book-side-panel"><p className="form-error">{error}</p></aside>;
   if (!book) return <aside className="book-side-panel"><p className="muted">加载中…</p></aside>;
 
@@ -45,6 +39,16 @@ export default function BookSidePanel({ bookId, onClose }) {
       body: JSON.stringify(patch)
     });
     setBook(data.book);
+  }
+
+  async function commitSummary() {
+    if (!chapter) return;
+    try {
+      const data = await api(`/books/${book.id}/chapters/${chapter.id}/summary`, { method: 'POST' });
+      setBook(data.book);
+    } catch (err) {
+      setError(err.message);
+    }
   }
 
   return (
@@ -68,7 +72,7 @@ export default function BookSidePanel({ bookId, onClose }) {
             ))}
           </select>
           {chapter ? (
-            <ChapterEditor key={chapter.id} chapter={chapter} onSave={saveChapter} />
+            <ChapterEditor key={chapter.id} chapter={chapter} onSave={saveChapter} onCommit={commitSummary} />
           ) : (
             <p className="muted">这本书还在构思中，生成后可以在这里编辑。</p>
           )}

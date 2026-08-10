@@ -131,7 +131,6 @@ export async function createBookFromConcept(userId, concept) {
     updatedAt: now
   });
   book.storySummary = buildStorySummary(book.chapters);
-  book.relations = await extractRelations(book).catch(() => ({ nodes: [], edges: [] }));
   const books = readJson(BOOKS_FILE, []).map(normalizeBook);
   books.push(book);
   writeJson(BOOKS_FILE, books);
@@ -153,7 +152,6 @@ export async function finalizeDraftBook(book) {
   book.storySummary = buildStorySummary(book.chapters);
   book.status = 'ready';
   book.updatedAt = now;
-  book.relations = await extractRelations(book).catch(() => ({ nodes: [], edges: [] }));
   return book;
 }
 
@@ -181,7 +179,6 @@ export async function continueBook(book, instruction) {
   book.chapters.push(newChapter);
   book.updatedAt = new Date().toISOString();
   await updateStorySummary(book, newChapter.summary).catch(() => {});
-  book.relations = await extractRelations(book).catch(() => book.relations);
   return book;
 }
 
@@ -199,6 +196,20 @@ export async function rewriteChapter(book, chapterIndex, instruction) {
   target.updatedAt = new Date().toISOString();
   book.updatedAt = target.updatedAt;
   await rebuildStorySummary(book).catch(() => {});
-  book.relations = await extractRelations(book).catch(() => book.relations);
+  return book;
+}
+
+export async function regenerateChapterSummary(book, chapterId) {
+  const chapter = book.chapters.find((item) => item.id === chapterId);
+  if (!chapter) throw new Error('章节不存在');
+  const oldSummary = chapter.summary || '';
+  const result = await chatCompletion({
+    system: '你是小说章节摘要维护助手。只返回 JSON，不要包含 Markdown。',
+    user: `章节标题：${chapter.title}\n章节内容：${chapter.content}\n原有摘要：${oldSummary || '无'}\n\n请生成新的 80-150 字章节摘要，并对比原摘要给出最小化差异说明，返回 JSON：{"summary":"新摘要","diff":"与原摘要的关键差异"}`,
+    temperature: 0.4,
+    maxTokens: 900
+  });
+  chapter.summary = String(result.summary || oldSummary || '').trim();
+  await updateStorySummary(book, chapter.summary).catch(() => {});
   return book;
 }
