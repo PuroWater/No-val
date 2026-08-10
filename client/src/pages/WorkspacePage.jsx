@@ -104,7 +104,7 @@ export default function WorkspacePage() {
   return (
     <section className="workspace">
       {error && <p className="form-error">{error}</p>}
-      <div className="workspace-body">
+      <div className={`workspace-body${sideBookId ? ' side-open' : ''}`}>
         <aside className="book-directory">
           <input
             className="directory-search"

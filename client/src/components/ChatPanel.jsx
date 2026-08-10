@@ -126,7 +126,7 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
             className={`primary side-toggle ${sideOpen ? 'active' : ''}`}
             onClick={() => onToggleSide?.()}
           >
-            {sideOpen ? '关闭并列' : '并列查看'}
+            并列查看
           </button>
         )}
       </div>

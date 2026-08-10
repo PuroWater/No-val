@@ -424,9 +424,14 @@ button, input, textarea, select {
   color: var(--muted);
   font-size: 12px;
   cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
 }
 
+.book-card:hover .book-delete,
 .book-delete:hover {
+  opacity: 1;
+  pointer-events: auto;
   color: #d64541;
   background: rgba(214, 69, 65, 0.1);
 }
@@ -836,6 +841,14 @@ button, input, textarea, select {
   gap: 14px;
 }
 
+.workspace-body.side-open {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.workspace-body.side-open .book-directory {
+  display: none;
+}
+
 .workspace-main {
   min-width: 0;
   min-height: 0;
@@ -940,6 +953,11 @@ button, input, textarea, select {
 .directory-item:hover .directory-delete {
   opacity: 1;
   pointer-events: auto;
+}
+
+.directory-item.active .directory-delete {
+  color: #ffffff;
+  background: #d64541;
 }
 
 .workspace-chat {
