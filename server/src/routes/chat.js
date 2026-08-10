@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { readJson, writeJson, BOOKS_FILE } from '../lib/store.js';
 import { normalizeBook } from '../lib/bookUtils.js';
 import { requireAuth } from '../middleware/auth.js';
-import { createDraft, handleMessage, startRewriteSession, interruptProcessing } from '../services/chatService.js';
+import { createDraft, handleMessage, interruptProcessing } from '../services/chatService.js';
 import { createBookFromConcept, continueBook } from '../services/bookService.js';
 import { getUserSettings } from '../services/settingsService.js';
 
@@ -35,17 +35,6 @@ router.post('/abort', (req, res) => {
     res.json(result);
   } catch (err) {
     res.status(502).json({ error: err.message });
-  }
-});
-
-router.post('/rewrite', (req, res) => {
-  const { bookId } = req.body || {};
-  if (!bookId) return res.status(400).json({ error: '请选择书籍' });
-  try {
-    const book = startRewriteSession(req.user.id, bookId);
-    return res.json({ book });
-  } catch (err) {
-    return res.status(502).json({ error: err.message });
   }
 });
 

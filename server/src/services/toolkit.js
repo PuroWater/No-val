@@ -77,7 +77,7 @@ export async function runToolDecision({
   ask = chatCompletion,
   maxAttempts = 3,
   maxTokens = 1200,
-  maxSteps = 40
+  maxSteps = 30
 }) {
   const toolText = toolList
     .map((tool) => `- ${tool.name}：${tool.description}\n  参数：${JSON.stringify(tool.parameters)}`)

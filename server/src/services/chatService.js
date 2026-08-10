@@ -126,26 +126,41 @@ export function searchChapters(book, text) {
     .sort((a, b) => b.score - a.score || a.index - b.index);
 }
 
-function pickCandidate(candidates, reply) {
-  const value = String(reply || '').trim();
-  if (!value) return null;
-  const chapterMatch = value.match(/(?:第)?\s*([0-9零一二两三四五六七八九十百千]+)\s*章/);
-  let order = 0;
-  if (chapterMatch) {
-    const raw = chapterMatch[1];
-    order = /^\d+$/.test(raw) ? Number(raw) : chineseNumberToInt(raw);
+const EDIT_FIELDS = {
+  title: {
+    needsChapter: true,
+    apply: (book, { index, value }, deps) => {
+      const nextTitle = ensureChapterTitle(index, value);
+      const chapter = book.chapters[index];
+      if (chapter.title !== nextTitle) {
+        chapter.title = nextTitle;
+        chapter.updatedAt = new Date().toISOString();
+        deps.changeLog.add(chapter.id);
+      }
+      return { followUp: true, data: `第 ${index + 1} 章标题已更新为《${chapter.title}》。` };
+    }
+  },
+  outline: {
+    needsChapter: false,
+    apply: (book, { value }) => {
+      book.outline = String(value || '').trim();
+      return { content: '已更新书籍简介。', kind: 'text' };
+    }
+  },
+  content: {
+    needsChapter: true,
+    apply: async (book, { index, value }, deps) => {
+      const rewrittenId = book.chapters[index]?.id;
+      await rewriteChapter(book, index, String(value || '').trim(), { ...deps.settings, signal: deps.signal });
+      if (rewrittenId) deps.changeLog.add(rewrittenId);
+      return {
+        content: `已修改第 ${index + 1} 章《${book.chapters[index]?.title || '本章'}》，可打开并列窗口查看。`,
+        kind: 'book',
+        extra: { bookId: book.id, chapter: index + 1 }
+      };
+    }
   }
-  if (!order) {
-    const numberMatch = value.match(/\d+/);
-    if (numberMatch) order = Number(numberMatch[0]);
-  }
-  if (order > 0) {
-    const candidate = candidates[order - 1];
-    if (candidate) return candidate;
-  }
-  const matches = searchChapters({ chapters: candidates.map((item) => ({ title: item.title })) }, value);
-  return matches.length === 1 ? candidates[matches[0].index] : null;
-}
+};
 
 function buildReadyTools(book, settings, signal, changeLog) {
   return [
@@ -162,9 +177,13 @@ function buildReadyTools(book, settings, signal, changeLog) {
         required: ['target', 'value']
       },
       handler: async ({ target, chapter, value }, context) => {
-        if (target === 'outline') {
-          book.outline = String(value || '').trim();
-          return { content: '已更新书籍简介。', kind: 'text' };
+        const field = EDIT_FIELDS[target];
+        if (!field) {
+          return { content: '未知的修改目标，仅支持 title / outline / content。', kind: 'text' };
+        }
+        const deps = { changeLog: changeLog.chapterIds, settings, signal };
+        if (!field.needsChapter) {
+          return field.apply(book, { value }, deps);
         }
         const requestText = String(chapter || '').trim() || context.user || '';
         if (!requestText) {
@@ -175,7 +194,6 @@ function buildReadyTools(book, settings, signal, changeLog) {
         }
         const matches = searchChapters(book, requestText);
         if (matches.length === 0) {
-          book.rewrite = { step: 'chapter', chapterIndex: -1, candidates: [] };
           return {
             content: '没有找到对应章节。请在下方书籍中打开并列查看或详情确认章节，然后回复章节号或章节名（支持模糊匹配）。',
             kind: 'book',
@@ -183,34 +201,10 @@ function buildReadyTools(book, settings, signal, changeLog) {
           };
         }
         if (matches.length > 1) {
-          book.rewrite = { step: 'chapter', chapterIndex: -1, candidates: matches.slice(0, 5) };
           const list = matches.slice(0, 5).map((item, order) => `${order + 1}. ${item.title}`).join('\n');
           return { content: `找到多个相似章节，请选择要修改哪一章：\n${list}`, kind: 'question' };
         }
-        const match = matches[0];
-        const index = match.index;
-        if (target === 'title') {
-          const nextTitle = ensureChapterTitle(index, value);
-          const chapterObj = book.chapters[index];
-          if (chapterObj.title !== nextTitle) {
-            chapterObj.title = nextTitle;
-            chapterObj.updatedAt = new Date().toISOString();
-            changeLog.chapterIds.add(chapterObj.id);
-          }
-          return { followUp: true, data: `第 ${index + 1} 章标题已更新为《${chapterObj.title}》。` };
-        }
-        if (target === 'content') {
-          const rewrittenId = book.chapters[index]?.id;
-          await rewriteChapter(book, index, String(value || '').trim(), { ...settings, signal });
-          if (rewrittenId) changeLog.chapterIds.add(rewrittenId);
-          book.rewrite = { step: 'none', chapterIndex: -1, candidates: [] };
-          return {
-            content: `已修改第 ${index + 1} 章《${book.chapters[index]?.title || '本章'}》，可打开并列窗口查看。`,
-            kind: 'book',
-            extra: { bookId: book.id, chapter: index + 1 }
-          };
-        }
-        return { content: '未知的修改目标，仅支持 title / outline / content。', kind: 'text' };
+        return field.apply(book, { index: matches[0].index, value }, deps);
       }
     },
     {
@@ -317,7 +311,6 @@ export function mergeBookState(latest, mutated, changedChapterIds = new Set()) {
   latest.storySummary = mutated.storySummary;
   latest.targetWords = mutated.targetWords;
   latest.draft = mutated.draft;
-  latest.rewrite = mutated.rewrite;
   latest.updatedAt = mutated.updatedAt;
   const mutatedChapters = new Map(mutated.chapters.map((chapter) => [chapter.id, chapter]));
   const seen = new Set();
@@ -391,20 +384,6 @@ export function interruptProcessing(userId, bookId = '') {
   return { interrupted: true };
 }
 
-export function startRewriteSession(userId, bookId) {
-  const books = readJson(BOOKS_FILE, []).map(normalizeBook);
-  const book = books.find((item) => item.id === bookId && item.userId === userId);
-  if (!book) throw new Error('书籍或创作会话不存在');
-  if (book.status !== 'ready' || book.chapters.length === 0) {
-    throw new Error('这本书还没有可改写的章节');
-  }
-  book.rewrite = { step: 'chapter', chapterIndex: -1 };
-  book.rewrite.candidates = [];
-  appendMessage(book, 'agent', '想改写哪一章？请在下方书籍中打开并列查看或详情浏览章节，然后回复章节号或章节名（支持模糊匹配）。', 'book', { bookId: book.id });
-  writeJson(BOOKS_FILE, books);
-  return book;
-}
-
 export async function handleMessage(userId, bookId, content, settings = {}) {
   const books = readJson(BOOKS_FILE, []).map(normalizeBook);
   let book = books.find((item) => item.id === bookId && item.userId === userId);
@@ -447,7 +426,6 @@ export async function handleMessage(userId, bookId, content, settings = {}) {
         replaceProcessing(book, `处理失败：${message}`, 'error');
       }
     }
-    book.rewrite = { step: 'none', chapterIndex: -1, candidates: [] };
   } finally {
     activeJobs.delete(jobKey);
     writeMergedBook(userId, book, changeLog.chapterIds);
@@ -511,54 +489,6 @@ async function handleDraftMessage(book, content, settings, signal) {
 }
 
 async function handleReadyMessage(book, content, settings, signal, changeLog) {
-  if (book.rewrite?.step === 'chapter') {
-    if (Array.isArray(book.rewrite.candidates) && book.rewrite.candidates.length > 0) {
-      const picked = pickCandidate(book.rewrite.candidates, content);
-      if (picked) {
-        book.rewrite.chapterIndex = picked.index;
-        book.rewrite.step = 'part';
-        book.rewrite.candidates = [];
-        replaceProcessing(
-          book,
-          `好的，要修改《${picked.title}》的哪一部分？例如：开头、人物描写、结尾，或直接输入具体修改意见。`,
-          'question'
-        );
-        return;
-      }
-    }
-    const matches = searchChapters(book, content);
-    if (matches.length === 1) {
-      const match = matches[0];
-      book.rewrite.chapterIndex = match.index;
-      book.rewrite.step = 'part';
-      book.rewrite.candidates = [];
-      replaceProcessing(
-        book,
-        `好的，要修改《${match.title}》的哪一部分？例如：开头、人物描写、结尾，或直接输入具体修改意见。`,
-        'question'
-      );
-      return;
-    }
-    if (matches.length > 1) {
-      book.rewrite.candidates = matches.slice(0, 5);
-      const list = book.rewrite.candidates.map((item, order) => `${order + 1}. ${item.title}`).join('\n');
-      replaceProcessing(book, `找到多个相似章节，请选择要修改哪一章：\n${list}`, 'question');
-      return;
-    }
-    book.rewrite.candidates = [];
-    replaceProcessing(book, '没有找到对应章节。请在下方书籍中打开并列查看或详情确认章节，然后回复章节号或章节名（支持模糊匹配）。', 'book', { bookId: book.id });
-    return;
-  }
-  if (book.rewrite?.step === 'part') {
-    const index = book.rewrite.chapterIndex;
-    const rewrittenId = book.chapters[index]?.id;
-    await rewriteChapter(book, index, content, { ...settings, signal });
-    if (rewrittenId) changeLog.chapterIds.add(rewrittenId);
-    const title = book.chapters[index]?.title || '本章';
-    book.rewrite = { step: 'none', chapterIndex: -1 };
-    replaceProcessing(book, `已修改第 ${index + 1} 章《${title}》，可打开并列窗口查看。`, 'book', { bookId: book.id, chapter: index + 1 });
-    return;
-  }
   const last = book.chapters[book.chapters.length - 1];
   const decision = await runToolDecision({
     system: [

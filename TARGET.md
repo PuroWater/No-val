@@ -1,8 +1,8 @@
 【项目目标】
 在当前开发环境下（已安装 VSCode、Node.js），生成一个可直接运行的**小说创作平台 Web 应用**。项目不连接任何数据库，后端数据使用本地 JSON 文件持久化。前端为 React 单页应用（SPA），后端为 Express，调用 DeepSeek 大模型辅助创作。
 
-当前版本：0.5.9  
-最近更新：2026-08-10 批量标题阿拉伯数字标号修复
+当前版本：0.5.10  
+最近更新：2026-08-11 减少写死逻辑的泛化重构
 
 【文档职责】
 - `TARGET.md`：每次更新的目标文件。每次更新前先修改本文档，按“日期 + 版本”划分，写明待更新说明、待更新功能；开发完成后记录实际完成内容。
@@ -856,11 +856,26 @@ Novel Agent/
 
 待更新功能：
 - `edit_book` 的 `target` 为硬枚举 `title / outline / content`（标题/简介/内容），后端按目标执行；配 `chapter` + `value`。
-- 删除“全部章节”暗号与后端批量规范化：改名返回工具结果（followUp），AI 在多步循环中逐章调用同一工具，最后统一回复；步数上限提升到 40。
+- 删除“全部章节”暗号与后端批量规范化：改名返回工具结果（followUp），AI 在多步循环中逐章调用同一工具，最后统一回复；步数上限定为 30（正常任务 5 步内即可完成）。
 
 完成内容：
 - `toolkit.validateArgs` 支持 `enum` 硬校验，非法 `target` 直接重试。
 - `edit_book` 处理器按 `target` 分支：title 改名（`ensureChapterTitle` 兜底，返回 followUp 支持循环）、outline 更新简介、content 走章节改写。
 - 移除 `renameChapters` / `normalizeChapterTitles` / `extractInstruction` 及批量暗号。
 - 单元测试 27/27（含 enum 校验）；真实模型验证：逐章加前缀、单章改名、更新简介、内容扩写均由 `edit_book` 完成；版本号升级到 0.5.9。
+
+### 2026-08-11 v0.5.10 减少写死逻辑的泛化重构
+
+待更新说明：
+- 项目标准贯彻“减少写死逻辑、泛化通用”：旧的 `book.rewrite` 状态机（chapter/part 两步流程）与遗留 `/chat/rewrite` 路由属于写死分支，应移除；`edit_book` 的 if/else 目标分支应改为声明式扩展。
+
+待更新功能：
+- 移除旧改写状态机与遗留路由，删除 `book.rewrite` 字段。
+- `edit_book` 改为“字段注册表”（EDIT_FIELDS）驱动：title/outline/content 各注册 `needsChapter` + `apply`，新增可编辑字段只需注册一条。
+
+完成内容：
+- 删除 `handleReadyMessage` 中 chapter/part 状态机、`pickCandidate`、`startRewriteSession`、`POST /chat/rewrite`、`book.rewrite` 全部引用。
+- `edit_book` 处理器只做目标查找 + 章节校验，实际写入交给注册表字段的 `apply`。
+- 工具循环步数上限定为 30（正常任务 5 步内），不引入预估步数/批量工具等额外机制，保持简单。
+- 单元测试 27/27；真实模型验证：单章改名、更新简介无回归；版本号升级到 0.5.10。
 - 前端构建通过，版本号升级到 0.5.5。
