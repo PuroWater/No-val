@@ -43,11 +43,11 @@ function getDateRanges(book) {
       const lines = [];
       const modified = [...new Set(info.modified)].sort((a, b) => a - b);
       if (modified.length > 0) {
-        lines.push(`修改：${modified.join('、')}`);
+        lines.push(`修改：第${modified.join('、')}章`);
       }
       const hasAdded = info.end >= info.start;
       if (hasAdded) {
-        lines.push(info.start === info.end ? `新增${info.start}` : `新增${info.start}-${info.end}`);
+        lines.push(info.start === info.end ? `新增：第${info.start}章` : `新增：第${info.start}-${info.end}章`);
       }
       return { date, lines };
     });
@@ -55,6 +55,7 @@ function getDateRanges(book) {
 
 export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOpen, onToggleSide }) {
   const isNew = !bookId;
+  const [greeting] = useState(() => SUGGESTIONS[Math.floor(Math.random() * SUGGESTIONS.length)]);
   const [book, setBook] = useState(null);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -131,7 +132,14 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
       kind: 'text',
       createdAt: new Date().toISOString()
     };
-    setBook((prev) => (prev ? { ...prev, chat: [...(prev.chat || []), optimistic] } : prev));
+    const typing = {
+      id: `local_typing_${Date.now()}`,
+      role: 'agent',
+      content: '回复中',
+      kind: 'typing',
+      createdAt: new Date().toISOString()
+    };
+    setBook((prev) => (prev ? { ...prev, chat: [...(prev.chat || []), optimistic, typing] } : prev));
     try {
       const body = isNew ? { content } : { bookId, content };
       const data = await api('/chat/message', {
@@ -147,7 +155,7 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
           ? {
               ...prev,
               chat: [
-                ...(prev.chat || []),
+                ...(prev.chat || []).filter((message) => message.kind !== 'typing'),
                 {
                   id: `local_error_${Date.now()}`,
                   role: 'agent',
@@ -296,11 +304,7 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
       </div>
       <div className="chat-messages" ref={messagesRef}>
         {book.chat.length === 0 && (
-          <div className="chat-empty">
-            {SUGGESTIONS.map((text) => (
-              <button key={text} onClick={() => setInput(text)}>{text}</button>
-            ))}
-          </div>
+          <div className="chat-empty-greeting">{greeting}</div>
         )}
         {mode && visibleMessages.length === 0 && book.chat.length > 0 && (
           <p className="muted">{isTodayView ? '今天还没有对话，输入即可开始今天的创作' : '该日期暂无消息'}</p>
@@ -321,6 +325,11 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
                 chapter={Number(message.chapter) || 1}
               />
             </Fragment>
+          ) : message.kind === 'typing' || message.kind === 'processing' ? (
+            <div className="chat-message agent processing">
+              回复中
+              <span className="typing-dots"><i>.</i><i>.</i><i>.</i></span>
+            </div>
           ) : (
             <div
               className={`chat-message ${message.role}${message.kind === 'error' ? ' error' : ''}${message.kind === 'processing' ? ' processing' : ''}`}
@@ -349,7 +358,7 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
           disabled={canAbort ? false : viewOnly || !input.trim()}
           title={canAbort ? '中断输出' : '发送'}
         >
-          {canAbort ? '■' : '发送'}
+          {canAbort ? <span className="stop-icon" aria-hidden="true" /> : '发送'}
         </button>
       </div>
     </div>
