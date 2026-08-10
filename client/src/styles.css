@@ -519,6 +519,24 @@ button, input, textarea, select {
 .link-button {
   color: var(--accent);
   text-decoration: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font-size: inherit;
+}
+
+.route-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: var(--bg);
+  padding: 24px 24px 40px;
+  overflow: hidden;
+}
+
+.route-overlay-body {
+  height: 100%;
 }
 
 .book-grid {
@@ -542,8 +560,14 @@ button, input, textarea, select {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  width: 100%;
+  text-align: left;
   color: var(--text);
   text-decoration: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
 }
 
 .book-delete {

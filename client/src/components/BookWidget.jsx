@@ -1,6 +1,7 @@
-import { Link } from 'react-router-dom';
+import { useStack } from './OverlayStack.jsx';
 
 export default function BookWidget({ book, onOpen, active = false, chapter = 1 }) {
+  const { open } = useStack();
   return (
     <div className="book-widget">
       <div className="book-widget-cover">书</div>
@@ -14,7 +15,7 @@ export default function BookWidget({ book, onOpen, active = false, chapter = 1 }
       >
         并列查看
       </button>
-      <Link to={`/books/${book.id}`} className="link-button">详情</Link>
+      <button className="link-button" onClick={() => open({ bookId: book.id, chapter })}>详情</button>
     </div>
   );
 }

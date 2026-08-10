@@ -313,19 +313,22 @@ function writeMergedBook(userId, mutated, changedChapterIds = new Set()) {
 
 export function interruptProcessing(userId, bookId = '') {
   const prefix = `${userId}:`;
-  const targets = [];
+  const targets = new Set();
   for (const [key, job] of activeJobs.entries()) {
     if (!key.startsWith(prefix)) continue;
-    if (bookId && !key.endsWith(`:${bookId}`)) continue;
+    const jobBookId = key.slice(prefix.length);
+    const matches = bookId ? jobBookId === bookId : job.isNewDraft;
+    if (!matches) continue;
     job.controller.abort(new Error('用户中断'));
     activeJobs.delete(key);
-    targets.push(key.slice(prefix.length));
+    targets.add(jobBookId);
   }
+  if (targets.size === 0) return { interrupted: false };
   const books = readJson(BOOKS_FILE, []).map(normalizeBook);
   let changed = false;
   for (const book of books) {
     if (book.userId !== userId) continue;
-    if (bookId && book.id !== bookId) continue;
+    if (!targets.has(book.id)) continue;
     for (let i = book.chat.length - 1; i >= 0; i -= 1) {
       const message = book.chat[i];
       if (message.kind === 'processing') {
@@ -339,7 +342,7 @@ export function interruptProcessing(userId, bookId = '') {
     }
   }
   if (changed) writeJson(BOOKS_FILE, books);
-  return { interrupted: targets.length > 0 };
+  return { interrupted: true };
 }
 
 export function startRewriteSession(userId, bookId) {
@@ -381,7 +384,7 @@ export async function handleMessage(userId, bookId, content, settings = {}) {
   const jobKey = `${userId}:${book.id}`;
   const controller = new AbortController();
   const changeLog = { chapterIds: new Set() };
-  activeJobs.set(jobKey, { controller });
+  activeJobs.set(jobKey, { controller, isNewDraft: created });
   try {
     if (book.status === 'draft') {
       await handleDraftMessage(book, content, settings, controller.signal);
