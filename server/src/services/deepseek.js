@@ -8,7 +8,7 @@ export function parseDeepSeekJson(text) {
   return JSON.parse(cleaned.slice(start, end + 1));
 }
 
-export async function chatCompletion({ system, user, temperature = 0.8, maxTokens = 2400 }) {
+async function requestCompletion({ system, user, temperature = 0.8, maxTokens = 2400 }) {
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) throw new Error('未配置 DEEPSEEK_API_KEY，请在根目录 .env 中设置');
   const baseUrl = process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com';
@@ -42,5 +42,20 @@ export async function chatCompletion({ system, user, temperature = 0.8, maxToken
   const data = await response.json();
   const content = data.choices?.[0]?.message?.content;
   if (!content) throw new Error('DeepSeek 未返回内容');
-  return parseDeepSeekJson(content);
+  return content;
+}
+
+export async function chatCompletion(options) {
+  const content = await requestCompletion(options);
+  try {
+    return parseDeepSeekJson(content);
+  } catch (err) {
+    const repaired = await requestCompletion({
+      system: '你是 JSON 修复助手。只返回修复后的合法 JSON，不要包含 Markdown，不要改变数据含义。',
+      user: `以下是损坏的 JSON，请修复为合法 JSON：\n${content}\n\n解析错误：${err.message}`,
+      temperature: 0,
+      maxTokens: Math.max(options.maxTokens || 2400, 4000)
+    });
+    return parseDeepSeekJson(repaired);
+  }
 }

@@ -6,6 +6,32 @@ function nextChapterId(book) {
   return `c_${book.id}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 }
 
+export function sanitizeRelations(result) {
+  const seen = new Set();
+  const nodes = (Array.isArray(result?.nodes) ? result.nodes : [])
+    .filter((node) => node && typeof node.id === 'string' && node.id && typeof node.name === 'string')
+    .filter((node) => {
+      const key = String(node.id);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .map((node) => ({
+      id: String(node.id),
+      name: String(node.name),
+      type: node.type === 'faction' ? 'faction' : 'person'
+    }));
+  const nodeIds = new Set(nodes.map((node) => node.id));
+  const edges = (Array.isArray(result?.edges) ? result.edges : [])
+    .filter((edge) => edge && nodeIds.has(String(edge.from)) && nodeIds.has(String(edge.to)))
+    .map((edge) => ({
+      from: String(edge.from),
+      to: String(edge.to),
+      label: String(edge.label || '')
+    }));
+  return { nodes, edges };
+}
+
 export async function extractRelations(book) {
   const text = book.chapters.map((c) => `${c.title}\n${c.content}`).join('\n\n');
   const result = await chatCompletion({
@@ -13,10 +39,7 @@ export async function extractRelations(book) {
     user: `分析以下小说内容中的人物与势力关系，返回 JSON：{"nodes":[{"id":"n_1","name":"名称","type":"person|faction"}],"edges":[{"from":"n_1","to":"n_2","label":"关系"}]}。要求节点 id 唯一，边引用已有节点 id。\n${text}`,
     maxTokens: 1200
   });
-  return {
-    nodes: Array.isArray(result.nodes) ? result.nodes : [],
-    edges: Array.isArray(result.edges) ? result.edges : []
-  };
+  return sanitizeRelations(result);
 }
 
 export async function generateBookContent(concept) {
