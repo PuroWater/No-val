@@ -15,19 +15,6 @@ export default function BookSidePanel({ bookId, onClose }) {
     api(`/books/${bookId}`).then((data) => setBook(data.book)).catch((err) => setError(err.message));
   }, [bookId]);
 
-  if (error) return <aside className="book-side-panel"><p className="form-error">{error}</p></aside>;
-  if (!book) return <aside className="book-side-panel"><p className="muted">加载中…</p></aside>;
-
-  const chapter = book.chapters[chapterIndex];
-
-  async function saveChapter(patch) {
-    const data = await api(`/books/${book.id}/chapters/${chapter.id}`, {
-      method: 'PUT',
-      body: JSON.stringify(patch)
-    });
-    setBook(data.book);
-  }
-
   async function regenerateRelations() {
     setRelationsLoading(true);
     setRelationsError('');
@@ -46,6 +33,19 @@ export default function BookSidePanel({ bookId, onClose }) {
       regenerateRelations();
     }
   }, [tab, book?.id]);
+
+  if (error) return <aside className="book-side-panel"><p className="form-error">{error}</p></aside>;
+  if (!book) return <aside className="book-side-panel"><p className="muted">加载中…</p></aside>;
+
+  const chapter = book.chapters[chapterIndex];
+
+  async function saveChapter(patch) {
+    const data = await api(`/books/${book.id}/chapters/${chapter.id}`, {
+      method: 'PUT',
+      body: JSON.stringify(patch)
+    });
+    setBook(data.book);
+  }
 
   return (
     <aside className="book-side-panel">
