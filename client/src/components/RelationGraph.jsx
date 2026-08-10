@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 const VIEW_W = 1200;
 const VIEW_H = 900;
@@ -74,10 +74,11 @@ function computeLayout(nodes, edges) {
   });
   const maxWeight = Math.max(...nodes.map((node) => Math.max(1, Number(node.weight) || 1)), 1);
   const sized = new Map(nodes.map((node) => {
+    const pos = positions.get(node.id) || { x: 0, y: 0, angle: 0 };
     const rawWeight = Math.max(1, Number(node.weight) || 1);
     const weight = rawWeight + degree(node.id) * 0.5;
     const radius = 22 + (weight / (maxWeight + Math.max(...nodes.map((n) => degree(n.id))) * 0.5)) * 30;
-    return [node.id, { ...node, weight, degree: degree(node.id), radius }];
+    return [node.id, { ...node, ...pos, weight, degree: degree(node.id), radius }];
   }));
   return { positions: sized, protagonist: protagonist.id };
 }
@@ -88,17 +89,26 @@ export default function RelationGraph({ relations }) {
   const layout = useMemo(() => computeLayout(nodes, edges), [relations]);
   const [view, setView] = useState({ x: VIEW_W / 2, y: VIEW_H / 2, scale: 1 });
   const drag = useRef(null);
+  const containerRef = useRef(null);
 
   function zoom(factor) {
     setView((current) => ({ ...current, scale: clamp(current.scale * factor, 0.2, 3) }));
   }
 
-  function handleWheel(event) {
-    event.preventDefault();
-    zoom(event.deltaY < 0 ? 1.15 : 1 / 1.15);
-  }
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return undefined;
+    const handler = (event) => {
+      event.preventDefault();
+      const factor = event.deltaY < 0 ? 1.15 : 1 / 1.15;
+      setView((current) => ({ ...current, scale: clamp(current.scale * factor, 0.2, 3) }));
+    };
+    el.addEventListener('wheel', handler, { passive: false });
+    return () => el.removeEventListener('wheel', handler);
+  }, []);
 
   function handlePointerDown(event) {
+    if (event.target.closest('button')) return;
     drag.current = { startX: event.clientX - view.x, startY: event.clientY - view.y };
     event.currentTarget.setPointerCapture?.(event.pointerId);
   }
@@ -122,8 +132,8 @@ export default function RelationGraph({ relations }) {
 
   return (
     <div
+      ref={containerRef}
       className="relation-graph"
-      onWheel={handleWheel}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
