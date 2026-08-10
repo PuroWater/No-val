@@ -60,7 +60,7 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const messagesRef = useRef(null);
-  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedDate, setSelectedDate] = useState('__today__');
   const [dateOpen, setDateOpen] = useState(false);
   const [dateHover, setDateHover] = useState(null);
   const dateWrapRef = useRef(null);
@@ -192,11 +192,23 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
     );
   }
 
+  const todayKey = formatDate(new Date());
   const dateOptions = getDateRanges(book);
-  const effectiveDate = dateOptions.some((option) => option.date === selectedDate) ? selectedDate : '';
-  const visibleMessages = effectiveDate
-    ? book.chat.filter((message) => formatDate(message.createdAt) === effectiveDate)
-    : book.chat;
+  const hasTodayRecord = dateOptions.some((option) => option.date === todayKey);
+  const archiveOptions = hasTodayRecord
+    ? dateOptions
+    : dateOptions.filter((option) => option.date !== todayKey);
+  const isKnownDate = selectedDate && selectedDate !== '__today__' && dateOptions.some((option) => option.date === selectedDate);
+  const mode = selectedDate === '__today__' || !selectedDate
+    ? selectedDate
+    : isKnownDate ? selectedDate : '';
+  const isTodayView = mode === '__today__' || mode === todayKey;
+  const viewOnly = Boolean(mode && !isTodayView);
+  const visibleMessages = isTodayView
+    ? book.chat.filter((message) => formatDate(message.createdAt) === todayKey)
+    : mode
+      ? book.chat.filter((message) => formatDate(message.createdAt) === mode)
+      : book.chat;
   let lastDate = null;
 
   return (
@@ -209,28 +221,34 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
               {hasProcessing ? '处理中' : isNew ? '等待构思' : book.status === 'draft' ? '创作中' : '已生成'}
             </span>
           </div>
-          {!isNew && dateOptions.length > 0 && (
+          {!isNew && (
             <div className="chat-date-wrap" ref={dateWrapRef}>
               <button
                 className="chat-date-select"
                 onClick={() => setDateOpen((open) => !open)}
                 aria-haspopup="listbox"
               >
-                {effectiveDate || '全部日期'}
+                {mode === '__today__' ? '当前日期' : mode || '全部日期'}
                 <span className="chat-date-caret">▾</span>
               </button>
               {dateOpen && (
                 <div className="chat-date-panel" role="listbox">
                   <button
-                    className={`chat-date-option${effectiveDate === '' ? ' active' : ''}`}
+                    className={`chat-date-option${mode === '__today__' ? ' active' : ''}`}
+                    onClick={() => { setSelectedDate('__today__'); setDateOpen(false); }}
+                  >
+                    当前日期
+                  </button>
+                  <button
+                    className={`chat-date-option${mode === '' ? ' active' : ''}`}
                     onClick={() => { setSelectedDate(''); setDateOpen(false); }}
                   >
                     全部日期
                   </button>
-                  {dateOptions.map((option) => (
+                  {archiveOptions.map((option) => (
                     <button
                       key={option.date}
-                      className={`chat-date-option${effectiveDate === option.date ? ' active' : ''}`}
+                      className={`chat-date-option${mode === option.date ? ' active' : ''}`}
                       onClick={() => { setSelectedDate(option.date); setDateOpen(false); }}
                       onMouseEnter={(event) => {
                         if (option.lines.length > 0) {
@@ -280,8 +298,8 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
             ))}
           </div>
         )}
-        {effectiveDate && visibleMessages.length === 0 && (
-          <p className="muted">该日期暂无消息</p>
+        {mode && visibleMessages.length === 0 && book.chat.length > 0 && (
+          <p className="muted">{isTodayView ? '今天还没有对话，输入即可开始今天的创作' : '该日期暂无消息'}</p>
         )}
         {visibleMessages.map((message) => {
           const date = formatDate(message.createdAt);
@@ -308,13 +326,13 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={isNew || book.status === 'draft' ? '谈谈你的想法…' : '输入续写、修改或剧情问题…'}
-          disabled={sending || hasProcessing}
+          placeholder={viewOnly ? '该日期仅可查看，不可输入' : isNew || book.status === 'draft' ? '谈谈你的想法…' : '输入续写、修改或剧情问题…'}
+          disabled={sending || hasProcessing || viewOnly}
         />
         <button
           className={`primary${hasProcessing ? ' stop' : ''}`}
           onClick={hasProcessing ? abortSend : sendMessage}
-          disabled={sending || (!hasProcessing && !input.trim())}
+          disabled={sending || (viewOnly && !hasProcessing) || (!hasProcessing && !input.trim())}
           title={hasProcessing ? '中断输出' : '发送'}
         >
           {hasProcessing ? '■' : sending ? '处理中…' : '发送'}
