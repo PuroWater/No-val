@@ -239,6 +239,38 @@ function buildReadyTools(book, settings, signal, changeLog) {
       })
     },
     {
+      name: 'read_chapter',
+      description: '当用户询问某一章的具体内容、摘要或细节时，必须先调用本工具读取该章后再回答，不要仅凭全书摘要猜测。target 为章节号/标题/描述；scope 为 summary（只看摘要）或 content（摘要+正文节选），默认 summary。',
+      parameters: {
+        type: 'object',
+        properties: {
+          target: { type: 'string', description: '章节号或标题，如 "第三章"、"古卷传承"' },
+          scope: { type: 'string', description: 'summary 或 content' }
+        },
+        required: ['target']
+      },
+      handler: async ({ target, scope }, context) => {
+        const matches = searchChapters(book, String(target || '').trim() || context.user || '');
+        if (matches.length === 0) {
+          return { content: '没有找到对应章节，请确认章节号或标题。', kind: 'text' };
+        }
+        if (matches.length > 1) {
+          const list = matches.slice(0, 5).map((item, order) => `${order + 1}. ${item.title}`).join('\n');
+          return { content: `找到多个相似章节：\n${list}\n请回复具体章节号。`, kind: 'text' };
+        }
+        const index = matches[0].index;
+        const chapter = book.chapters[index];
+        const useContent = String(scope || '') === 'content';
+        const excerpt = useContent && chapter.content ? chapter.content.slice(0, 1200) : '';
+        const data = [
+          `第 ${index + 1} 章《${chapter.title}》`,
+          `摘要：${chapter.summary || '无'}`,
+          excerpt ? `正文节选（${excerpt.length} 字）：\n${excerpt}` : ''
+        ].filter(Boolean).join('\n');
+        return { followUp: true, data };
+      }
+    },
+    {
       name: 'open_book_widget',
       description: '当用户需要查看书籍、选择章节，或改写目标不明确时，展示书籍卡片并提供并列查看/详情入口；chapter 为打开并列窗口后定位的章节号（从 1 开始，默认 1）。',
       parameters: {
@@ -517,6 +549,7 @@ async function handleReadyMessage(book, content, settings, signal, changeLog) {
   const decision = await runToolDecision({
     system: [
       '你是小说协作 Agent，根据用户消息选择一个工具调用。',
+      '回答具体章节的内容、摘要或细节问题前，必须使用 read_chapter 工具读取章节，再根据返回内容作答。',
       `全书摘要：${book.storySummary || '暂无'}`,
       `最近章节摘要：${last?.summary || last?.title || '暂无'}`
     ].join('\n'),

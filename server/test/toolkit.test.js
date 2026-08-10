@@ -76,3 +76,33 @@ test('runToolDecision throws after repeated failures', async () => {
     /多次失败/
   );
 });
+
+test('runToolDecision supports follow-up answer after tool returns data', async () => {
+  const readTool = {
+    name: 'read_chapter',
+    description: '查询章节',
+    parameters: {
+      type: 'object',
+      properties: { target: { type: 'string' } },
+      required: ['target']
+    },
+    handler: async () => ({ followUp: true, data: '第 2 章 摘要：传承功法' })
+  };
+  const asks = [];
+  const fakeAsk = async ({ user }) => {
+    asks.push(user);
+    if (asks.length === 1) return { tool: 'read_chapter', arguments: { target: '第二章' } };
+    return { reply: '第二章记载了修炼功法。' };
+  };
+  const decision = await runToolDecision({
+    system: 's',
+    tools: [readTool],
+    user: '第二章讲了什么？',
+    ask: fakeAsk,
+    maxAttempts: 2
+  });
+  assert.equal(decision.tool, 'read_chapter');
+  assert.equal(decision.outcome.content, '第二章记载了修炼功法。');
+  assert.equal(decision.outcome.kind, 'text');
+  assert.equal(asks.length, 2);
+});

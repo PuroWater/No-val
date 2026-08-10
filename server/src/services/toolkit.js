@@ -112,6 +112,25 @@ export async function runToolDecision({
     }
     try {
       const outcome = await tool.handler(result.arguments, { user, signal });
+      if (outcome && outcome.followUp) {
+        const final = await ask({
+          system,
+          user: [
+            basePrompt,
+            `你已调用工具 ${toolName}，工具返回：`,
+            String(outcome.data || ''),
+            `请根据工具返回内容回答用户消息：${user}`,
+            '返回 JSON：{"reply":"回答文本"}。不要包含 Markdown。'
+          ].join('\n'),
+          maxTokens,
+          signal
+        });
+        const reply = String(final?.reply || '').trim();
+        return {
+          tool: toolName,
+          outcome: { content: reply || '好的，我记下了。', kind: 'text' }
+        };
+      }
       return { tool: toolName, outcome };
     } catch (err) {
       if (/中断|超时/.test(err.message)) throw err;
