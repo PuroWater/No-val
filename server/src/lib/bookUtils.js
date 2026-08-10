@@ -12,5 +12,6 @@ export function normalizeBook(book) {
   if (!book.relations) book.relations = { nodes: [], edges: [] };
   if (!book.deletedAt) book.deletedAt = null;
   if (!book.storySummary) book.storySummary = '';
+  if (!book.rewrite) book.rewrite = { step: 'none', chapterIndex: -1 };
   return book;
 }

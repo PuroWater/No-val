@@ -68,6 +68,38 @@ export function createDraft(userId) {
   return book;
 }
 
+function chapterList(book) {
+  return book.chapters.map((chapter, index) => `${index + 1}. ${chapter.title}`).join('\n');
+}
+
+function findChapterIndex(book, text) {
+  const value = String(text || '').trim();
+  if (!value) return -1;
+  const byTitle = book.chapters.findIndex(
+    (chapter) => value.includes(chapter.title) || chapter.title.includes(value)
+  );
+  if (byTitle !== -1) return byTitle;
+  const match = value.match(/\d+/);
+  if (match) {
+    const index = Number(match[0]) - 1;
+    if (book.chapters[index]) return index;
+  }
+  return -1;
+}
+
+export function startRewriteSession(userId, bookId) {
+  const books = readJson(BOOKS_FILE, []).map(normalizeBook);
+  const book = books.find((item) => item.id === bookId && item.userId === userId);
+  if (!book) throw new Error('书籍或创作会话不存在');
+  if (book.status !== 'ready' || book.chapters.length === 0) {
+    throw new Error('这本书还没有可改写的章节');
+  }
+  book.rewrite = { step: 'chapter', chapterIndex: -1 };
+  appendMessage(book, 'agent', `想改写哪一章？\n${chapterList(book)}`, 'question');
+  writeJson(BOOKS_FILE, books);
+  return book;
+}
+
 export async function handleMessage(userId, bookId, content) {
   const books = readJson(BOOKS_FILE, []).map(normalizeBook);
   let book = books.find((item) => item.id === bookId && item.userId === userId);
@@ -126,6 +158,42 @@ async function handleDraftMessage(book, content) {
 }
 
 async function handleReadyMessage(book, content) {
+  if (book.rewrite?.step === 'chapter') {
+    const index = findChapterIndex(book, content);
+    if (index === -1) {
+      replaceProcessing(book, `没有找到对应章节，请选择：\n${chapterList(book)}`, 'question');
+      return;
+    }
+    book.rewrite.chapterIndex = index;
+    book.rewrite.step = 'part';
+    replaceProcessing(
+      book,
+      `好的，要修改《${book.chapters[index].title}》的哪一部分？例如：开头、人物描写、结尾，或直接输入具体修改意见。`,
+      'question'
+    );
+    return;
+  }
+  if (book.rewrite?.step === 'part') {
+    const index = book.rewrite.chapterIndex;
+    await rewriteChapter(book, index, content);
+    const title = book.chapters[index]?.title || '本章';
+    book.rewrite = { step: 'none', chapterIndex: -1 };
+    replaceProcessing(book, `已修改第 ${index + 1} 章《${title}》，可打开并列窗口查看。`, 'text', { bookId: book.id });
+    return;
+  }
+  const rewriteIntent = /改写|修改|重写|改一下|调整一下|改改|润色/.test(content);
+  const continueIntent = /续写|继续写|接着写|写下一章|继续创作|下一章|接着创作/.test(content);
+  if (rewriteIntent) {
+    book.rewrite = { step: 'chapter', chapterIndex: -1 };
+    replaceProcessing(book, `想改写哪一章？\n${chapterList(book)}`, 'question');
+    return;
+  }
+  if (continueIntent) {
+    await continueBook(book, content);
+    const last = book.chapters[book.chapters.length - 1];
+    replaceProcessing(book, `已续写下一章《${last.title}》，可打开并列窗口查看。`, 'book', { bookId: book.id });
+    return;
+  }
   const context = book.chapters.map((chapter) => `${chapter.title}\n${chapter.content}`).join('\n\n');
   const result = await chatCompletion({
     system: '你是小说协作助手。根据书籍内容和用户消息判断意图，只返回 JSON。',
@@ -133,11 +201,8 @@ async function handleReadyMessage(book, content) {
     maxTokens: 1200
   });
   if (result.type === 'rewrite') {
-    const index = Number(result.chapterIndex);
-    if (!Number.isInteger(index) || !book.chapters[index]) throw new Error('模型返回的章节序号无效');
-    const before = book.chapters[index];
-    await rewriteChapter(book, index, result.instruction || content);
-    replaceProcessing(book, `已修改第 ${index + 1} 章《${before.title}》，可打开并列窗口查看。`, 'text', { bookId: book.id });
+    book.rewrite = { step: 'chapter', chapterIndex: -1 };
+    replaceProcessing(book, `想改写哪一章？\n${chapterList(book)}`, 'question');
   } else if (result.type === 'continue') {
     await continueBook(book, result.instruction || content);
     const last = book.chapters[book.chapters.length - 1];
