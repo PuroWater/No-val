@@ -196,7 +196,7 @@ function buildReadyTools(book, settings, signal, changeLog) {
           return {
             content: `已修改第 ${index + 1} 章《${book.chapters[index]?.title || '本章'}》，可打开并列窗口查看。`,
             kind: 'book',
-            extra: { bookId: book.id }
+            extra: { bookId: book.id, chapter: index + 1 }
           };
         }
         book.rewrite = { step: 'part', chapterIndex: match.index, candidates: [] };
@@ -220,7 +220,7 @@ function buildReadyTools(book, settings, signal, changeLog) {
         return {
           content: continueMessage(book, book.chapters.length - before),
           kind: 'book',
-          extra: { bookId: book.id }
+          extra: { bookId: book.id, chapter: book.chapters.length }
         };
       }
     },
@@ -240,12 +240,16 @@ function buildReadyTools(book, settings, signal, changeLog) {
     },
     {
       name: 'open_book_widget',
-      description: '当用户需要查看书籍、选择章节，或改写目标不明确时，展示书籍卡片并提供并列查看/详情入口。',
-      parameters: { type: 'object', properties: {}, required: [] },
-      handler: async () => ({
+      description: '当用户需要查看书籍、选择章节，或改写目标不明确时，展示书籍卡片并提供并列查看/详情入口；chapter 为打开并列窗口后定位的章节号（从 1 开始，默认 1）。',
+      parameters: {
+        type: 'object',
+        properties: { chapter: { type: 'integer', description: '章节号，从 1 开始' } },
+        required: []
+      },
+      handler: async ({ chapter }) => ({
         content: '请在下方书籍中打开并列查看或详情浏览章节，然后回复章节号或章节名（支持模糊匹配）。',
         kind: 'book',
-        extra: { bookId: book.id }
+        extra: { bookId: book.id, chapter: Number(chapter) || 1 }
       })
     }
   ];
@@ -503,7 +507,7 @@ async function handleReadyMessage(book, content, settings, signal, changeLog) {
     if (rewrittenId) changeLog.chapterIds.add(rewrittenId);
     const title = book.chapters[index]?.title || '本章';
     book.rewrite = { step: 'none', chapterIndex: -1 };
-    replaceProcessing(book, `已修改第 ${index + 1} 章《${title}》，可打开并列窗口查看。`, 'book', { bookId: book.id });
+    replaceProcessing(book, `已修改第 ${index + 1} 章《${title}》，可打开并列窗口查看。`, 'book', { bookId: book.id, chapter: index + 1 });
     return;
   }
   const last = book.chapters[book.chapters.length - 1];

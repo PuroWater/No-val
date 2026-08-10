@@ -164,7 +164,6 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
   }
 
   async function abortSend() {
-    if (sending) return;
     setSending(true);
     try {
       await api('/chat/abort', {
@@ -205,6 +204,7 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
     : isKnownDate ? selectedDate : '';
   const isTodayView = mode === '__today__' || mode === todayKey;
   const viewOnly = Boolean(mode && !isTodayView);
+  const canAbort = sending || hasProcessing;
   const visibleMessages = isTodayView
     ? book.chat.filter((message) => formatDate(message.createdAt) === todayKey)
     : mode
@@ -314,7 +314,12 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
               {message.content && (
                 <div className={`chat-message ${message.role}`}>{message.content}</div>
               )}
-              <BookWidget book={book} onOpen={onOpenBook} active={sideOpen} />
+              <BookWidget
+                book={book}
+                onOpen={onOpenBook}
+                active={sideOpen}
+                chapter={Number(message.chapter) || 1}
+              />
             </Fragment>
           ) : (
             <div
@@ -339,12 +344,12 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
           disabled={sending || hasProcessing || viewOnly}
         />
         <button
-          className={`primary${hasProcessing ? ' stop' : ''}`}
-          onClick={hasProcessing ? abortSend : sendMessage}
-          disabled={sending || (viewOnly && !hasProcessing) || (!hasProcessing && !input.trim())}
-          title={hasProcessing ? '中断输出' : '发送'}
+          className={`primary${canAbort ? ' stop' : ''}`}
+          onClick={canAbort ? abortSend : sendMessage}
+          disabled={canAbort ? false : viewOnly || !input.trim()}
+          title={canAbort ? '中断输出' : '发送'}
         >
-          {hasProcessing ? '■' : sending ? '处理中…' : '发送'}
+          {canAbort ? '■' : '发送'}
         </button>
       </div>
     </div>

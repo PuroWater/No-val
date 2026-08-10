@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import ChapterEditor from './ChapterEditor.jsx';
 import RelationGraph from './RelationGraph.jsx';
 
-export default function BookSidePanel({ bookId, onClose, onBack }) {
+export default function BookSidePanel({ bookId, onClose, onBack, openChapter }) {
   const [book, setBook] = useState(null);
   const [tab, setTab] = useState('content');
   const [chapterIndex, setChapterIndex] = useState(0);
@@ -11,10 +11,25 @@ export default function BookSidePanel({ bookId, onClose, onBack }) {
   const [error, setError] = useState('');
   const [relationsLoading, setRelationsLoading] = useState(false);
   const [relationsError, setRelationsError] = useState('');
+  const directoryRef = useRef(null);
 
   useEffect(() => {
     api(`/books/${bookId}`).then((data) => setBook(data.book)).catch((err) => setError(err.message));
   }, [bookId]);
+
+  useEffect(() => {
+    if (book && Number.isInteger(openChapter) && openChapter >= 1 && openChapter <= book.chapters.length) {
+      setChapterIndex(openChapter - 1);
+    }
+  }, [book, openChapter]);
+
+  useEffect(() => {
+    if (!book) return undefined;
+    const timer = setTimeout(() => {
+      directoryRef.current?.querySelector('.directory-item.active')?.scrollIntoView({ block: 'nearest' });
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [book, openChapter, chapterIndex]);
 
   async function regenerateRelations() {
     setRelationsLoading(true);
@@ -77,7 +92,7 @@ export default function BookSidePanel({ bookId, onClose, onBack }) {
       </div>
       {tab === 'content' ? (
         <div className="book-content">
-          <aside className="chapter-directory">
+          <aside className="chapter-directory" ref={directoryRef}>
             <input
               className="directory-search"
               placeholder="搜索章节…"

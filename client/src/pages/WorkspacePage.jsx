@@ -15,6 +15,7 @@ export default function WorkspacePage() {
   const [books, setBooks] = useState([]);
   const [selectedBookId, setSelectedBookId] = useState(() => localStorage.getItem(STORAGE_KEY) || '');
   const [sideBookId, setSideBookId] = useState('');
+  const [sideChapter, setSideChapter] = useState(1);
   const [leftWidth, setLeftWidth] = useState(420);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [error, setError] = useState('');
@@ -65,7 +66,7 @@ export default function WorkspacePage() {
     toggleSideFor(selectedBookId);
   }
 
-  function toggleSideFor(bookId) {
+  function toggleSideFor(bookId, chapter = 1) {
     if (sideBookId === bookId) {
       setSideBookId('');
       return;
@@ -73,6 +74,7 @@ export default function WorkspacePage() {
     const container = document.querySelector('.workspace-body');
     const width = container?.clientWidth || window.innerWidth;
     setLeftWidth(Math.max(260, Math.floor(width / 2)));
+    setSideChapter(Math.max(1, Number(chapter) || 1));
     setSideBookId(bookId);
   }
 
@@ -181,7 +183,7 @@ export default function WorkspacePage() {
             >
               {sideBookId ? (
                 <>
-                  <BookSidePanel bookId={sideBookId} />
+                  <BookSidePanel bookId={sideBookId} openChapter={sideChapter} />
                   <div className="split-divider" onPointerDown={startResize} />
                   <ChatPanel
                     bookId={selectedBookId}

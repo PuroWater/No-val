@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 
-export default function BookWidget({ book, onOpen, active = false }) {
+export default function BookWidget({ book, onOpen, active = false, chapter = 1 }) {
   return (
     <div className="book-widget">
       <div className="book-widget-cover">书</div>
@@ -10,7 +10,7 @@ export default function BookWidget({ book, onOpen, active = false }) {
       </div>
       <button
         className={`side-toggle${active ? ' active' : ''}`}
-        onClick={() => onOpen(book.id)}
+        onClick={() => onOpen(book.id, chapter)}
       >
         并列查看
       </button>
