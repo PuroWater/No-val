@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import ConfirmModal from '../components/ConfirmModal.jsx';
+import { applySettings } from '../components/SettingsApplier.jsx';
 
 const THEMES = [
   { value: 'light', label: '浅色' },
@@ -13,8 +14,6 @@ const SIZES = [
   { value: 'medium', label: '中' },
   { value: 'large', label: '大' }
 ];
-
-const FONT_MAP = { small: '12px', medium: '14px', large: '16px' };
 
 export default function SettingsPage() {
   const [activeSetting, setActiveSetting] = useState('appearance');
@@ -43,8 +42,7 @@ export default function SettingsPage() {
       setFontSize(data.settings.fontSize);
       setChaptersPerOutput(Number(data.settings.chaptersPerOutput) || 3);
       setChapterWords(Number(data.settings.chapterWords) || 2000);
-      document.documentElement.dataset.theme = data.settings.theme;
-      document.documentElement.style.fontSize = FONT_MAP[data.settings.fontSize] || '16px';
+      applySettings(data.settings);
     });
     loadTrash();
   }, []);
@@ -61,8 +59,7 @@ export default function SettingsPage() {
           chapterWords: nextWords
         })
       });
-      document.documentElement.dataset.theme = data.settings.theme;
-      document.documentElement.style.fontSize = FONT_MAP[data.settings.fontSize] || '16px';
+      applySettings(data.settings);
       setSaved(true);
       setTimeout(() => setSaved(false), 1200);
     } catch (err) {

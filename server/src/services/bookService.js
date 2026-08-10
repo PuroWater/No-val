@@ -129,6 +129,7 @@ export async function createBookFromConcept(userId, concept, settings = {}) {
       title: String(chapter.title || `第 ${index + 1} 章`).trim(),
       content: String(chapter.content || '').trim(),
       summary: String(chapter.summary || '').trim(),
+      createdAt: now,
       updatedAt: now
     })),
     relations: { nodes: [], edges: [] },
@@ -158,6 +159,7 @@ export async function finalizeDraftBook(book, settings = {}) {
     title: String(chapter.title || `第 ${index + 1} 章`).trim(),
     content: String(chapter.content || '').trim(),
     summary: String(chapter.summary || '').trim(),
+    createdAt: now,
     updatedAt: now
   }));
   book.storySummary = buildStorySummary(book.chapters);
@@ -203,6 +205,7 @@ export async function continueBook(book, instruction, settings = {}) {
       title: String(chapter.title || `第 ${book.chapters.length + 1} 章`).trim(),
       content: String(chapter.content).trim(),
       summary: String(chapter.summary || '').trim(),
+      createdAt: now,
       updatedAt: now
     };
     book.chapters.push(newChapter);

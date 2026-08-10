@@ -263,9 +263,18 @@ button, input, textarea, select {
   color: #ffffff;
 }
 
+.chat-head-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
 .chat-date-select {
-  max-width: 220px;
-  padding: 6px 8px;
+  max-width: 200px;
+  padding: 3px 6px;
+  font-size: 12px;
+  font-weight: 400;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--panel);

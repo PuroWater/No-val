@@ -24,29 +24,38 @@ function compareDate(a, b) {
 
 function getDateRanges(book) {
   const byDate = new Map();
-  (book.chat || []).forEach((message) => {
-    const date = formatDate(message.createdAt);
+  const touch = (date) => {
     if (!date) return;
-    byDate.set(date, byDate.get(date) || { active: true, start: Infinity, end: 0 });
-  });
+    byDate.set(date, byDate.get(date) || { start: Infinity, end: 0, modified: [] });
+  };
+  (book.chat || []).forEach((message) => touch(formatDate(message.createdAt)));
   (book.chapters || []).forEach((chapter, index) => {
-    const date = formatDate(chapter.updatedAt);
-    if (!date) return;
-    const info = byDate.get(date) || { active: false, start: Infinity, end: 0 };
-    info.start = Math.min(info.start, index + 1);
-    info.end = Math.max(info.end, index + 1);
-    byDate.set(date, info);
+    const created = formatDate(chapter.createdAt || chapter.updatedAt);
+    const updated = formatDate(chapter.updatedAt);
+    touch(created);
+    touch(updated);
+    if (created && updated && updated !== created) {
+      byDate.get(updated).modified.push(index + 1);
+    }
+    if (created) {
+      const info = byDate.get(created);
+      info.start = Math.min(info.start, index + 1);
+      info.end = Math.max(info.end, index + 1);
+    }
   });
   return [...byDate.entries()]
     .sort((a, b) => compareDate(a[0], b[0]))
     .map(([date, info]) => {
-      const hasRange = info.end >= info.start;
-      const range = hasRange
-        ? info.start === info.end
-          ? `${info.start}章`
-          : `${info.start}-${info.end}章`
-        : '';
-      return { date, label: range ? `${date} ${range}` : date };
+      const parts = [];
+      const modified = [...new Set(info.modified)].sort((a, b) => a - b);
+      if (modified.length > 0) {
+        parts.push(`修改：${modified.join('、')}`);
+      }
+      const hasAdded = info.end >= info.start;
+      if (hasAdded) {
+        parts.push(info.start === info.end ? `新增${info.start}` : `新增${info.start}-${info.end}`);
+      }
+      return { date, label: parts.length > 0 ? `${date} ${parts.join('')}` : date };
     });
 }
 
@@ -169,24 +178,26 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
   return (
     <div className="chat-panel">
       <div className="chat-head">
-        <div>
-          <strong>{isNew ? '新创作' : book.title}</strong>
-          <span className={`status-badge ${hasProcessing ? 'processing' : book.status}`}>
-            {hasProcessing ? '处理中' : isNew ? '等待构思' : book.status === 'draft' ? '创作中' : '已生成'}
-          </span>
+        <div className="chat-head-left">
+          <div>
+            <strong>{isNew ? '新创作' : book.title}</strong>
+            <span className={`status-badge ${hasProcessing ? 'processing' : book.status}`}>
+              {hasProcessing ? '处理中' : isNew ? '等待构思' : book.status === 'draft' ? '创作中' : '已生成'}
+            </span>
+          </div>
+          {!isNew && dateOptions.length > 0 && (
+            <select
+              className="chat-date-select"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+            >
+              <option value="">全部日期</option>
+              {dateOptions.map((option) => (
+                <option key={option.date} value={option.date}>{option.label}</option>
+              ))}
+            </select>
+          )}
         </div>
-        {!isNew && dateOptions.length > 0 && (
-          <select
-            className="chat-date-select"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-          >
-            <option value="">全部日期</option>
-            {dateOptions.map((option) => (
-              <option key={option.date} value={option.date}>{option.label}</option>
-            ))}
-          </select>
-        )}
         {!isNew && book.status === 'ready' && (
           <button
             className={`primary side-toggle ${sideOpen ? 'active' : ''}`}
