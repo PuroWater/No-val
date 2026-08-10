@@ -10,7 +10,7 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
-  const endRef = useRef(null);
+  const messagesRef = useRef(null);
 
   async function loadBook() {
     setError('');
@@ -49,8 +49,9 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
   }, [bookId, hasProcessing]);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [book?.chat?.length]);
+    const el = messagesRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [book?.chat?.length, bookId]);
 
   async function sendMessage() {
     const content = input.trim();
@@ -130,7 +131,7 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
           </button>
         )}
       </div>
-      <div className="chat-messages">
+      <div className="chat-messages" ref={messagesRef}>
         {book.chat.length === 0 && (
           <div className="chat-empty">
             {SUGGESTIONS.map((text) => (
@@ -151,7 +152,6 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
             </div>
           );
         })}
-        <div ref={endRef} />
       </div>
       <div className="chat-input">
         <textarea
