@@ -72,7 +72,8 @@ export async function runToolDecision({
   user,
   signal,
   ask = chatCompletion,
-  maxAttempts = 3
+  maxAttempts = 3,
+  maxTokens = 1200
 }) {
   const toolText = toolList
     .map((tool) => `- ${tool.name}：${tool.description}\n  参数：${JSON.stringify(tool.parameters)}`)
@@ -89,7 +90,7 @@ export async function runToolDecision({
       : `${basePrompt}\n上次调用失败：${lastError}\n请重新选择工具或修正参数。\n用户消息：${user}`;
     let result;
     try {
-      result = await ask({ system, user: prompt, maxTokens: 800, signal });
+      result = await ask({ system, user: prompt, maxTokens, signal });
     } catch (err) {
       if (/中断|超时/.test(err.message)) throw err;
       lastError = `模型调用失败：${err.message}`;

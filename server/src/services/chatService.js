@@ -409,21 +409,52 @@ async function handleDraftMessage(book, content, settings, signal) {
     return;
   }
   const conversation = book.chat.map((message) => `${message.role}: ${message.content}`).join('\n');
-  const result = await chatCompletion({
-    system: '你是小说构思采集助手。根据对话判断缺少主角、故事背景、分类、小说总字数（千字/万字/10万/20万/50万/百万）中的哪些信息。缺少时只返回 JSON：{"question":"只问当前最需要的一个问题"}；信息齐全时返回 JSON：{"summary":"整合后的完整小说构思","ready":true,"targetWords":100000}。不要包含 Markdown。',
+  const decision = await runToolDecision({
+    system: '你是小说构思采集 Agent。根据对话判断构思信息是否齐全（主角、故事背景、分类、小说总字数，字数可选千字/万字/10万/20万/50万/百万）。信息不足时调用 ask_draft_question 只问当前最缺的一项；信息齐全时调用 confirm_draft 输出整合后的完整构思。',
+    tools: [
+      {
+        name: 'ask_draft_question',
+        description: '构思信息不足时，向用户追问当前最需要的一个缺失信息。',
+        parameters: {
+          type: 'object',
+          properties: { question: { type: 'string', minLength: 2 } },
+          required: ['question']
+        },
+        handler: async ({ question }) => ({
+          content: String(question || '').trim() || '请补充主角、故事背景、分类或小说总字数。',
+          kind: 'question'
+        })
+      },
+      {
+        name: 'confirm_draft',
+        description: '构思信息齐全时，输出整合后的完整构思摘要供用户确认。',
+        parameters: {
+          type: 'object',
+          properties: {
+            summary: { type: 'string', minLength: 5 },
+            targetWords: { type: 'string', description: '全书目标字数，如 100000 或 "10万"' }
+          },
+          required: ['summary']
+        },
+        handler: async ({ summary, targetWords }) => {
+          book.draft.summary = String(summary || '').trim();
+          book.draft.targetWords = parseTargetWords(targetWords);
+          return {
+            content: `构思已整合：\n${book.draft.summary}\n\n是否需要修改？回复“确认”开始生成，或直接提出修改意见。`,
+            kind: 'confirm'
+          };
+        }
+      }
+    ],
     user: conversation,
-    maxTokens: 1200,
     signal
   });
-  if (result.summary && result.ready) {
-    book.draft.summary = result.summary;
-    book.draft.targetWords = parseTargetWords(result.targetWords);
-    replaceProcessing(book, `构思已整合：\n${result.summary}\n\n是否需要修改？回复“确认”开始生成，或直接提出修改意见。`, 'confirm');
-  } else if (result.question) {
-    replaceProcessing(book, result.question, 'question');
-  } else {
+  if (!decision.tool) {
     replaceProcessing(book, '我还没有完全理解你的构思，请补充主角、故事背景、分类或小说总字数。', 'question');
+    return;
   }
+  const outcome = decision.outcome || {};
+  replaceProcessing(book, outcome.content || '请继续补充构思信息。', outcome.kind || 'question', outcome.extra || {});
 }
 
 async function handleReadyMessage(book, content, settings, signal, changeLog) {

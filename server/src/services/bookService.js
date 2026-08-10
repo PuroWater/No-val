@@ -60,12 +60,15 @@ async function updateStorySummary(book, newChapterSummary) {
     book.storySummary = newChapterSummary;
     return book.storySummary;
   }
-  const result = await chatCompletion({
-    system: '你是小说摘要维护助手。只返回 JSON，不要包含 Markdown。',
-    user: `现有全书摘要：\n${book.storySummary}\n\n新增章节摘要：\n${newChapterSummary}\n\n合并为更精简的更新版全书摘要，返回 JSON：{"summary":"..."}`,
-    temperature: 0.4,
-    maxTokens: 900
-  });
+  const result = await callModel(
+    () => ({
+      system: '你是小说摘要维护助手。只返回 JSON，不要包含 Markdown。',
+      user: `现有全书摘要：\n${book.storySummary}\n\n新增章节摘要：\n${newChapterSummary}\n\n合并为更精简的更新版全书摘要，返回 JSON：{"summary":"..."}`,
+      temperature: 0.4,
+      maxTokens: 900
+    }),
+    (result) => result && typeof result.summary === 'string' && result.summary.trim()
+  );
   book.storySummary = String(result.summary || book.storySummary).trim();
   return book.storySummary;
 }
@@ -76,12 +79,15 @@ async function rebuildStorySummary(book) {
     book.storySummary = summaries.join('');
     return;
   }
-  const result = await chatCompletion({
-    system: '你是小说摘要压缩助手。只返回 JSON，不要包含 Markdown。',
-    user: `根据以下各章摘要压缩为全书剧情摘要，返回 JSON：{"summary":"..."}\n${summaries.join('\n')}`,
-    temperature: 0.4,
-    maxTokens: 1200
-  });
+  const result = await callModel(
+    () => ({
+      system: '你是小说摘要压缩助手。只返回 JSON，不要包含 Markdown。',
+      user: `根据以下各章摘要压缩为全书剧情摘要，返回 JSON：{"summary":"..."}\n${summaries.join('\n')}`,
+      temperature: 0.4,
+      maxTokens: 1200
+    }),
+    (result) => result && typeof result.summary === 'string' && result.summary.trim()
+  );
   book.storySummary = String(result.summary || summaries.join('\n')).trim();
 }
 
@@ -118,11 +124,14 @@ export async function extractRelations(book) {
   const existing = book.relations?.nodes?.length
     ? JSON.stringify(book.relations)
     : '暂无';
-  const result = await chatCompletion({
-    system: '你是小说关系网维护助手。根据剧情摘要和现有关系网更新关系，只返回 JSON，不要包含 Markdown。',
-    user: `现有关系网：\n${existing}\n\n剧情摘要：\n${text}\n\n返回更新后的完整关系网 JSON：{"nodes":[{"id":"n_1","name":"名称","type":"person|faction","weight":5,"isMain":true}],"edges":[{"from":"n_1","to":"n_2","label":"关系"}]}。节点 id 必须唯一，边必须引用已有节点；weight 表示重要度 1-10，主角节点 isMain 为 true。`,
-    maxTokens: 1500
-  });
+  const result = await callModel(
+    () => ({
+      system: '你是小说关系网维护助手。根据剧情摘要和现有关系网更新关系，只返回 JSON，不要包含 Markdown。',
+      user: `现有关系网：\n${existing}\n\n剧情摘要：\n${text}\n\n返回更新后的完整关系网 JSON：{"nodes":[{"id":"n_1","name":"名称","type":"person|faction","weight":5,"isMain":true}],"edges":[{"from":"n_1","to":"n_2","label":"关系"}]}。节点 id 必须唯一，边必须引用已有节点；weight 表示重要度 1-10，主角节点 isMain 为 true。`,
+      maxTokens: 1500
+    }),
+    (result) => Array.isArray(result?.nodes)
+  );
   return sanitizeRelations(result);
 }
 

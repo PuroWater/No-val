@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-- 当前版本：0.4.9
+- 当前版本：0.5.0
 - 当前分支：Develop
 - 技术栈：React 18 + Vite 5，Express 4，Node.js 18+，JSON 本地持久化
 - 大模型：DeepSeek，模型默认 `deepseek-v4-flash`
@@ -123,6 +123,7 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
   - `src/services/chatService.js`：聊天状态机、构思采集、摘要确认。
   - `src/services/bookService.js`：生成、续写、改写、关系网提取。
   - `src/services/deepseek.js`：DeepSeek API 调用与 JSON 解析。
+  - `src/services/toolkit.js`：Agent 工具协议层（schema 校验、调用与失败重试）。
   - `src/lib/store.js`：JSON 读写。
   - `src/lib/security.js`：bcrypt 密码哈希。
   - `src/lib/token.js`：JWT 签发与校验。
@@ -719,3 +720,14 @@ npm start
 - 新增解析单元测试，版本号升级到 0.4.9。
 
 完成结果：改写请求信息充分时一步到位，创作流程本就按 AI 自适应提取，仅信息不足才追问。
+
+### 2026-08-10 v0.5.0 Agent 与 Function Calling 化
+
+更新内容：
+
+- 新增工具协议层 `toolkit.js`：工具注册、参数 schema 硬校验、失败回传模型重试（上限 3 次），重试仍失败回退澄清。
+- 聊天意图改为模型决策工具调用：`rewrite_chapter`、`continue_book`、`answer_question`、`open_book_widget`；构思采集改为 `ask_draft_question`、`confirm_draft`。
+- 关系网与摘要维护调用接入重试与结果校验。
+- 真实模型全链路验证通过：工具决策、草稿确认、改写扩写；版本号升级到 0.5.0。
+
+完成结果：工具类功能由 AI 决策并返回标准参数，后端硬校验后执行，项目标准正式转为 Agent 模式。
