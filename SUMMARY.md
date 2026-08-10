@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-- 当前版本：0.3.3
+- 当前版本：0.3.4
 - 当前分支：Develop
 - 技术栈：React 18 + Vite 5，Express 4，Node.js 18+，JSON 本地持久化
 - 大模型：DeepSeek，模型默认 `deepseek-v4-flash`
@@ -138,8 +138,17 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
   "status": "draft" | "ready",
   "title": "书名或未命名新书",
   "outline": "简介",
-  "chapters": [],
+  "chapters": [
+    {
+      "id": "c_xxx",
+      "title": "章节标题",
+      "content": "章节正文",
+      "summary": "章节摘要",
+      "updatedAt": "..."
+    }
+  ],
   "relations": { "nodes": [], "edges": [] },
+  "storySummary": "全书剧情摘要",
   "chat": [],
   "draft": { "concept": "", "summary": "" },
   "deletedAt": null,
@@ -347,3 +356,15 @@ npm start
 - 版本号升级到 0.3.3。
 
 完成结果：《乐子》重新生成成功，10 个节点、14 条边；新小说和后续续写/改写都会沿用同一套关系网算法。
+
+### 2026-08-10 v0.3.4 摘要式关系网维护
+
+更新内容：
+
+- 章节新增 `summary` 字段，生成章节时同步产出 80-150 字剧情摘要。
+- 书籍新增 `storySummary` 字段，维护全书剧情摘要。
+- 续写下一章时只读取全书摘要、最近章节摘要和现有关系网，不再读取全部正文。
+- 续写、改写完成后基于章节摘要增量更新全书摘要和关系网。
+- 版本号升级到 0.3.4。
+
+完成结果：长小说 token 消耗显著降低，关系网维护不再受全部正文长度限制。
