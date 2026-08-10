@@ -73,69 +73,68 @@ export async function runToolDecision({
   signal,
   ask = chatCompletion,
   maxAttempts = 3,
-  maxTokens = 1200
+  maxTokens = 1200,
+  maxSteps = 4
 }) {
   const toolText = toolList
     .map((tool) => `- ${tool.name}：${tool.description}\n  参数：${JSON.stringify(tool.parameters)}`)
     .join('\n');
   const basePrompt = [
-    '你是协作 Agent，根据用户消息选择并调用一个工具。只能使用下面列出的工具：',
+    '你是协作 Agent，根据用户消息调用工具或直接回答。只能使用下面列出的工具：',
     toolText,
-    '必须返回 JSON：{"tool":"工具名","arguments":{...}}；如果不需要调用工具，返回 {"tool":"","arguments":{}}。不要包含 Markdown。'
+    '返回 JSON：需要调用工具时返回 {"tool":"工具名","arguments":{...}}；已经可以回答用户时返回 {"reply":"回答文本"}。不要包含 Markdown。'
   ].join('\n');
-  let lastError = '';
-  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    const prompt = attempt === 0
-      ? `${basePrompt}\n用户消息：${user}`
-      : `${basePrompt}\n上次调用失败：${lastError}\n请重新选择工具或修正参数。\n用户消息：${user}`;
-    let result;
-    try {
-      result = await ask({ system, user: prompt, maxTokens, signal });
-    } catch (err) {
-      if (/中断|超时/.test(err.message)) throw err;
-      lastError = `模型调用失败：${err.message}`;
-      continue;
-    }
-    const toolName = String(result?.tool || '');
-    if (!toolName) {
-      return { tool: '', outcome: null };
-    }
-    const tool = toolList.find((item) => item.name === toolName);
-    if (!tool) {
-      lastError = `未知工具：${toolName}`;
-      continue;
-    }
-    const validation = validateArgs(tool.parameters, result.arguments);
-    if (!validation.ok) {
-      lastError = `参数不合法：${validation.errors.join('；')}`;
-      continue;
-    }
-    try {
-      const outcome = await tool.handler(result.arguments, { user, signal });
-      if (outcome && outcome.followUp) {
-        const final = await ask({
-          system,
-          user: [
-            basePrompt,
-            `你已调用工具 ${toolName}，工具返回：`,
-            String(outcome.data || ''),
-            `请根据工具返回内容回答用户消息：${user}`,
-            '返回 JSON：{"reply":"回答文本"}。不要包含 Markdown。'
-          ].join('\n'),
-          maxTokens,
-          signal
-        });
-        const reply = String(final?.reply || '').trim();
-        return {
-          tool: toolName,
-          outcome: { content: reply || '好的，我记下了。', kind: 'text' }
-        };
+  const history = [`用户消息：${user}`];
+  for (let step = 0; step < maxSteps; step += 1) {
+    let lastError = '';
+    let settled = false;
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      const prompt = [
+        basePrompt,
+        ...history,
+        lastError ? `上次调用失败：${lastError}\n请重新选择工具、修正参数或直接回复。` : ''
+      ].filter(Boolean).join('\n');
+      let result;
+      try {
+        result = await ask({ system, user: prompt, maxTokens, signal });
+      } catch (err) {
+        if (/中断|超时/.test(err.message)) throw err;
+        lastError = `模型调用失败：${err.message}`;
+        continue;
       }
-      return { tool: toolName, outcome };
-    } catch (err) {
-      if (/中断|超时/.test(err.message)) throw err;
-      lastError = `工具执行失败：${err.message}`;
+      const toolName = String(result?.tool || '');
+      const reply = String(result?.reply || '').trim();
+      if (!toolName && reply) {
+        return { tool: '', outcome: { content: reply, kind: 'text' } };
+      }
+      if (!toolName && !reply) {
+        return { tool: '', outcome: null };
+      }
+      const tool = toolList.find((item) => item.name === toolName);
+      if (!tool) {
+        lastError = `未知工具：${toolName}`;
+        continue;
+      }
+      const validation = validateArgs(tool.parameters, result.arguments);
+      if (!validation.ok) {
+        lastError = `参数不合法：${validation.errors.join('；')}`;
+        continue;
+      }
+      try {
+        const outcome = await tool.handler(result.arguments, { user, signal });
+        if (outcome && outcome.followUp) {
+          history.push(`工具 ${toolName} 返回：\n${String(outcome.data || '')}`);
+          settled = true;
+          break;
+        }
+        return { tool: toolName, outcome };
+      } catch (err) {
+        if (/中断|超时/.test(err.message)) throw err;
+        lastError = `工具执行失败：${err.message}`;
+      }
     }
+    if (settled) continue;
+    throw new Error(`工具调用多次失败：${lastError || '请换个说法再试'}`);
   }
-  throw new Error('工具调用多次失败，请换个说法再试');
+  throw new Error('工具调用步数已达上限，请换个说法再试');
 }

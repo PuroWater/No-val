@@ -225,31 +225,38 @@ function buildReadyTools(book, settings, signal, changeLog) {
       }
     },
     {
-      name: 'answer_question',
-      description: '回答用户关于剧情、设定、角色等的问题。reply 为回答文本。',
-      parameters: {
-        type: 'object',
-        properties: { reply: { type: 'string', minLength: 1 } },
-        required: ['reply']
-      },
-      handler: async ({ reply }) => ({
-        content: String(reply || '').trim() || '好的，我记下了。',
-        kind: 'text',
-        extra: { bookId: book.id }
-      })
-    },
-    {
-      name: 'read_chapter',
-      description: '当用户询问某一章的具体内容、摘要或细节时，必须先调用本工具读取该章后再回答，不要仅凭全书摘要猜测。target 为章节号/标题/描述；scope 为 summary（只看摘要）或 content（摘要+正文节选），默认 summary。',
+      name: 'read_book',
+      description: '查询书籍信息或章节内容。field 为 info（书名/简介/章节数/进度/目标字数）、chapters（章节目录）、chapter（指定章节内容）；查询具体章节时必须先调用本工具读取后再回答，不要凭摘要猜测。',
       parameters: {
         type: 'object',
         properties: {
-          target: { type: 'string', description: '章节号或标题，如 "第三章"、"古卷传承"' },
-          scope: { type: 'string', description: 'summary 或 content' }
+          field: { type: 'string', description: 'info | chapters | chapter' },
+          target: { type: 'string', description: '章节号或标题，field=chapter 时必填' },
+          scope: { type: 'string', description: 'summary 或 content，field=chapter 时生效' }
         },
-        required: ['target']
+        required: ['field']
       },
-      handler: async ({ target, scope }, context) => {
+      handler: async ({ field, target, scope }, context) => {
+        if (field === 'info') {
+          const totalWords = book.chapters.reduce((sum, chapter) => sum + (chapter.content || '').length, 0);
+          return {
+            followUp: true,
+            data: [
+              `书名：${book.title}`,
+              `简介：${book.outline || '无'}`,
+              `章节数：${book.chapters.length}`,
+              `当前字数：约 ${totalWords} 字`,
+              book.targetWords > 0
+                ? `全书目标：约 ${book.targetWords} 字（已完成 ${Math.round((totalWords / book.targetWords) * 100)}%）`
+                : ''
+            ].filter(Boolean).join('\n')
+          };
+        }
+        if (field === 'chapters') {
+          const titles = book.chapters.map((chapter, index) => `${index + 1}. ${chapter.title}`);
+          const list = titles.length > 200 ? `${titles.slice(0, 200).join('\n')}\n…（共 ${titles.length} 章）` : titles.join('\n');
+          return { followUp: true, data: `章节目录：\n${list || '暂无章节'}` };
+        }
         const matches = searchChapters(book, String(target || '').trim() || context.user || '');
         if (matches.length === 0) {
           return { content: '没有找到对应章节，请确认章节号或标题。', kind: 'text' };
@@ -489,7 +496,7 @@ async function handleDraftMessage(book, content, settings, signal) {
     signal
   });
   if (!decision.tool) {
-    replaceProcessing(book, '我还没有完全理解你的构思，请补充主角、故事背景、分类或小说总字数。', 'question');
+    replaceProcessing(book, decision.outcome?.content || '我还没有完全理解你的构思，请补充主角、故事背景、分类或小说总字数。', 'question');
     return;
   }
   const outcome = decision.outcome || {};
@@ -558,7 +565,8 @@ async function handleReadyMessage(book, content, settings, signal, changeLog) {
     signal
   });
   if (!decision.tool) {
-    replaceProcessing(book, '好的，我记下了。', 'text', { bookId: book.id });
+    const outcome = decision.outcome || {};
+    replaceProcessing(book, outcome.content || '好的，我记下了。', outcome.kind || 'text', outcome.extra || { bookId: book.id });
     return;
   }
   const outcome = decision.outcome || {};

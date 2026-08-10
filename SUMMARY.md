@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-- 当前版本：0.5.3
+- 当前版本：0.5.4
 - 当前分支：Develop
 - 技术栈：React 18 + Vite 5，Express 4，Node.js 18+，JSON 本地持久化
 - 大模型：DeepSeek，模型默认 `deepseek-v4-flash`
@@ -69,7 +69,8 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 - 改写章节：输入修改意见，Agent 判断目标章节并重写。
 - 剧情问答：询问设定、角色或剧情，Agent 直接回答。
 - 每次续写或改写后自动重新整理人物与势力关系网。
-- 聊天意图由 Agent 通过 function calling 决策：模型返回标准工具与参数（改写/续写/问答/书籍组件），后端按 schema 硬校验后执行，失败自动回传重试。
+- 聊天意图由 Agent 通过 function calling 决策：模型返回标准工具与参数，后端按 schema 硬校验后执行；工具协议为 ReAct 多步循环（默认 4 步），工具结果回填后模型可继续调用或直接回复，失败自动回传重试。
+- 通用读工具 `read_book` 覆盖书籍信息（书名/简介/章节数/进度/目标字数）、章节目录与指定章节内容；摘要维护保持后端自动，关系网保持手动触发。
 
 ### 删除与回收站
 
@@ -123,7 +124,7 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
   - `src/services/chatService.js`：聊天状态机、构思采集、摘要确认。
   - `src/services/bookService.js`：生成、续写、改写、关系网提取。
   - `src/services/deepseek.js`：DeepSeek API 调用与 JSON 解析。
-  - `src/services/toolkit.js`：Agent 工具协议层（schema 校验、调用与失败重试）。
+  - `src/services/toolkit.js`：Agent 工具协议层（schema 校验、ReAct 多步循环调用与失败重试）。
   - `src/lib/store.js`：JSON 读写。
   - `src/lib/security.js`：bcrypt 密码哈希。
   - `src/lib/token.js`：JWT 签发与校验。
@@ -763,3 +764,14 @@ npm start
 - 版本号升级到 0.5.3。
 
 完成结果：章节级问答基于真实章节内容作答，细节准确度大幅提升。
+
+### 2026-08-10 v0.5.4 工具通用化与 ReAct 循环
+
+更新内容：
+
+- 工具协议升级为 ReAct 多步循环：模型可连续调用工具（工具结果回填再决策），步数上限默认 4，每步 schema 校验与失败重试，可返回 `{"reply":"..."}` 直接作答。
+- 工具通用化：`read_book` 一个工具覆盖书籍信息、章节目录、指定章节内容；移除分散的 `read_chapter` 与 `answer_question`。
+- 摘要维护保持后端自动，关系网保持手动触发。
+- 真实模型验证：章节数、章节线索、章节目录三类查询均正确；版本号升级到 0.5.4。
+
+完成结果：工具更少更通用，Agent 可自主多步协作（读→生成→保存），不再受单次调用限制。

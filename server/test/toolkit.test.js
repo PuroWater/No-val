@@ -101,8 +101,60 @@ test('runToolDecision supports follow-up answer after tool returns data', async 
     ask: fakeAsk,
     maxAttempts: 2
   });
-  assert.equal(decision.tool, 'read_chapter');
+  assert.equal(decision.tool, '');
   assert.equal(decision.outcome.content, '第二章记载了修炼功法。');
   assert.equal(decision.outcome.kind, 'text');
   assert.equal(asks.length, 2);
+});
+
+test('runToolDecision supports chained tool calls (ReAct loop)', async () => {
+  const readTool = {
+    name: 'read_chapter',
+    description: '读取章节',
+    parameters: { type: 'object', properties: { target: { type: 'string' } }, required: ['target'] },
+    handler: async () => ({ followUp: true, data: '第一章内容' })
+  };
+  const saveTool = {
+    name: 'generate_summary',
+    description: '生成摘要',
+    parameters: { type: 'object', properties: { target: { type: 'string' } }, required: ['target'] },
+    handler: async () => ({ content: '已生成摘要', kind: 'text' })
+  };
+  const asks = [];
+  const fakeAsk = async () => {
+    asks.push(1);
+    if (asks.length === 1) return { tool: 'read_chapter', arguments: { target: '第一章' } };
+    return { tool: 'generate_summary', arguments: { target: 'chapter' } };
+  };
+  const decision = await runToolDecision({
+    system: 's',
+    tools: [readTool, saveTool],
+    user: '总结第一章并保存',
+    ask: fakeAsk,
+    maxAttempts: 2,
+    maxSteps: 4
+  });
+  assert.equal(decision.tool, 'generate_summary');
+  assert.equal(decision.outcome.content, '已生成摘要');
+  assert.equal(asks.length, 2);
+});
+
+test('runToolDecision stops after maxSteps', async () => {
+  const readTool = {
+    name: 'read_chapter',
+    description: '读取章节',
+    parameters: { type: 'object', properties: { target: { type: 'string' } }, required: ['target'] },
+    handler: async () => ({ followUp: true, data: 'x' })
+  };
+  await assert.rejects(
+    () => runToolDecision({
+      system: 's',
+      tools: [readTool],
+      user: 'hi',
+      ask: async () => ({ tool: 'read_chapter', arguments: { target: '第一章' } }),
+      maxAttempts: 1,
+      maxSteps: 2
+    }),
+    /步数已达上限/
+  );
 });
