@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Component, useEffect, useMemo, useRef, useState } from 'react';
 
 const VIEW_W = 1200;
 const VIEW_H = 900;
@@ -83,7 +83,7 @@ function computeLayout(nodes, edges) {
   return { positions: sized, protagonist: protagonist.id };
 }
 
-export default function RelationGraph({ relations }) {
+function RelationGraphInner({ relations }) {
   const nodes = relations?.nodes || [];
   const edges = relations?.edges || [];
   const layout = useMemo(() => computeLayout(nodes, edges), [relations]);
@@ -108,13 +108,14 @@ export default function RelationGraph({ relations }) {
   }, []);
 
   function handlePointerDown(event) {
-    if (event.target.closest('button')) return;
+    if (event.target?.closest?.('button')) return;
+    if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) return;
     drag.current = { startX: event.clientX - view.x, startY: event.clientY - view.y };
-    event.currentTarget.setPointerCapture?.(event.pointerId);
   }
 
   function handlePointerMove(event) {
     if (!drag.current) return;
+    if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) return;
     setView((current) => ({
       ...current,
       x: event.clientX - drag.current.startX,
@@ -179,5 +180,31 @@ export default function RelationGraph({ relations }) {
         <span>拖动平移 / 滚轮缩放</span>
       </div>
     </div>
+  );
+}
+
+class GraphBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+
+  render() {
+    if (this.state.error) {
+      return <p className="form-error">关系网渲染失败：{String(this.state.error)}</p>;
+    }
+    return this.props.children;
+  }
+}
+
+export default function RelationGraph(props) {
+  return (
+    <GraphBoundary>
+      <RelationGraphInner {...props} />
+    </GraphBoundary>
   );
 }
