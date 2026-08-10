@@ -17,4 +17,6 @@ test('sanitizeRelations keeps valid nodes and edges', () => {
   assert.equal(result.nodes.length, 2);
   assert.equal(result.edges.length, 1);
   assert.equal(result.edges[0].label, '调查');
+  assert.equal(result.nodes[0].weight >= 1, true);
+  assert.equal(typeof result.nodes[0].isMain, 'boolean');
 });

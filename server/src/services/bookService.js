@@ -64,7 +64,9 @@ export function sanitizeRelations(result) {
     .map((node) => ({
       id: String(node.id),
       name: String(node.name),
-      type: node.type === 'faction' ? 'faction' : 'person'
+      type: node.type === 'faction' ? 'faction' : 'person',
+      weight: Number.isFinite(Number(node.weight)) ? Number(node.weight) : 1,
+      isMain: Boolean(node.isMain)
     }));
   const nodeIds = new Set(nodes.map((node) => node.id));
   const edges = (Array.isArray(result?.edges) ? result.edges : [])
@@ -84,7 +86,7 @@ export async function extractRelations(book) {
     : '暂无';
   const result = await chatCompletion({
     system: '你是小说关系网维护助手。根据剧情摘要和现有关系网更新关系，只返回 JSON，不要包含 Markdown。',
-    user: `现有关系网：\n${existing}\n\n剧情摘要：\n${text}\n\n返回更新后的完整关系网 JSON：{"nodes":[{"id":"n_1","name":"名称","type":"person|faction"}],"edges":[{"from":"n_1","to":"n_2","label":"关系"}]}。节点 id 必须唯一，边必须引用已有节点。`,
+    user: `现有关系网：\n${existing}\n\n剧情摘要：\n${text}\n\n返回更新后的完整关系网 JSON：{"nodes":[{"id":"n_1","name":"名称","type":"person|faction","weight":5,"isMain":true}],"edges":[{"from":"n_1","to":"n_2","label":"关系"}]}。节点 id 必须唯一，边必须引用已有节点；weight 表示重要度 1-10，主角节点 isMain 为 true。`,
     maxTokens: 1500
   });
   return sanitizeRelations(result);

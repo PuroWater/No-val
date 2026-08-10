@@ -394,15 +394,20 @@ button, input, textarea, select {
 }
 
 .relation-graph {
+  position: relative;
+  overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--panel);
   padding: 12px;
+  cursor: grab;
+  user-select: none;
 }
 
 .relation-graph svg {
   width: 100%;
-  max-height: 520px;
+  min-height: 560px;
+  display: block;
 }
 
 .relation-graph line {
@@ -432,6 +437,72 @@ button, input, textarea, select {
 .relation-graph .relation-node circle {
   stroke: var(--panel);
   stroke-width: 3;
+}
+
+.relation-graph .main-halo {
+  fill: none;
+  stroke: #e67e22;
+  stroke-width: 4;
+  stroke-dasharray: 8 6;
+}
+
+.relation-graph .node-type {
+  font-size: 12px;
+  fill: rgba(255, 255, 255, 0.9);
+}
+
+.graph-toolbar {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  gap: 8px;
+  z-index: 2;
+}
+
+.graph-toolbar button {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.graph-legend {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 12px;
+  z-index: 2;
+}
+
+.legend-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 4px;
+}
+
+.legend-dot.person {
+  background: var(--accent);
+}
+
+.legend-dot.faction {
+  background: #b7791f;
+}
+
+.legend-dot.main {
+  background: #e67e22;
 }
 
 .shelf-placeholder {
