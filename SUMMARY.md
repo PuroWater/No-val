@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-- 当前版本：0.5.22
+- 当前版本：0.6.0（图形化地基：关系网增量/分块生成与时间线派生视图）
 - 当前分支：Develop
 - 技术栈：React 18 + Vite 5，Express 4，Node.js 18+，JSON 本地持久化
 - 大模型：DeepSeek，模型默认 `deepseek-v4-flash`
@@ -54,11 +54,12 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 - 书本组件显示书名、章节数，并提供“打开并列窗口”和“详情”入口。
 - 并列窗口与聊天界面同屏显示，可实时查看章节、关系网和编辑内容。
 - 章节编辑停止输入 1 秒后自动保存。
-- 关系网不会自动生成，仅在点击“重新生成关系网”时由 AI 分析并保存。
-- 生成时自动提取人物与势力关系；续写和改写完成后会基于全部章节重新提取。
+- 关系网不会自动生成，仅在点击“重新生成关系网”时由 AI 分析并保存；默认走增量（保留现有关系，只处理新增/变更章节），也可显式全量重建。
+- 关系网生成按“顺序分块增量”实现：每批摘要同时受字符数与章节数上限约束，长篇小说不再一次性发送全部章节摘要。
 - 手动编辑章节正文后不会自动调用模型，可在关系网栏位点击“重新生成关系网”更新。
 - 关系网以主角为中心分层布局，节点大小按重要度区分，支持缩放和平移。
 - 内容更新只静默维护摘要；关系网仅在用户主动点击“重新生成关系网”时生成。
+- 章节事件（`chapter.events`）按章节序派生为“章节事迹轴”时间线，零 AI 成本，供详情页时间线标签展示。
 - 续写、改写、提问全部通过自然语言触发；改写会先询问章节，再询问修改部分。
 - 聊天面板高度固定，对话内容不影响页面整体大小，消息在聊天区内滚动。
 - 生成与续写按设置中的“每次输出章节数 × 每章字数”占全书目标总字数的比例安排剧情；续写一次输出设置的章节数。
@@ -87,7 +88,7 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 - 我的：展示已生成书籍列表，包含书名、章节数、更新时间，并进入设置页。
 - 书架：内部开发阶段占位页面，仅展示前端 UI。
 - 设置：浅色 / 深色 / 护眼纸纹背景风格，小 / 中 / 大字号，每次输出章节数（1-5）与每章大致字数（1000-10000），持久化到 `settings.json`。
-- 书籍详情：`内容 / 关系网` 并列栏位，关系网使用 SVG 展示人物与势力节点。
+- 书籍详情：`内容 / 关系网 / 时间线` 三个标签，关系网使用 SVG 展示人物与势力节点，时间线按章节展示事件卡（事件 + 人物）。
 
 ### 未来规划（暂不实现）
 
@@ -126,7 +127,7 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
   - `src/services/chatService.js`：聊天状态机、构思采集、摘要确认。
   - `src/services/bookService.js`：书籍生命周期与写编排（新建、定稿、续写、改写、章节摘要编辑）。
   - `src/services/overviewService.js`：概况/事件写内核（`syncChapterOverview` 差分维护、`updateOverviewTail` 删末章结尾更新、`applyChapterEvents`）。
-  - `src/services/storyMetaService.js`：故事元数据（关系网提取与清洗 + 未来时间/章节事迹轴派生视图占位）。
+  - `src/services/storyMetaService.js`：故事元数据（关系网增量/分块生成与清洗、章节事迹轴派生视图 `buildTimeline`）。
   - `src/services/deepseek.js`：DeepSeek API 调用与 JSON 解析。
   - `src/services/toolkit.js`：Agent 工具协议层（schema 校验、ReAct 多步循环调用与失败重试）。
   - `src/services/tools.js`：已生成图书工具定义（按 read/edit/write/navigate 分组，供意图预筛加载）。
@@ -171,7 +172,13 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
       "updatedAt": "..."
     }
   ],
-  "relations": { "nodes": [], "edges": [] },
+  "relations": {
+    "nodes": [],
+    "edges": [],
+    "generatedAt": null,
+    "coveredUpTo": 0,
+    "mode": ""
+  },
   "storySummary": "全书剧情摘要",
   "chat": [],
   "draft": { "concept": "", "summary": "" },
@@ -200,7 +207,8 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 - `GET /api/books`
 - `GET /api/books/trash`
 - `GET /api/books/:id`
-- `POST /api/books/:id/relations`
+- `GET /api/books/:id/timeline`（章节事迹轴，按章节序返回 `chapter.events`）
+- `POST /api/books/:id/relations`（支持 `{ mode: 'incremental' | 'full' }`，缺省按标记自动选择）
 - `DELETE /api/books/:id`
 - `POST /api/books/:id/restore`
 - `DELETE /api/books/:id/permanent`
@@ -296,11 +304,11 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 ### 长小说与全书聚合操作注意事项
 
 - 旧“全量事件迁移/初始化”函数（`ensureChapterEvents`）已删除：旧 `book.timeline → chapter.events` 迁移改由 `normalizeBook` 确定性完成，新书首章事件走 `syncChapterOverview` 差分内核（O(首章数)）。未来若需对长书做全量事件补齐，必须先分块，属后续规划。
-- 正常使用中仍有一处“全书聚合”AI 调用输入为 O(章数)：`extractRelations`（重新生成关系网）的 `chapterContext(book)` 发送全部章节摘要，长篇小说（数百章以上）尚不能完全应对。
+- 关系网生成已改为“顺序分块增量”：`full` 置空后逐块重建、`incremental` 只处理 `coveredUpTo` 之后与覆盖范围内近期变更章节，每块受字符数（默认 3500）与章节数（默认 25）上限约束，长篇小说安全；`relations` 记录 `generatedAt` / `coveredUpTo` / `mode` 标记。
 - `syncChapterOverview` 已改为输入差分：只发“全书概况 + 变更章旧/新摘要 + 变更章自身旧事件”（O(变更数)），不再携带全书事件列表，长小说安全。
 - 日常续写、改写、问答、读章已走局部上下文（全书概况 + 目标章/附近章 + 关系网），不随章数膨胀，长篇小说在这些路径上没有障碍。
 - 删除章节已改为“仅末尾章 + 概况结尾差分（O(1)）”，不存在全量重建路径，无此问题。
-- 后续规划（当前未实现）：`extractRelations` 改为分块/增量生成，使全书级操作在长小说上可用。
+- 后续规划（当前未实现）：关系网交互升级（节点拖拽、筛选、搜索、详情）、时间线事件↔章节与人物↔关系网联动、事件时间字段（真实时间线）、大图性能优化。
 
 ## 启动方式
 
@@ -1011,3 +1019,17 @@ npm start
 - 单元测试 37/37（新增 `changedEventsContext` 用例），构建通过，版本号升级到 0.5.22。
 
 完成结果：概况维护在长小说上的 O(章数) 输入隐患消除；概况/事件、故事元数据、书籍生命周期三个服务模块职责平行清晰，命名与位置统一。
+
+### 2026-08-11 v0.6.0 图形化地基：关系网增量/分块与时间线派生视图
+
+更新内容：
+
+- 关系网改为“顺序分块增量”统一原语：`full` 模式关系置空后逐块重建，`incremental` 模式保留现有关系、只处理 `coveredUpTo` 之后的章节与覆盖范围内 `updatedAt` 晚于 `generatedAt` 的变更章节；每块同时受字符数（默认 3500）与章节数（默认 25）上限约束，消除了关系网生成时唯一的 O(章数) 输入。
+- `book.relations` 新增标记字段 `generatedAt` / `coveredUpTo` / `mode`，`normalizeBook` 补齐默认值并保证 nodes/edges 数组类型。
+- `POST /api/books/:id/relations` 支持 `{ mode: 'incremental' | 'full' }`，缺省按标记状态自动选择（有标记且有关系 → 增量，否则全量）；非法 mode 返回 400。
+- 新增 `GET /api/books/:id/timeline` 派生接口：按章节序返回 `{ chapterIndex, chapterId, chapterTitle, events }`（章节事迹轴，零 AI 成本），由 `storyMetaService.buildTimeline` 提供。
+- 前端书籍详情/并列窗口新增第三个“时间线”标签：章节为可展开节点，展示事件卡（事件 + 人物），无事件章节显示“本章暂无事件”空态；展开状态默认全部展开，可逐章收起。
+- 版本号统一为 0.6.0：根目录 `package.json` 由过期的 0.5.18 补齐，server/client 同步升级。
+- 单元测试 41/41（新增 relations 标记默认值、`splitIntoBlocks` 分块、`changedChaptersSince` 增量选择、`buildTimeline` 派生用例），构建通过；真实接口验证：timeline 派生与 mode 参数校验通过（DeepSeek 真实生成需普通终端外网验证）。
+
+完成结果：关系网生成在长篇小说上不再一次性发送全部章节摘要；时间线作为零成本派生视图落地，详情页可直观按章查看事件，为 0.6.1/0.6.2 的关系网交互升级与联动打基础。
