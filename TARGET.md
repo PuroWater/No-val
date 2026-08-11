@@ -1118,4 +1118,5 @@ Novel Agent/
 - 维护触发时机：`ChapterEditor` 移除失焦时的 `onCommit`；改为在编辑器卸载时（切标签/关面板/返回导航）若存在编辑，先以最新内容保存再触发 `POST /summary`（`regenerateChapterSummary` → `syncChapterOverview`，与 AI 改写同一内核），用 ref 防止重复触发。
 - 修复关系网滚轮缩放：`RelationGraph` 滚轮监听由空依赖改为依赖 `hasGraph`（节点数），关系网从空态变为有数据时重新挂载监听器；空态提前返回导致此前监听从未生效、只能拖动。
 - 修复详情页头部间距：0.5.8 的 `gap: 32px` 从未被回退，叠加 0.5.18 的段落 margin 16px 后总间距 48px；改为 `gap: 0` 恢复 16px 总间距。
+- 创作台聊天头部新增“详情查看”按钮：位于“并列查看”右侧，普通按钮式，点击复用 `OverlayStack.open({ bookId })` 压栈唤出全屏详情页，保持压栈出栈导航逻辑。
 - 版本号升级到 0.6.1（根/server/client 同步）；前端构建通过，后端无改动。

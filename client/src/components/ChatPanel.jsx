@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import BookWidget from './BookWidget.jsx';
+import { useStack } from './OverlayStack.jsx';
 
 const SUGGESTIONS = ['今天有什么想法？', '来聊聊吧！'];
 
@@ -55,6 +56,7 @@ function getDateRanges(book) {
 
 export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOpen, onToggleSide }) {
   const isNew = !bookId;
+  const { open } = useStack();
   const [greeting] = useState(() => SUGGESTIONS[Math.floor(Math.random() * SUGGESTIONS.length)]);
   const [book, setBook] = useState(null);
   const [input, setInput] = useState('');
@@ -306,6 +308,11 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
             onClick={() => onToggleSide?.()}
           >
             并列查看
+          </button>
+        )}
+        {!isNew && book.status === 'ready' && (
+          <button className="primary" onClick={() => open({ bookId: book.id })}>
+            详情查看
           </button>
         )}
       </div>
