@@ -2,7 +2,11 @@ node_modules/
 dist/
 .vite/
 .env
-data/*.json
-data/*.bak
-data/*.tmp
+.env.*
+!.env.example
+data/
 *.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
