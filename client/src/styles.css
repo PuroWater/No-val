@@ -1323,6 +1323,9 @@ button, input, textarea, select {
   cursor: col-resize;
   border-radius: 3px;
   background: var(--border);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
 }
 
 .split-divider:hover {

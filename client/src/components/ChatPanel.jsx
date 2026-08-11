@@ -68,6 +68,8 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
   const [dateHover, setDateHover] = useState(null);
   const [enterToSend, setEnterToSend] = useState(true);
   const dateWrapRef = useRef(null);
+  // 每本书独立维护聊天输入草稿：存 sessionStorage，页面不关闭（含路由切换/刷新）期间保活。
+  const draftKey = bookId ? `novel_chat_draft_${bookId}` : 'novel_chat_draft_new';
 
   async function loadBook() {
     setError('');
@@ -128,10 +130,16 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    const saved = sessionStorage.getItem(draftKey);
+    if (saved) setInput(saved);
+  }, [draftKey]);
+
   async function sendMessage() {
     const content = input.trim();
     if (!content || sending || hasProcessing) return;
     setInput('');
+    sessionStorage.removeItem(draftKey);
     setSending(true);
     setError('');
     const optimistic = {
@@ -362,7 +370,10 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
       <div className="chat-input">
         <textarea
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={(e) => {
+            setInput(e.target.value);
+            sessionStorage.setItem(draftKey, e.target.value);
+          }}
           placeholder={viewOnly ? '该日期仅可查看，不可输入' : isNew || book.status === 'draft' ? '谈谈你的想法…' : '输入续写、修改或剧情问题…'}
           disabled={sending || hasProcessing || viewOnly}
           onKeyDown={(e) => {
