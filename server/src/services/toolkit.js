@@ -1,5 +1,43 @@
 import { chatCompletion } from './deepseek.js';
 
+export const OUTPUT_LIMITS = { maxChapters: 5, minChapterWords: 1000, maxChapterWords: 10000 };
+export const OVER_LIMIT_REPLY = '当前输出超过限定：单次最多 5 章、每章 1000-10000 字，请调整后重试。';
+
+// 输出规模校验：越界返回 { over: true }，范围内返回归一化后的 output。
+export function normalizeOutputScale(rawOutput) {
+  const chapters = Number(rawOutput?.chapters);
+  const chapterWords = Number(rawOutput?.chapterWords);
+  const over = (Number.isInteger(chapters) && (chapters < 1 || chapters > OUTPUT_LIMITS.maxChapters))
+    || (Number.isFinite(chapterWords) && (chapterWords < OUTPUT_LIMITS.minChapterWords || chapterWords > OUTPUT_LIMITS.maxChapterWords));
+  if (over) return { output: null, over: true };
+  const output = {};
+  if (Number.isInteger(chapters)) output.chapters = Math.min(OUTPUT_LIMITS.maxChapters, Math.max(1, chapters));
+  if (Number.isFinite(chapterWords)) output.chapterWords = Math.min(
+    OUTPUT_LIMITS.maxChapterWords,
+    Math.max(OUTPUT_LIMITS.minChapterWords, Math.round(chapterWords))
+  );
+  return { output: Object.keys(output).length > 0 ? output : null, over: false };
+}
+
+// 构思/初筛共用的输出规模提取：从对话中识别“单次生成几章、每章多少字”。
+export async function extractOutputScale({ user, history = '', signal, ask = chatCompletion, maxTokens = 4096 }) {
+  const prompt = [
+    '你是输出规模识别 Agent。判断用户是否明确指定“单次输出规模”：一次生成几章、每章约多少字。',
+    '全书目标字数（如“10万字”“百万字”）不算输出规模。',
+    `近期对话：\n${history || '（无）'}`,
+    '明确指定时返回 {"present":true,"chapters":N,"chapterWords":N}（只填用户提到的字段）；未指定返回 {"present":false}。',
+    '必须返回 JSON，不要包含 Markdown。',
+    `用户消息：${user}`
+  ].join('\n');
+  try {
+    const result = await ask({ system: '你是输出规模识别 Agent。', user: prompt, maxTokens, signal });
+    return normalizeOutputScale(result?.present ? result : {});
+  } catch (err) {
+    if (/中断|超时/.test(err.message)) throw err;
+    return { over: false, output: null };
+  }
+}
+
 export function validateArgs(parameters = {}, args) {
   if (!args || typeof args !== 'object' || Array.isArray(args)) {
     return { ok: false, errors: ['arguments 必须是对象'] };
@@ -181,13 +219,9 @@ export async function prefilterIntent({
         .filter((name) => names.includes(name));
       const unique = [...new Set(picked)];
       if (unique.length > 0) {
-        const rawOutput = result?.output && typeof result.output === 'object' ? result.output : {};
-        const output = {};
-        const chapters = Number(rawOutput.chapters);
-        const chapterWords = Number(rawOutput.chapterWords);
-        if (Number.isInteger(chapters)) output.chapters = Math.min(5, Math.max(1, chapters));
-        if (Number.isFinite(chapterWords)) output.chapterWords = Math.min(10000, Math.max(1000, Math.round(chapterWords)));
-        return { mode: 'tool', groups: unique, output: Object.keys(output).length > 0 ? output : null };
+        const { output, over } = normalizeOutputScale(result?.output);
+        if (over) return { mode: 'chat', reply: OVER_LIMIT_REPLY, groups: [], output: null };
+        return { mode: 'tool', groups: unique, output };
       }
       lastError = '未返回有效能力组';
     } catch (err) {

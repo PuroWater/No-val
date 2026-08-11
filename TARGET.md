@@ -1132,9 +1132,13 @@ Novel Agent/
 - “跟随系统”跟随操作系统深浅色（CSS `prefers-color-scheme`，切换 OS 主题即时生效，无需 JS 监听）。
 - 护眼纸纹改为用户默认主题（后端默认值、设置页初始值、前端主题应用兜底一致）。
 - 设置保存失败改用“已保存”同款 toast 提示（红底），不再使用容器内 `form-error`。
+- 构思信息必填收敛为主角/故事背景/小说总字数，分类不再追问；“由你决定”时直接整合构思。
+- 构思路径解析用户指定输出规模（N章×每章M字），越界（>5 章、每章非 1000-10000）在意图筛选阶段直接回复“当前输出超过限定”，不静默截断。
 
 完成内容：
 - 后端 `THEMES` 白名单增加 `system` / `green`，`GET /settings` 兜底与 `settingsService.getUserSettings` 默认主题统一改为 `paper`。
 - 设置页背景风格顺序更新为“跟随系统 / 浅色 / 深色 / 护眼绿 / 护眼纸纹”，初始值改为 `paper`；`SettingsApplier` 兜底同步 `paper`。
 - `styles.css` 新增 `[data-theme='green']` 护眼绿配色，以及 `:root[data-theme='system']` + `prefers-color-scheme` 跟随系统深浅色（含 `color-scheme: light dark`）。
-- 版本号升级到 0.6.2（根/server/client 同步）；测试 41/41，构建通过。
+- `toolkit.js` 新增 `normalizeOutputScale` / `extractOutputScale` / `OVER_LIMIT_REPLY`：越界在初筛阶段直接返回聊天回复；`chatService` 构思 prompt 去掉分类必填并支持“由你决定”，草稿记录章节数/每章字数并在确认生成时覆盖默认设置。
+- 单元测试 44/44（新增输出规模校验、越界拒绝、构思规模提取用例）。
+- 版本号升级到 0.6.2（根/server/client 同步）；构建通过。

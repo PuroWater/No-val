@@ -1,6 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validateArgs, registerTool, callTool, runToolDecision, prefilterIntent } from '../src/services/toolkit.js';
+import {
+  extractOutputScale,
+  normalizeOutputScale,
+  OVER_LIMIT_REPLY,
+  validateArgs,
+  registerTool,
+  callTool,
+  runToolDecision,
+  prefilterIntent
+} from '../src/services/toolkit.js';
 
 const echoTool = {
   name: 'echo',
@@ -179,14 +188,62 @@ test('prefilterIntent returns only valid group names', async () => {
     history: '用户：你好\n助手：你好！',
     ask: async (options) => {
       asked.push(options);
-      return { groups: ['edit', 'unknown', 'edit'], output: { chapters: 9, chapterWords: 5000 } };
+      return { groups: ['edit', 'unknown', 'edit'], output: { chapters: 3, chapterWords: 5000 } };
     }
   });
   assert.equal(decision.mode, 'tool');
   assert.deepEqual(decision.groups, ['edit']);
-  assert.deepEqual(decision.output, { chapters: 5, chapterWords: 5000 });
+  assert.deepEqual(decision.output, { chapters: 3, chapterWords: 5000 });
   assert.equal(asked[0].model, undefined);
   assert.equal(asked[0].user.includes('近期对话'), true);
+});
+
+test('normalizeOutputScale rejects over-limit and normalizes in-range scale', () => {
+  assert.deepEqual(normalizeOutputScale({ chapters: 3, chapterWords: 1000 }), {
+    output: { chapters: 3, chapterWords: 1000 },
+    over: false
+  });
+  assert.deepEqual(normalizeOutputScale({ chapters: 10 }), { output: null, over: true });
+  assert.deepEqual(normalizeOutputScale({ chapterWords: 500 }), { output: null, over: true });
+  assert.deepEqual(normalizeOutputScale({ chapterWords: 12000 }), { output: null, over: true });
+  assert.deepEqual(normalizeOutputScale({ chapterWords: 1234 }), {
+    output: { chapterWords: 1234 },
+    over: false
+  });
+  assert.deepEqual(normalizeOutputScale({}), { output: null, over: false });
+});
+
+test('prefilterIntent returns over-limit chat reply instead of silent clamping', async () => {
+  const groups = [{ name: 'write', summary: '续写' }];
+  const decision = await prefilterIntent({
+    groups,
+    user: '续写10章，每章500字',
+    ask: async () => ({ groups: ['write'], output: { chapters: 10, chapterWords: 500 } })
+  });
+  assert.equal(decision.mode, 'chat');
+  assert.equal(decision.reply, OVER_LIMIT_REPLY);
+  assert.equal(decision.output, null);
+});
+
+test('extractOutputScale detects user-specified scale and over-limit', async () => {
+  const inRange = await extractOutputScale({
+    user: '生成3章，每章1000字',
+    ask: async () => ({ present: true, chapters: 3, chapterWords: 1000 })
+  });
+  assert.deepEqual(inRange.output, { chapters: 3, chapterWords: 1000 });
+  assert.equal(inRange.over, false);
+  const over = await extractOutputScale({
+    user: '生成10章',
+    ask: async () => ({ present: true, chapters: 10 })
+  });
+  assert.equal(over.over, true);
+  assert.equal(over.output, null);
+  const none = await extractOutputScale({
+    user: '确认',
+    ask: async () => ({ present: false })
+  });
+  assert.equal(none.over, false);
+  assert.equal(none.output, null);
 });
 
 test('prefilterIntent retries then falls back to empty on invalid results', async () => {
