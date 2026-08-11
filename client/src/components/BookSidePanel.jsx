@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import ChapterEditor from './ChapterEditor.jsx';
 import RelationGraph from './RelationGraph.jsx';
+import ConfirmModal from './ConfirmModal.jsx';
 
 export default function BookSidePanel({ bookId, onClose, onBack, openChapter }) {
   const [book, setBook] = useState(null);
@@ -11,7 +12,73 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter }) 
   const [error, setError] = useState('');
   const [relationsLoading, setRelationsLoading] = useState(false);
   const [relationsError, setRelationsError] = useState('');
+  const [addingChapter, setAddingChapter] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [deleteChapterTarget, setDeleteChapterTarget] = useState(null);
   const directoryRef = useRef(null);
+  const addInputRef = useRef(null);
+
+  function intToChinese(number) {
+    const digits = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+    const n = Math.max(1, Math.floor(number));
+    if (n < 10) return digits[n];
+    if (n < 20) return n === 10 ? '十' : `十${digits[n - 10]}`;
+    if (n < 100) {
+      const tens = Math.floor(n / 10);
+      const ones = n % 10;
+      return `${digits[tens]}十${ones ? digits[ones] : ''}`;
+    }
+    return `${digits[Math.floor(n / 100)]}百`;
+  }
+
+  function nextChapterPrefix(bookRef) {
+    const chapters = bookRef?.chapters || [];
+    const last = chapters[chapters.length - 1];
+    if (!last) return '';
+    const match = String(last.title).match(/^第\s*([0-9零一二两三四五六七八九十百千]+)\s*章/);
+    if (!match) return '';
+    const chinese = /[零一二两三四五六七八九十百千]/.test(match[1]);
+    return chinese ? `第${intToChinese(chapters.length + 1)}章 ` : `第${chapters.length + 1}章 `;
+  }
+
+  function startAddChapter() {
+    setNewTitle(nextChapterPrefix(book));
+    setAddingChapter(true);
+    setTimeout(() => addInputRef.current?.focus(), 0);
+  }
+
+  async function commitAddChapter() {
+    const title = newTitle.trim();
+    setAddingChapter(false);
+    setNewTitle('');
+    if (!book || !title) return;
+    try {
+      const data = await api(`/books/${book.id}/chapters`, {
+        method: 'POST',
+        body: JSON.stringify({ title })
+      });
+      setBook(data.book);
+      setChapterIndex(data.book.chapters.length - 1);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function confirmDeleteChapter() {
+    if (!deleteChapterTarget || !book) return;
+    const removedIndex = book.chapters.findIndex((item) => item.id === deleteChapterTarget.id);
+    try {
+      const data = await api(`/books/${book.id}/chapters/${deleteChapterTarget.id}`, { method: 'DELETE' });
+      setBook(data.book);
+      if (removedIndex !== -1) {
+        setChapterIndex(Math.min(removedIndex, data.book.chapters.length - 1));
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDeleteChapterTarget(null);
+    }
+  }
 
   useEffect(() => {
     api(`/books/${bookId}`).then((data) => setBook(data.book)).catch((err) => setError(err.message));
@@ -105,9 +172,30 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter }) 
                 className={`directory-item ${chapterIndex === book.chapters.indexOf(item) ? 'active' : ''}`}
                 onClick={() => setChapterIndex(book.chapters.indexOf(item))}
               >
-                {item.title}
+                <span className="directory-label">{item.title}</span>
+                <span
+                  className="directory-delete"
+                  onClick={(e) => { e.stopPropagation(); setDeleteChapterTarget(item); }}
+                >
+                  删除
+                </span>
               </button>
             ))}
+            {addingChapter ? (
+              <input
+                ref={addInputRef}
+                className="directory-add-input"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') commitAddChapter(); }}
+                onBlur={commitAddChapter}
+                placeholder="章节名"
+              />
+            ) : (
+              <button className="directory-add-chapter" onClick={startAddChapter}>
+                点击添加新章节
+              </button>
+            )}
             {filteredChapters.length === 0 && <p className="muted">没有匹配的章节</p>}
           </aside>
           <div className="chapter-editor-area">
@@ -128,6 +216,14 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter }) 
           )}
         </div>
       )}
+      <ConfirmModal
+        open={Boolean(deleteChapterTarget)}
+        title="删除章节"
+        message={`删除章节不会进入回收站，您确定要删除《${deleteChapterTarget?.title || ''}》吗？`}
+        confirmText="删除"
+        onConfirm={confirmDeleteChapter}
+        onCancel={() => setDeleteChapterTarget(null)}
+      />
     </aside>
   );
 }

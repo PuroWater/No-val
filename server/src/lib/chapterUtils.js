@@ -95,3 +95,26 @@ export function fixChapterPrefixes(book, format, changeLog = new Set()) {
   });
   return count;
 }
+
+export function replaceTextInBook(book, from, to, changeLog = new Set()) {
+  const source = String(from || '');
+  const target = String(to ?? '');
+  if (!source) return 0;
+  let count = 0;
+  book.chapters.forEach((chapter) => {
+    let changed = false;
+    for (const field of ['title', 'content', 'summary']) {
+      const value = chapter[field];
+      if (typeof value === 'string' && value.includes(source)) {
+        chapter[field] = value.split(source).join(target);
+        count += value.split(source).length - 1;
+        changed = true;
+      }
+    }
+    if (changed) {
+      chapter.updatedAt = new Date().toISOString();
+      changeLog.add(chapter.id);
+    }
+  });
+  return count;
+}

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { readJson, writeJson, BOOKS_FILE } from '../lib/store.js';
 import { normalizeBook } from '../lib/bookUtils.js';
+import { ensureChapterTitle } from '../lib/chapterUtils.js';
 import { requireAuth } from '../middleware/auth.js';
 import { extractRelations, regenerateChapterSummary, updateBook } from '../services/bookService.js';
 
@@ -77,6 +78,47 @@ router.post('/:id/chapters/:chapterId/summary', async (req, res) => {
     return res.json({ book: saved });
   } catch (err) {
     return res.status(502).json({ error: `章节摘要更新失败：${err.message}` });
+  }
+});
+
+router.post('/:id/chapters', (req, res) => {
+  const { title } = req.body || {};
+  if (typeof title !== 'string' || !String(title).trim()) {
+    return res.status(400).json({ error: '章节标题不能为空' });
+  }
+  try {
+    const book = updateBook(req.user.id, req.params.id, (latest) => {
+      if (latest.deletedAt) throw new Error('书籍不存在');
+      const now = new Date().toISOString();
+      const index = latest.chapters.length;
+      latest.chapters.push({
+        id: `c_${latest.id}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        title: ensureChapterTitle(index, title),
+        content: '',
+        summary: '',
+        createdAt: now,
+        updatedAt: now
+      });
+      latest.updatedAt = now;
+    });
+    return res.status(201).json({ book });
+  } catch (err) {
+    return res.status(err.message === '书籍不存在' ? 404 : 400).json({ error: err.message });
+  }
+});
+
+router.delete('/:id/chapters/:chapterId', (req, res) => {
+  try {
+    const book = updateBook(req.user.id, req.params.id, (latest) => {
+      if (latest.deletedAt) throw new Error('书籍不存在');
+      const index = latest.chapters.findIndex((item) => item.id === req.params.chapterId);
+      if (index === -1) throw new Error('章节不存在');
+      latest.chapters.splice(index, 1);
+      latest.updatedAt = new Date().toISOString();
+    });
+    return res.json({ book });
+  } catch (err) {
+    return res.status(err.message === '书籍不存在' || err.message === '章节不存在' ? 404 : 400).json({ error: err.message });
   }
 });
 

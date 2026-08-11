@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { searchChapters, fixChapterPrefixes } from '../src/lib/chapterUtils.js';
+import { searchChapters, fixChapterPrefixes, replaceTextInBook } from '../src/lib/chapterUtils.js';
 import {
   isConfirmation,
   mergeBookState,
@@ -75,6 +75,23 @@ test('fixChapterPrefixes batches prefixes in arabic or chinese format', () => {
 
   const noop = fixChapterPrefixes(book, 'arabic');
   assert.equal(noop, 0);
+});
+
+test('replaceTextInBook replaces text across chapter fields', () => {
+  const book = {
+    chapters: [
+      { id: 'r1', title: '第一章 陈默', content: '陈默捡到玉佩，陈默开始修炼。', summary: '陈默得宝。', updatedAt: 'T0' },
+      { id: 'r2', title: '第二章 试炼', content: '陈默进入试炼场。', summary: '试炼。', updatedAt: 'T0' }
+    ]
+  };
+  const changeLog = new Set();
+  const count = replaceTextInBook(book, '陈默', '高远', changeLog);
+  assert.equal(count, 5);
+  assert.equal(book.chapters[0].content.includes('高远'), true);
+  assert.equal(book.chapters[0].content.includes('陈默'), false);
+  assert.equal(book.chapters[1].summary, '试炼。');
+  assert.equal(changeLog.has('r1'), true);
+  assert.equal(changeLog.has('r2'), true);
 });
 
 

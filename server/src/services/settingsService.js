@@ -13,6 +13,7 @@ export function getUserSettings(userId) {
     theme: current.theme || 'light',
     fontSize: current.fontSize || 'medium',
     chaptersPerOutput: clampInt(current.chaptersPerOutput, 1, 5, 3),
-    chapterWords: clampInt(current.chapterWords, 1000, 10000, 2000)
+    chapterWords: clampInt(current.chapterWords, 1000, 10000, 2000),
+    enterToSend: current.enterToSend !== false
   };
 }

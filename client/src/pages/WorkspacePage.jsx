@@ -132,7 +132,7 @@ export default function WorkspacePage() {
             className={`directory-item new ${selectedBookId === NEW_SESSION ? 'active' : ''}`}
             onClick={startNew}
           >
-            <span className="directory-label">＋ 新创作</span>
+            <span className="directory-label">新创作</span>
           </button>
           {drafts.length > 0 && (
             <div className="directory-group">
@@ -164,12 +164,12 @@ export default function WorkspacePage() {
               ))}
             </div>
           )}
-          {books.length === 0 && <p className="muted">还没有图书，点击“＋ 新创作”开始。</p>}
+          {books.length === 0 && <p className="muted">还没有图书，点击“新创作”开始。</p>}
         </aside>
         <div className="workspace-main">
           {!selectedBookId && (
             <div className="workspace-empty">
-              <p className="muted">从左侧选择一本图书，或点击“＋ 新创作”。</p>
+              <p className="muted">从左侧选择一本图书，或点击“新创作”。</p>
               <button className="primary" onClick={startNew}>开始创作</button>
             </div>
           )}

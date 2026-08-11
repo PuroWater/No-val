@@ -156,7 +156,8 @@ export async function prefilterIntent({
     '你是工具筛选 Agent。根据用户消息判断最可能需要哪个能力组，最多返回 2 个。',
     '可用能力组：',
     groupText,
-    `必须返回 JSON：{"groups":["组名", ...]}，只能使用上面的组名。不要包含 Markdown。`,
+    '如果用户明确指定了输出规模（如“续写一章”“每章 5000 字”），同时在 output 中返回：{"groups":["组名", ...],"output":{"chapters":1,"chapterWords":5000}}；未指定时可省略 output。',
+    '必须返回 JSON，groups 只能使用上面的组名。不要包含 Markdown。',
     `用户消息：${user}`
   ].join('\n');
   let lastError = '';
@@ -167,12 +168,20 @@ export async function prefilterIntent({
         .map((name) => String(name))
         .filter((name) => names.includes(name));
       const unique = [...new Set(picked)];
-      if (unique.length > 0) return unique;
+      if (unique.length > 0) {
+        const rawOutput = result?.output && typeof result.output === 'object' ? result.output : {};
+        const output = {};
+        const chapters = Number(rawOutput.chapters);
+        const chapterWords = Number(rawOutput.chapterWords);
+        if (Number.isInteger(chapters)) output.chapters = Math.min(5, Math.max(1, chapters));
+        if (Number.isFinite(chapterWords)) output.chapterWords = Math.min(10000, Math.max(1000, Math.round(chapterWords)));
+        return { groups: unique, output: Object.keys(output).length > 0 ? output : null };
+      }
       lastError = '未返回有效能力组';
     } catch (err) {
       if (/中断|超时/.test(err.message)) throw err;
       lastError = err.message;
     }
   }
-  return [];
+  return { groups: [], output: null };
 }

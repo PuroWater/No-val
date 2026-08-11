@@ -21,6 +21,7 @@ export default function SettingsPage() {
   const [fontSize, setFontSize] = useState('medium');
   const [chaptersPerOutput, setChaptersPerOutput] = useState(3);
   const [chapterWords, setChapterWords] = useState(2000);
+  const [enterToSend, setEnterToSend] = useState(true);
   const [trash, setTrash] = useState([]);
   const [toasts, setToasts] = useState([]);
   const toastIdRef = useRef(0);
@@ -43,12 +44,13 @@ export default function SettingsPage() {
       setFontSize(data.settings.fontSize);
       setChaptersPerOutput(Number(data.settings.chaptersPerOutput) || 3);
       setChapterWords(Number(data.settings.chapterWords) || 2000);
+      setEnterToSend(data.settings.enterToSend !== false);
       applySettings(data.settings);
     });
     loadTrash();
   }, []);
 
-  async function save(nextTheme, nextSize, nextChapters, nextWords) {
+  async function save(nextTheme, nextSize, nextChapters, nextWords, nextEnter) {
     try {
       setAppearanceError('');
       const data = await api('/settings', {
@@ -57,7 +59,8 @@ export default function SettingsPage() {
           theme: nextTheme,
           fontSize: nextSize,
           chaptersPerOutput: nextChapters,
-          chapterWords: nextWords
+          chapterWords: nextWords,
+          enterToSend: nextEnter
         })
       });
       applySettings(data.settings);
@@ -138,7 +141,7 @@ export default function SettingsPage() {
                 <span>背景风格</span>
                 <div className="option-row">
                   {THEMES.map((item) => (
-                    <button key={item.value} className={theme === item.value ? 'active' : ''} onClick={() => { setTheme(item.value); save(item.value, fontSize, chaptersPerOutput, chapterWords); }}>
+                    <button key={item.value} className={theme === item.value ? 'active' : ''} onClick={() => { setTheme(item.value); save(item.value, fontSize, chaptersPerOutput, chapterWords, enterToSend); }}>
                       {item.label}
                     </button>
                   ))}
@@ -148,14 +151,14 @@ export default function SettingsPage() {
                 <span>字号</span>
                 <div className="option-row">
                   {SIZES.map((item) => (
-                    <button key={item.value} className={fontSize === item.value ? 'active' : ''} onClick={() => { setFontSize(item.value); save(theme, item.value, chaptersPerOutput, chapterWords); }}>
+                    <button key={item.value} className={fontSize === item.value ? 'active' : ''} onClick={() => { setFontSize(item.value); save(theme, item.value, chaptersPerOutput, chapterWords, enterToSend); }}>
                       {item.label}
                     </button>
                   ))}
                 </div>
               </div>
               <div className="settings-group">
-                <span>每次输出章节数</span>
+                <span>默认输出章节数</span>
                 <input
                   className="setting-number"
                   type="number"
@@ -166,12 +169,12 @@ export default function SettingsPage() {
                   onBlur={() => {
                     const value = Math.min(5, Math.max(1, Math.round(Number(chaptersPerOutput) || 1)));
                     setChaptersPerOutput(value);
-                    save(theme, fontSize, value, chapterWords);
+                    save(theme, fontSize, value, chapterWords, enterToSend);
                   }}
                 />
               </div>
               <div className="settings-group">
-                <span>每章大致字数</span>
+                <span>默认输出字数（每章）</span>
                 <input
                   className="setting-number"
                   type="number"
@@ -183,9 +186,25 @@ export default function SettingsPage() {
                   onBlur={() => {
                     const value = Math.min(10000, Math.max(1000, Math.round(Number(chapterWords) || 1000)));
                     setChapterWords(value);
-                    save(theme, fontSize, chaptersPerOutput, value);
+                    save(theme, fontSize, chaptersPerOutput, value, enterToSend);
                   }}
                 />
+              </div>
+              <div className="settings-group">
+                <span>发送快捷键</span>
+                <label className="option-row">
+                  <input
+                    type="checkbox"
+                    checked={enterToSend}
+                    onChange={(e) => {
+                      const value = e.target.checked;
+                      setEnterToSend(value);
+                      save(theme, fontSize, chaptersPerOutput, chapterWords, value);
+                    }}
+                  />
+                  Enter 发送（Ctrl+Enter 换行）
+                </label>
+                <p className="muted">取消勾选后改为 Ctrl+Enter 发送、Enter 换行。</p>
               </div>
               {appearanceError && <p className="form-error">{appearanceError}</p>}
             </>

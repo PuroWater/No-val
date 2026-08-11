@@ -64,6 +64,7 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
   const [selectedDate, setSelectedDate] = useState('__today__');
   const [dateOpen, setDateOpen] = useState(false);
   const [dateHover, setDateHover] = useState(null);
+  const [enterToSend, setEnterToSend] = useState(true);
   const dateWrapRef = useRef(null);
 
   async function loadBook() {
@@ -118,6 +119,12 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
     document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
   }, [dateOpen]);
+
+  useEffect(() => {
+    api('/settings')
+      .then((data) => setEnterToSend(data.settings.enterToSend !== false))
+      .catch(() => {});
+  }, []);
 
   async function sendMessage() {
     const content = input.trim();
@@ -351,6 +358,14 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
           onChange={(e) => setInput(e.target.value)}
           placeholder={viewOnly ? '该日期仅可查看，不可输入' : isNew || book.status === 'draft' ? '谈谈你的想法…' : '输入续写、修改或剧情问题…'}
           disabled={sending || hasProcessing || viewOnly}
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter' || e.shiftKey || e.altKey || e.metaKey) return;
+            const shouldSend = enterToSend ? !e.ctrlKey : e.ctrlKey;
+            if (shouldSend) {
+              e.preventDefault();
+              sendMessage();
+            }
+          }}
         />
         <button
           className={`primary${canAbort ? ' stop' : ''}`}

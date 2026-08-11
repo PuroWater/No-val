@@ -1,9 +1,9 @@
-import { ensureChapterTitle, searchChapters, fixChapterPrefixes } from '../lib/chapterUtils.js';
+import { ensureChapterTitle, searchChapters, fixChapterPrefixes, replaceTextInBook } from '../lib/chapterUtils.js';
 import { rewriteChapter, continueBook } from './bookService.js';
 
 export const READY_TOOL_GROUPS = [
   { name: 'read', summary: '查询书籍信息、章节目录或指定章节内容', tools: ['read_book'] },
-  { name: 'edit', summary: '修改章节标题/简介/章节内容，或批量修复章节标题前缀', tools: ['edit_book', 'fix_chapter_prefixes'] },
+  { name: 'edit', summary: '修改章节标题/简介/章节内容，或批量修复章节标题前缀、批量替换文本', tools: ['edit_book', 'batch_fix_chapter_prefixes', 'batch_replace_text'] },
   { name: 'write', summary: '续写小说下一批章节', tools: ['continue_book'] },
   { name: 'navigate', summary: '打开并列查看/详情，展示书籍卡片', tools: ['open_book_widget'] }
 ];
@@ -57,20 +57,40 @@ export function defineReadyTools(book, settings, signal, changeLog) {
   return [
     {
       group: 'edit',
-      name: 'fix_chapter_prefixes',
-      description: '批量修复全部章节标题的“第X章”前缀，一次性处理，无需逐章调用。format 只能是 arabic（阿拉伯数字，如 第1章）或 chinese（汉字，如 第一章）。',
+      name: 'batch_fix_chapter_prefixes',
+      description: '批量格式化/修复全部章节标题的“第X章”前缀与序号，一次性处理，无需逐章调用。format 为 arabic（阿拉伯数字，如 第1章）或 chinese（汉字，如 第一章），省略时默认 arabic；不规范或缺失的前缀会被后端正则统一规范。',
       parameters: {
         type: 'object',
         properties: {
-          format: { type: 'string', enum: ['arabic', 'chinese'], description: 'arabic=第1章 / chinese=第一章' }
+          format: { type: 'string', enum: ['arabic', 'chinese'], description: 'arabic=第1章 / chinese=第一章（默认 arabic）' }
         },
-        required: ['format']
+        required: []
       },
       handler: async ({ format }) => {
-        const count = fixChapterPrefixes(book, format, changeLog.chapterIds);
+        const fmt = format === 'chinese' ? 'chinese' : 'arabic';
+        const count = fixChapterPrefixes(book, fmt, changeLog.chapterIds);
         return count > 0
-          ? { content: `已统一处理 ${count} 个章节标题前缀（${format === 'chinese' ? '汉字' : '阿拉伯数字'}标号）。`, kind: 'text' }
+          ? { content: `已统一处理 ${count} 个章节标题前缀（${fmt === 'chinese' ? '汉字' : '阿拉伯数字'}标号）。`, kind: 'text' }
           : { content: '章节标题前缀已是目标格式，无需修改。', kind: 'text' };
+      }
+    },
+    {
+      group: 'edit',
+      name: 'batch_replace_text',
+      description: '批量替换全书章节文本中的词句（如人物名、地名），一次处理全部章节。from 为被替换的原文，to 为替换后的文本（可为空字符串表示删除）。',
+      parameters: {
+        type: 'object',
+        properties: {
+          from: { type: 'string', minLength: 1, description: '被替换的原文' },
+          to: { type: 'string', description: '替换后的文本' }
+        },
+        required: ['from']
+      },
+      handler: async ({ from, to }) => {
+        const count = replaceTextInBook(book, from, to, changeLog.chapterIds);
+        return count > 0
+          ? { content: `已批量替换 ${count} 处（${from} → ${to ?? ''}）。`, kind: 'text' }
+          : { content: `未找到可替换的“${from}”。`, kind: 'text' };
       }
     },
     {

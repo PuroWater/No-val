@@ -723,6 +723,11 @@ button, input, textarea, select {
   line-height: 1.7;
 }
 
+.chapter-editor textarea::placeholder {
+  font-weight: 400;
+  color: var(--muted);
+}
+
 .relation-graph {
   position: relative;
   overflow: hidden;
@@ -1182,6 +1187,10 @@ button, input, textarea, select {
   border-color: var(--border);
 }
 
+.directory-item.new .directory-label {
+  font-weight: 400;
+}
+
 .directory-label {
   min-width: 0;
   overflow: hidden;
@@ -1190,6 +1199,35 @@ button, input, textarea, select {
   font-size: inherit;
   font-weight: 600;
   color: var(--text);
+}
+
+.directory-add-chapter {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 6px 10px;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.directory-add-chapter:hover {
+  background: var(--bg);
+}
+
+.directory-add-input {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 400;
 }
 
 .directory-search {

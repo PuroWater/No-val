@@ -49,7 +49,7 @@ export default function ChapterEditor({ chapter, onSave, onCommit }) {
         value={content}
         onChange={(e) => { setContent(e.target.value); setDirty(true); }}
         onBlur={handleBlur}
-        placeholder="正文内容"
+        placeholder={content ? '正文内容' : '还没有内容，可键入章节构思'}
       />
     </div>
   );

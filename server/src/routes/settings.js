@@ -16,13 +16,14 @@ router.get('/', (req, res) => {
     theme: 'light',
     fontSize: 'medium',
     chaptersPerOutput: 3,
-    chapterWords: 2000
+    chapterWords: 2000,
+    enterToSend: true
   };
   res.json({ settings: current });
 });
 
 router.put('/', (req, res) => {
-  const { theme, fontSize, chaptersPerOutput, chapterWords } = req.body || {};
+  const { theme, fontSize, chaptersPerOutput, chapterWords, enterToSend } = req.body || {};
   if (!THEMES.includes(theme) || !FONT_SIZES.includes(fontSize)) {
     return res.status(400).json({ error: '设置值不合法' });
   }
@@ -34,6 +35,9 @@ router.put('/', (req, res) => {
   if (!Number.isInteger(wordCount) || wordCount < 1000 || wordCount > 10000) {
     return res.status(400).json({ error: '每章字数需为 1000-10000' });
   }
+  if (enterToSend !== undefined && typeof enterToSend !== 'boolean') {
+    return res.status(400).json({ error: '发送快捷键设置不合法' });
+  }
   const settings = readJson(SETTINGS_FILE, []);
   let current = settings.find((item) => item.userId === req.user.id);
   if (!current) {
@@ -44,6 +48,7 @@ router.put('/', (req, res) => {
   current.fontSize = fontSize;
   current.chaptersPerOutput = chapterCount;
   current.chapterWords = wordCount;
+  if (enterToSend !== undefined) current.enterToSend = enterToSend;
   writeJson(SETTINGS_FILE, settings);
   res.json({ settings: current });
 });

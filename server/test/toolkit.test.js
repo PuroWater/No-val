@@ -178,10 +178,11 @@ test('prefilterIntent returns only valid group names', async () => {
     user: '把第二章标题改一下',
     ask: async (options) => {
       asked.push(options);
-      return { groups: ['edit', 'unknown', 'edit'] };
+      return { groups: ['edit', 'unknown', 'edit'], output: { chapters: 9, chapterWords: 5000 } };
     }
   });
-  assert.deepEqual(decision, ['edit']);
+  assert.deepEqual(decision.groups, ['edit']);
+  assert.deepEqual(decision.output, { chapters: 5, chapterWords: 5000 });
   assert.equal(asked[0].model, undefined);
 });
 
@@ -193,5 +194,6 @@ test('prefilterIntent retries then falls back to empty on invalid results', asyn
     ask: async () => ({ groups: ['nope'] }),
     maxAttempts: 2
   });
-  assert.deepEqual(decision, []);
+  assert.deepEqual(decision.groups, []);
+  assert.equal(decision.output, null);
 });

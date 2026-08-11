@@ -257,14 +257,20 @@ async function handleDraftMessage(book, content, settings, signal) {
 
 async function handleReadyMessage(book, content, settings, signal, changeLog) {
   const last = book.chapters[book.chapters.length - 1];
-  const allTools = defineReadyTools(book, settings, signal, changeLog);
-  const groups = await prefilterIntent({
+  const { groups, output } = await prefilterIntent({
     groups: READY_TOOL_GROUPS,
     user: content,
     signal
   });
   const allowed = new Set(groups.length > 0 ? groups : READY_TOOL_GROUPS.map((group) => group.name));
-  const tools = allTools.filter((tool) => allowed.has(tool.group));
+  const effectiveSettings = output
+    ? {
+        ...settings,
+        ...(output.chapters ? { chaptersPerOutput: output.chapters } : {}),
+        ...(output.chapterWords ? { chapterWords: output.chapterWords } : {})
+      }
+    : settings;
+  const tools = defineReadyTools(book, effectiveSettings, signal, changeLog).filter((tool) => allowed.has(tool.group));
   const decision = await runToolDecision({
     system: [
       '你是小说协作 Agent，根据用户消息选择一个工具调用。',
