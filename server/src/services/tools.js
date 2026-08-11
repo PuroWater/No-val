@@ -1,5 +1,5 @@
 import { ensureChapterTitle, searchChapters, fixChapterPrefixes, replaceTextInBook } from '../lib/chapterUtils.js';
-import { rewriteChapter, continueBook } from './bookService.js';
+import { rewriteChapter, continueBook, syncBookOverview } from './bookService.js';
 
 export const READY_TOOL_GROUPS = [
   { name: 'read', summary: '查询书籍信息、章节目录或指定章节内容', tools: ['read_book'] },
@@ -40,6 +40,19 @@ const EDIT_FIELDS = {
         kind: 'book',
         extra: { bookId: book.id, chapter: index + 1 }
       };
+    }
+  },
+  summary: {
+    needsChapter: true,
+    apply: async (book, { index, value }, deps) => {
+      const chapter = book.chapters[index];
+      const oldSummary = chapter.summary || '';
+      chapter.summary = String(value || '').trim();
+      chapter.updatedAt = new Date().toISOString();
+      deps.changeLog.add(chapter.id);
+      await syncBookOverview(book, [{ chapterIndex: index, oldSummary, newSummary: chapter.summary }])
+        .catch((err) => console.error('[storyOverview] 摘要编辑概况更新失败:', err.message));
+      return { followUp: true, data: `第 ${index + 1} 章摘要已更新。` };
     }
   }
 };
@@ -96,20 +109,20 @@ export function defineReadyTools(book, settings, signal, changeLog) {
     {
       group: 'edit',
       name: 'edit_book',
-      description: '修改书籍内容。target 为修改目标，只能是 title（章节标题）/ outline（简介）/ content（章节内容）三选一；target 为 content/title 时必须提供 chapter（章节号或标题）；value 为新的标题/简介/内容。修改标题后可继续调用本工具处理其它章节。',
+      description: '修改书籍内容。target 为修改目标，只能是 title（章节标题）/ summary（章节摘要）/ content（章节内容）/ outline（整书简介）四选一；target 为 content/title/summary 时必须提供 chapter（章节号或标题）；value 为新的标题/摘要/内容/简介。',
       parameters: {
         type: 'object',
         properties: {
-          target: { type: 'string', enum: ['title', 'outline', 'content'], description: 'title=章节标题 / outline=简介 / content=章节内容' },
+          target: { type: 'string', enum: ['title', 'summary', 'content', 'outline'], description: 'title=章节标题 / summary=章节摘要 / content=章节内容 / outline=整书简介' },
           chapter: { type: 'string', description: '章节号或标题，如 "第二章"、"古卷传承"' },
-          value: { type: 'string', minLength: 1, description: '新的标题/简介/章节内容' }
+          value: { type: 'string', minLength: 1, description: '新的标题/摘要/章节内容/简介' }
         },
         required: ['target', 'value']
       },
       handler: async ({ target, chapter, value }, context) => {
         const field = EDIT_FIELDS[target];
         if (!field) {
-          return { content: '未知的修改目标，仅支持 title / outline / content。', kind: 'text' };
+          return { content: '未知的修改目标，仅支持 title / summary / content / outline。', kind: 'text' };
         }
         const deps = { changeLog: changeLog.chapterIds, settings, signal };
         if (!field.needsChapter) {

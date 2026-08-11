@@ -55,6 +55,7 @@ export function normalizeBook(book) {
   if (!Array.isArray(book.chapters)) book.chapters = [];
   book.chapters = book.chapters.map((chapter) => ({ summary: '', ...chapter }));
   if (!Array.isArray(book.chat)) book.chat = [];
+  if (!Array.isArray(book.timeline)) book.timeline = [];
   backfillChapterCreation(book);
   if (!book.status) book.status = book.chapters.length > 0 ? 'ready' : 'draft';
   if (!book.draft) book.draft = { concept: '', summary: '', targetWords: 0 };

@@ -55,41 +55,70 @@ function buildStorySummary(chapters) {
   return summaries.length > 0 ? summaries.join('\n') : '';
 }
 
-async function updateStorySummary(book, newChapterSummary) {
-  if (!newChapterSummary) return book.storySummary;
-  if (!book.storySummary) {
-    book.storySummary = newChapterSummary;
-    return book.storySummary;
+export function applyTimelineChanges(book, changedIndexes, items, prose) {
+  if (!Array.isArray(book.timeline)) book.timeline = [];
+  const indexes = new Set(changedIndexes.map(Number));
+  book.timeline = book.timeline.filter((item) => !indexes.has(Number(item.chapterIndex)));
+  for (const item of items || []) {
+    book.timeline.push({
+      id: `t_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      chapterIndex: Number(item.chapterIndex),
+      event: String(item.event || '').trim(),
+      characters: Array.isArray(item.characters) ? item.characters.map(String) : []
+    });
   }
-  const result = await callModel(
-    () => ({
-      system: '你是小说摘要维护助手。只返回 JSON，不要包含 Markdown。',
-      user: `现有全书摘要：\n${book.storySummary}\n\n新增章节摘要：\n${newChapterSummary}\n\n合并为更精简的更新版全书摘要，返回 JSON：{"summary":"..."}`,
-      temperature: 0.4,
-      maxTokens: 900
-    }),
-    (result) => result && typeof result.summary === 'string' && result.summary.trim()
-  );
-  book.storySummary = String(result.summary || book.storySummary).trim();
-  return book.storySummary;
+  book.timeline.sort((a, b) => Number(a.chapterIndex) - Number(b.chapterIndex));
+  if (typeof prose === 'string' && prose.trim()) book.storySummary = prose.trim();
 }
 
-async function rebuildStorySummary(book) {
-  const summaries = book.chapters.map((chapter) => chapter.summary).filter(Boolean);
-  if (summaries.length <= 1) {
-    book.storySummary = summaries.join('');
-    return;
-  }
+export async function ensureTimeline(book) {
+  if (!Array.isArray(book.timeline)) book.timeline = [];
+  if (book.timeline.length > 0) return book;
+  const summaries = book.chapters
+    .map((chapter, index) => (chapter.summary ? `第${index + 1}章：${chapter.summary}` : ''))
+    .filter(Boolean);
+  if (summaries.length === 0) return book;
   const result = await callModel(
     () => ({
-      system: '你是小说摘要压缩助手。只返回 JSON，不要包含 Markdown。',
-      user: `根据以下各章摘要压缩为全书剧情摘要，返回 JSON：{"summary":"..."}\n${summaries.join('\n')}`,
+      system: '你是全书概况维护助手。根据各章摘要生成结构化剧情事件列表。只返回 JSON，不要包含 Markdown。',
+      user: `各章摘要：\n${summaries.join('\n')}\n\n返回 JSON：{"items":[{"chapterIndex":0,"event":"事件","characters":["人物"]}]}，每章 1-3 条。`,
+      temperature: 0.4,
+      maxTokens: 1500
+    }),
+    (result) => Array.isArray(result?.items)
+  );
+  applyTimelineChanges(book, [], result.items, '');
+  return book;
+}
+
+export async function syncBookOverview(book, changes = []) {
+  const valid = changes.filter((change) => change && Number.isInteger(change.chapterIndex));
+  if (valid.length === 0) return book;
+  const desc = valid
+    .map((change) => {
+      const index = change.chapterIndex + 1;
+      const action = !change.oldSummary ? '新增章节' : !change.newSummary ? '删除章节' : '改写章节';
+      return `第${index}章（${action}）\n${change.oldSummary ? `旧摘要：${change.oldSummary}` : ''}\n${change.newSummary ? `新摘要：${change.newSummary}` : ''}`.trim();
+    })
+    .join('\n');
+  const timelineText = (book.timeline || []).length > 0
+    ? book.timeline.map((item) => `第${item.chapterIndex + 1}章：${item.event}`).join('\n')
+    : '暂无';
+  const result = await callModel(
+    () => ({
+      system: '你是全书概况维护助手。根据章节变更返回该章剧情事件条目与更新后的精简全书概况。只返回 JSON，不要包含 Markdown。',
+      user: `当前全书概况：\n${book.storySummary || '暂无'}\n\n当前时间线条目：\n${timelineText}\n\n章节变更：\n${desc}\n\n返回 JSON：{"items":[{"chapterIndex":0,"event":"事件","characters":["人物"]}],"prose":"更新后的精简全书概况"}。items 只包含本次变更的章节。`,
       temperature: 0.4,
       maxTokens: 1200
     }),
-    (result) => result && typeof result.summary === 'string' && result.summary.trim()
+    (result) => Array.isArray(result?.items) && typeof result.prose === 'string'
   );
-  book.storySummary = String(result.summary || summaries.join('\n')).trim();
+  const deletedIndexes = new Set(
+    valid.filter((change) => change.oldSummary && !change.newSummary).map((change) => change.chapterIndex)
+  );
+  const items = (result.items || []).filter((item) => !deletedIndexes.has(Number(item.chapterIndex)));
+  applyTimelineChanges(book, valid.map((change) => change.chapterIndex), items, result.prose);
+  return book;
 }
 
 export function sanitizeRelations(result) {
@@ -203,6 +232,7 @@ export async function createBookFromConcept(userId, concept, settings = {}) {
     updatedAt: now
   });
   book.storySummary = buildStorySummary(book.chapters);
+  await ensureTimeline(book).catch((err) => console.error('[storyOverview] 新书概况初始化失败:', err.message));
   const books = readJson(BOOKS_FILE, []).map(normalizeBook);
   books.push(book);
   writeJson(BOOKS_FILE, books);
@@ -226,6 +256,7 @@ export async function finalizeDraftBook(book, settings = {}) {
     updatedAt: now
   }));
   book.storySummary = buildStorySummary(book.chapters);
+  await ensureTimeline(book).catch((err) => console.error('[storyOverview] 新书概况初始化失败:', err.message));
   book.status = 'ready';
   book.targetWords = book.draft.targetWords || book.targetWords || 0;
   book.updatedAt = now;
@@ -283,14 +314,15 @@ export async function continueBook(book, instruction, settings = {}) {
     throw err;
   }
   book.updatedAt = now;
-  await updateStorySummary(book, added.map((chapter) => chapter.summary).filter(Boolean).join('\n'))
-    .catch((err) => console.error('[storySummary] 续写摘要更新失败:', err.message));
+  await syncBookOverview(book, added.map((chapter, i) => ({ chapterIndex: startCount + i, newSummary: chapter.summary })))
+    .catch((err) => console.error('[storyOverview] 续写概况更新失败:', err.message));
   return book;
 }
 
 export async function rewriteChapter(book, chapterIndex, instruction, settings = {}) {
   const target = book.chapters[chapterIndex];
   if (!target) throw new Error('章节不存在');
+  const oldSummary = target.summary || '';
   const chapterWords = clampOutput(settings.chapterWords, 1000, 10000, 2000);
   const prev = chapterIndex > 0 ? book.chapters[chapterIndex - 1] : null;
   const next = chapterIndex < book.chapters.length - 1 ? book.chapters[chapterIndex + 1] : null;
@@ -316,7 +348,8 @@ export async function rewriteChapter(book, chapterIndex, instruction, settings =
   target.summary = String(result.summary || target.summary || '').trim();
   target.updatedAt = new Date().toISOString();
   book.updatedAt = target.updatedAt;
-  await rebuildStorySummary(book).catch((err) => console.error('[storySummary] 改写摘要更新失败:', err.message));
+  await syncBookOverview(book, [{ chapterIndex, oldSummary, newSummary: target.summary }])
+    .catch((err) => console.error('[storyOverview] 改写概况更新失败:', err.message));
   return book;
 }
 
@@ -331,6 +364,7 @@ export async function regenerateChapterSummary(book, chapterId) {
     maxTokens: 900
   });
   chapter.summary = String(result.summary || oldSummary || '').trim();
-  await updateStorySummary(book, chapter.summary).catch((err) => console.error('[storySummary] 章节摘要更新失败:', err.message));
+  await syncBookOverview(book, [{ chapterIndex: book.chapters.indexOf(chapter), oldSummary, newSummary: chapter.summary }])
+    .catch((err) => console.error('[storyOverview] 章节摘要概况更新失败:', err.message));
   return book;
 }

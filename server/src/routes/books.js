@@ -3,7 +3,7 @@ import { readJson, writeJson, BOOKS_FILE } from '../lib/store.js';
 import { normalizeBook } from '../lib/bookUtils.js';
 import { ensureChapterTitle } from '../lib/chapterUtils.js';
 import { requireAuth } from '../middleware/auth.js';
-import { extractRelations, regenerateChapterSummary, updateBook } from '../services/bookService.js';
+import { extractRelations, regenerateChapterSummary, updateBook, syncBookOverview } from '../services/bookService.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -107,18 +107,22 @@ router.post('/:id/chapters', (req, res) => {
   }
 });
 
-router.delete('/:id/chapters/:chapterId', (req, res) => {
+router.delete('/:id/chapters/:chapterId', async (req, res) => {
   try {
-    const book = updateBook(req.user.id, req.params.id, (latest) => {
-      if (latest.deletedAt) throw new Error('书籍不存在');
-      const index = latest.chapters.findIndex((item) => item.id === req.params.chapterId);
-      if (index === -1) throw new Error('章节不存在');
-      latest.chapters.splice(index, 1);
-      latest.updatedAt = new Date().toISOString();
-    });
+    const books = readJson(BOOKS_FILE, []).map(normalizeBook);
+    const book = books.find((item) => item.id === req.params.id && item.userId === req.user.id);
+    if (!book || book.deletedAt) return res.status(404).json({ error: '书籍不存在' });
+    const index = book.chapters.findIndex((item) => item.id === req.params.chapterId);
+    if (index === -1) return res.status(404).json({ error: '章节不存在' });
+    const oldSummary = book.chapters[index].summary || '';
+    book.chapters.splice(index, 1);
+    book.updatedAt = new Date().toISOString();
+    await syncBookOverview(book, [{ chapterIndex: index, oldSummary }])
+      .catch((err) => console.error('[storyOverview] 章节删除概况更新失败:', err.message));
+    writeJson(BOOKS_FILE, books);
     return res.json({ book });
   } catch (err) {
-    return res.status(err.message === '书籍不存在' || err.message === '章节不存在' ? 404 : 400).json({ error: err.message });
+    return res.status(502).json({ error: err.message });
   }
 });
 
