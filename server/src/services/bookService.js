@@ -241,23 +241,22 @@ export async function rewriteChapter(book, chapterIndex, instruction, settings =
   return book;
 }
 
-// 批量删除末尾 N 章（不可恢复）：splice 后调用 updateOverviewTail 以新末章维护概况结尾。
-// awaitTail=true 供 AI 工具等待概况更新完成；HTTP 请求走 setImmediate 后台更新，保持秒回。
+// 批量删除末尾 N 章（不可恢复）：仅做内存编排（校验 + splice）。
+// awaitTail=true 时以新末章维护概况结尾（AI 工具路径，写回由上层持久化）；
+// HTTP 路由自行调度磁盘级后台维护（与单章删除一致），不在此处调度。
 // tailUpdater 可注入以便单元测试，默认走真实概况结尾维护。
 export async function deleteLastChapters(book, count, { awaitTail = false, tailUpdater = updateOverviewTail } = {}) {
   const error = validateBatchDelete(count, book.chapters.length);
   if (error) throw new Error(error);
   book.chapters.splice(book.chapters.length - count, count);
   book.updatedAt = new Date().toISOString();
-  const runTail = async () => {
+  if (awaitTail) {
     try {
       await tailUpdater(book, { lastIndex: book.chapters.length - 1 });
     } catch (err) {
       console.error('[storyOverview] 批量删除概况结尾更新失败:', err.message);
     }
-  };
-  if (awaitTail) await runTail();
-  else setImmediate(runTail);
+  }
   return book;
 }
 

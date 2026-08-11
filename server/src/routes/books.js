@@ -149,15 +149,26 @@ router.delete('/:id/chapters/:chapterId', (req, res) => {
   }
 });
 
-router.delete('/:id/chapters', (req, res) => {
+router.delete('/:id/chapters', async (req, res) => {
   const count = Number(req.body?.count);
   try {
     const books = readJson(BOOKS_FILE, []).map(normalizeBook);
     const book = books.find((item) => item.id === req.params.id && item.userId === req.user.id);
     if (!book || book.deletedAt) return res.status(404).json({ error: '书籍不存在' });
     // 批量删除末尾章节：与单章删除一致，删除后后台异步维护概况结尾（O(1)），请求秒回。
-    deleteLastChapters(book, count, { awaitTail: false });
+    await deleteLastChapters(book, count);
     writeJson(BOOKS_FILE, books);
+    setImmediate(async () => {
+      try {
+        const latest = readJson(BOOKS_FILE, []).map(normalizeBook);
+        const target = latest.find((item) => item.id === book.id);
+        if (!target) return;
+        await updateOverviewTail(target, { lastIndex: target.chapters.length - 1 });
+        writeJson(BOOKS_FILE, latest);
+      } catch (err) {
+        console.error('[storyOverview] 批量删除概况结尾更新失败:', err.message);
+      }
+    });
     return res.json({ book });
   } catch (err) {
     return res.status(400).json({ error: err.message });
