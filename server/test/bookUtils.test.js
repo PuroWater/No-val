@@ -24,6 +24,28 @@ test('normalizeBook fills targetWords defaults', () => {
   assert.equal(legacy.targetWords, 300000);
 });
 
+test('normalizeBook fills relations marker defaults', () => {
+  const book = normalizeBook({ chapters: [] });
+  assert.deepEqual(book.relations.nodes, []);
+  assert.deepEqual(book.relations.edges, []);
+  assert.equal(book.relations.generatedAt, null);
+  assert.equal(book.relations.coveredUpTo, 0);
+  assert.equal(book.relations.mode, '');
+  const kept = normalizeBook({
+    chapters: [],
+    relations: {
+      nodes: [{ id: 'n_1', name: '甲' }],
+      edges: [],
+      generatedAt: '2026-08-11T00:00:00.000Z',
+      coveredUpTo: 6,
+      mode: 'incremental'
+    }
+  });
+  assert.equal(kept.relations.generatedAt, '2026-08-11T00:00:00.000Z');
+  assert.equal(kept.relations.coveredUpTo, 6);
+  assert.equal(kept.relations.mode, 'incremental');
+});
+
 test('normalizeBook migrates legacy timeline into chapter events', () => {
   const book = normalizeBook({
     title: '旧书',

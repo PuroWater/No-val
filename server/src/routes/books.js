@@ -5,7 +5,7 @@ import { ensureChapterTitle, isLastChapter } from '../lib/chapterUtils.js';
 import { requireAuth } from '../middleware/auth.js';
 import { regenerateChapterSummary, updateBook } from '../services/bookService.js';
 import { updateOverviewTail } from '../services/overviewService.js';
-import { extractRelations } from '../services/storyMetaService.js';
+import { buildTimeline, extractRelations } from '../services/storyMetaService.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -49,8 +49,12 @@ router.post('/:id/relations', async (req, res) => {
   const book = books.find((item) => item.id === req.params.id && item.userId === req.user.id && !item.deletedAt);
   if (!book) return res.status(404).json({ error: '书籍不存在' });
   if (book.chapters.length === 0) return res.status(400).json({ error: '构思尚未生成章节，暂无法提取关系网' });
+  const mode = req.body?.mode;
+  if (mode !== undefined && mode !== 'incremental' && mode !== 'full') {
+    return res.status(400).json({ error: 'mode 只能是 incremental 或 full' });
+  }
   try {
-    book.relations = await extractRelations(book);
+    book.relations = await extractRelations(book, { mode });
     const saved = updateBook(req.user.id, book.id, (latest) => {
       latest.relations = book.relations;
       latest.updatedAt = new Date().toISOString();
@@ -59,6 +63,13 @@ router.post('/:id/relations', async (req, res) => {
   } catch (err) {
     return res.status(502).json({ error: `关系网生成失败：${err.message}` });
   }
+});
+
+router.get('/:id/timeline', (req, res) => {
+  const books = readJson(BOOKS_FILE, []).map(normalizeBook);
+  const book = books.find((item) => item.id === req.params.id && item.userId === req.user.id && !item.deletedAt);
+  if (!book) return res.status(404).json({ error: '书籍不存在' });
+  res.json({ timeline: buildTimeline(book) });
 });
 
 router.post('/:id/chapters/:chapterId/summary', async (req, res) => {

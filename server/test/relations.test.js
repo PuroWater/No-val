@@ -1,7 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ensureChapterTitle } from '../src/lib/chapterUtils.js';
-import { sanitizeRelations } from '../src/services/storyMetaService.js';
+import {
+  buildTimeline,
+  changedChaptersSince,
+  sanitizeRelations,
+  splitIntoBlocks
+} from '../src/services/storyMetaService.js';
 import { applyChapterEvents, changedEventsContext } from '../src/services/overviewService.js';
 
 test('sanitizeRelations keeps valid nodes and edges', () => {
@@ -67,4 +72,49 @@ test('changedEventsContext only includes changed chapters events', () => {
   assert.equal(text.includes('第3章'), false);
   assert.equal(changedEventsContext(book, [{ chapterIndex: 1 }]).includes('事件C'), true);
   assert.equal(changedEventsContext(book, []), '');
+});
+
+test('splitIntoBlocks respects chapter and character caps', () => {
+  const entries = Array.from({ length: 6 }, (_, index) => ({
+    index,
+    summary: `摘要${'长'.repeat(10)}${index}`
+  }));
+  const byChapters = splitIntoBlocks(entries, { maxChapters: 2, maxChars: 100000 });
+  assert.equal(byChapters.length, 3);
+  assert.deepEqual(byChapters[0].map((item) => item.index), [0, 1]);
+  assert.deepEqual(byChapters[2].map((item) => item.index), [4, 5]);
+  const byChars = splitIntoBlocks(entries, { maxChapters: 100, maxChars: 40 });
+  assert.equal(byChars.length > 1, true);
+  assert.equal(splitIntoBlocks([]).length, 0);
+});
+
+test('changedChaptersSince returns edited chapters after generatedAt', () => {
+  const book = {
+    chapters: [
+      { index: 0, updatedAt: '2026-08-10T00:00:00.000Z', summary: '旧' },
+      { index: 1, updatedAt: '2026-08-11T12:00:00.000Z', summary: '新' },
+      { index: 2, updatedAt: '2026-08-11T12:00:00.000Z', summary: '' },
+      { index: 3, summary: '无更新时间' }
+    ]
+  };
+  const changed = changedChaptersSince(book, '2026-08-11T00:00:00.000Z');
+  assert.equal(changed.length, 1);
+  assert.equal(changed[0].index, 1);
+  assert.equal(changedChaptersSince(book, null).length, 0);
+});
+
+test('buildTimeline derives chapter events in order', () => {
+  const book = {
+    chapters: [
+      { id: 'c1', title: '第一章', events: [{ id: 't1', event: '事件A', characters: ['甲'] }] },
+      { id: 'c2', title: '第二章', events: [] }
+    ]
+  };
+  const timeline = buildTimeline(book);
+  assert.equal(timeline.length, 2);
+  assert.equal(timeline[0].chapterIndex, 0);
+  assert.equal(timeline[0].chapterTitle, '第一章');
+  assert.equal(timeline[0].events[0].event, '事件A');
+  assert.deepEqual(timeline[1].events, []);
+  assert.equal(buildTimeline({}).length, 0);
 });

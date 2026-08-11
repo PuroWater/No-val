@@ -1,13 +1,51 @@
-// 故事元数据服务：关系网（当前）+ 未来“时间事迹轴 / 章节事迹轴”派生视图（同模块扩展）。
+// 故事元数据服务：关系网（增量/分块生成）+ 章节事迹轴派生视图。
+// 关系网采用“顺序分块增量”统一原语：full = 关系置空后逐块重建，
+// incremental = 保留现有关系，只处理 coveredUpTo 之后的章节与覆盖范围内近期变更章节。
 import { callModel } from '../lib/modelCall.js';
 
-function chapterContext(book) {
-  const summaries = book.chapters.map((chapter) => chapter.summary).filter(Boolean);
-  if (summaries.length > 0) {
-    return summaries.map((summary, index) => `第 ${index + 1} 章摘要：${summary}`).join('\n');
+export const DEFAULT_MAX_BLOCK_CHARS = 3500;
+export const DEFAULT_MAX_BLOCK_CHAPTERS = 25;
+
+function chapterSummaries(book) {
+  return (book.chapters || [])
+    .map((chapter, index) => ({ index, summary: String(chapter.summary || '').trim() }))
+    .filter((item) => item.summary);
+}
+
+function entriesToText(entries) {
+  return entries.map((entry) => `第 ${entry.index + 1} 章摘要：${entry.summary}`).join('\n');
+}
+
+// 把待处理章节摘要切成块：每块同时受字符数与章节数上限约束（纯函数，便于测试）。
+export function splitIntoBlocks(entries, { maxChars = DEFAULT_MAX_BLOCK_CHARS, maxChapters = DEFAULT_MAX_BLOCK_CHAPTERS } = {}) {
+  const blocks = [];
+  let current = [];
+  let chars = 0;
+  for (const entry of entries) {
+    const add = `第 ${entry.index + 1} 章摘要：${entry.summary}`.length;
+    if (current.length > 0 && (current.length >= maxChapters || chars + add > maxChars)) {
+      blocks.push(current);
+      current = [];
+      chars = 0;
+    }
+    current.push(entry);
+    chars += add;
   }
-  if (book.storySummary) return book.storySummary;
-  return book.chapters.slice(0, 3).map((chapter) => `${chapter.title}\n${chapter.content}`).join('\n\n');
+  if (current.length > 0) blocks.push(current);
+  return blocks;
+}
+
+// 覆盖范围内“生成后又有变更”的章节（updatedAt 晚于最近生成时间），用于增量模式的差分参照。
+export function changedChaptersSince(book, generatedAt) {
+  if (!generatedAt) return [];
+  const entries = [];
+  (book.chapters || []).forEach((chapter, index) => {
+    if (chapter.updatedAt && chapter.updatedAt > generatedAt) {
+      const summary = String(chapter.summary || '').trim();
+      if (summary) entries.push({ index, summary });
+    }
+  });
+  return entries;
 }
 
 export function sanitizeRelations(result) {
@@ -38,25 +76,65 @@ export function sanitizeRelations(result) {
   return { nodes, edges };
 }
 
-// 关系网重新生成：chapterContext(book) 发送全部章节摘要（O(章数)）。
-// 长篇小说需改为分块/增量生成（规划中）。
-export async function extractRelations(book) {
-  const text = chapterContext(book);
-  const existing = book.relations?.nodes?.length
-    ? JSON.stringify(book.relations)
-    : '暂无';
-  const result = await callModel(
-    () => ({
-      system: '你是小说关系网维护助手。根据剧情摘要和现有关系网更新关系，只返回 JSON，不要包含 Markdown。',
-      user: `现有关系网：\n${existing}\n\n剧情摘要：\n${text}\n\n返回更新后的完整关系网 JSON：{"nodes":[{"id":"n_1","name":"名称","type":"person|faction","weight":5,"isMain":true}],"edges":[{"from":"n_1","to":"n_2","label":"关系"}]}。节点 id 必须唯一，边必须引用已有节点；weight 表示重要度 1-10，主角节点 isMain 为 true。`,
-      maxTokens: 4096
-    }),
-    (result) => Array.isArray(result?.nodes)
-  );
-  return sanitizeRelations(result);
+function relationsText(relations) {
+  const nodes = Array.isArray(relations?.nodes) ? relations.nodes : [];
+  return nodes.length > 0 ? JSON.stringify({ nodes: relations.nodes, edges: relations.edges || [] }) : '暂无';
 }
 
-// ── 未来：时间事迹轴 / 章节事迹轴（派生视图，暂未实现）──
-// 章节事迹轴 = 按章节顺序输出各章 chapter.events；
-// 时间事迹轴 = 对 chapter.events 按事件时间字段（如未来新增）聚合排序。
-// 两者都由后端从章节数据确定性派生，不新增 AI 维护负担，后续在此模块扩展。
+// 关系网生成：mode 支持 incremental / full / auto（未传时按标记状态自动选择）。
+// 输入按块受控（DEFAULT_MAX_BLOCK_*），长篇小说可用；输出为带生成标记的完整关系网。
+export async function extractRelations(book, { mode } = {}) {
+  const chapters = Array.isArray(book.chapters) ? book.chapters : [];
+  const current = book.relations || { nodes: [], edges: [] };
+  const hasRelations = Array.isArray(current.nodes) && current.nodes.length > 0;
+  const effectiveMode = mode || (current.generatedAt && hasRelations ? 'incremental' : 'full');
+  const allSummaries = chapterSummaries(book);
+
+  let relations = { nodes: [...(current.nodes || [])], edges: [...(current.edges || [])] };
+  let coveredUpTo = Number(current.coveredUpTo) || 0;
+  let entries;
+
+  if (effectiveMode === 'incremental') {
+    // 删除末尾章后收敛覆盖标记，避免覆盖已不存在的章节。
+    coveredUpTo = Math.min(coveredUpTo, chapters.length);
+    const tail = allSummaries.filter((entry) => entry.index >= coveredUpTo);
+    const changed = changedChaptersSince(book, current.generatedAt).filter((entry) => entry.index < coveredUpTo);
+    const byIndex = new Map();
+    [...tail, ...changed].forEach((entry) => byIndex.set(entry.index, entry));
+    entries = [...byIndex.values()].sort((a, b) => a.index - b.index);
+  } else {
+    relations = { nodes: [], edges: [] };
+    coveredUpTo = 0;
+    entries = allSummaries;
+  }
+
+  for (const block of splitIntoBlocks(entries)) {
+    const result = await callModel(
+      () => ({
+        system: '你是小说关系网维护助手。根据本批剧情摘要和现有关系网更新关系，只返回 JSON，不要包含 Markdown。',
+        user: `现有关系网：\n${relationsText(relations)}\n\n本批剧情摘要：\n${entriesToText(block)}\n\n返回更新后的完整关系网 JSON：{"nodes":[{"id":"n_1","name":"名称","type":"person|faction","weight":5,"isMain":true}],"edges":[{"from":"n_1","to":"n_2","label":"关系"}]}。节点 id 必须唯一且尽量沿用现有 id；边必须引用已有节点；weight 表示重要度 1-10，主角节点 isMain 为 true；已不再出现的角色/势力可保留或删除。`,
+        maxTokens: 4096
+      }),
+      (result) => Array.isArray(result?.nodes)
+    );
+    relations = sanitizeRelations(result);
+    coveredUpTo = Math.max(coveredUpTo, block[block.length - 1].index + 1);
+  }
+
+  relations.generatedAt = new Date().toISOString();
+  relations.coveredUpTo = Math.min(coveredUpTo, chapters.length);
+  relations.mode = effectiveMode;
+  book.relations = relations;
+  return relations;
+}
+
+// 章节事迹轴：按章节序输出各章 chapter.events（派生视图，零 AI 成本）。
+// 时间事迹轴（按事件时间字段聚合）为后续扩展，不改变本视图结构。
+export function buildTimeline(book) {
+  return (book.chapters || []).map((chapter, index) => ({
+    chapterIndex: index,
+    chapterId: chapter.id || '',
+    chapterTitle: chapter.title || `第${index + 1}章`,
+    events: Array.isArray(chapter.events) ? chapter.events : []
+  }));
+}

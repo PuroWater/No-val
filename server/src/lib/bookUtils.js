@@ -78,6 +78,14 @@ export function normalizeBook(book) {
   if (!book.draft) book.draft = { concept: '', summary: '', targetWords: 0 };
   book.draft.targetWords = Number(book.draft.targetWords) || 0;
   if (!book.relations) book.relations = { nodes: [], edges: [] };
+  if (!Array.isArray(book.relations.nodes)) book.relations.nodes = [];
+  if (!Array.isArray(book.relations.edges)) book.relations.edges = [];
+  // 关系网生成标记：generatedAt 最近生成时间、coveredUpTo 已覆盖章节数、mode 最近一次生成模式。
+  book.relations.generatedAt = book.relations.generatedAt || null;
+  book.relations.coveredUpTo = Number.isFinite(Number(book.relations.coveredUpTo)) && Number(book.relations.coveredUpTo) >= 0
+    ? Math.floor(Number(book.relations.coveredUpTo))
+    : 0;
+  book.relations.mode = book.relations.mode || '';
   if (!book.deletedAt) book.deletedAt = null;
   if (!book.storySummary) book.storySummary = '';
   if (!book.targetWords) book.targetWords = 0;

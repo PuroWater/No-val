@@ -1,8 +1,8 @@
 【项目目标】
 在当前开发环境下（已安装 VSCode、Node.js），生成一个可直接运行的**小说创作平台 Web 应用**。项目不连接任何数据库，后端数据使用本地 JSON 文件持久化。前端为 React 单页应用（SPA），后端为 Express，调用 DeepSeek 大模型辅助创作。
 
-当前版本：0.5.22  
-最近更新：2026-08-11 概况维护输入差分与故事元数据模块拆分
+当前版本：0.6.0  
+最近更新：2026-08-11 图形化地基：关系网增量/分块生成与时间线派生视图
 
 【文档职责】
 - `TARGET.md`：每次更新的目标文件。每次更新前先修改本文档，按“日期 + 版本”划分，写明待更新说明、待更新功能；开发完成后记录实际完成内容。
@@ -1078,3 +1078,23 @@ Novel Agent/
 - `changedEventsContext`（O(变更数)）替代 `chapterEventsText`，删除旧函数；删除章节不再经过 syncChapterOverview。
 - 新增 `storyMetaService.js`（关系网）、`overviewService.js`（概况/事件写内核）与 `lib/modelCall.js`（公共调用）；删除 `ensureChapterEvents`；`books.js`、`tools.js`、`bootstrap.js` 与测试导入同步更新。
 - 单元测试 37/37，构建通过，版本号升级到 0.5.22。
+
+### 2026-08-11 v0.6.0 图形化地基：关系网增量/分块与时间线派生视图
+
+待更新说明：
+- 关系网 `extractRelations` 仍发送全部章节摘要（O(章数)），长篇小说无法生成；需要改为“增量 + 定期全量”。
+- 章节事件（`chapter.events`）已结构化，但用户没有“按章节查看事件”的入口；时间线应作为后端派生视图提供，零新增 AI 成本。
+- 详情页目前只有“内容 / 关系网”两个标签，需要第三个“时间线”标签展示章节事迹轴。
+
+待更新功能：
+- `book.relations` 增加标记字段 `generatedAt` / `coveredUpTo` / `mode`，`normalizeBook` 补默认值。
+- `POST /api/books/:id/relations` 支持 `{ mode: 'incremental' | 'full' }`：
+  - `full`：关系置空后按块顺序重生成（顺序分块增量，块内输入有上限）；
+  - `incremental`：保留现有关系，只处理 `coveredUpTo` 之后的章节与覆盖范围内近期变更章节；
+  - 未传 `mode` 时按标记状态自动选择。
+- 新增 `GET /api/books/:id/timeline` 派生接口：按章节序返回 `chapter.events`（章节事迹轴）。
+- 详情页新增“时间线”第三标签：章节为节点，展开显示事件卡（事件 + 人物），无事件章节显示空态。
+- 版本号统一为 0.6.0（根目录 package.json 补齐，server/client 同步）。
+
+完成内容：
+- （开发完成后记录）
