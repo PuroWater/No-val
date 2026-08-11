@@ -4,8 +4,10 @@ import ConfirmModal from '../components/ConfirmModal.jsx';
 import { applySettings } from '../components/SettingsApplier.jsx';
 
 const THEMES = [
+  { value: 'system', label: '跟随系统' },
   { value: 'light', label: '浅色' },
   { value: 'dark', label: '深色' },
+  { value: 'green', label: '护眼绿' },
   { value: 'paper', label: '护眼纸纹' }
 ];
 
@@ -17,7 +19,7 @@ const SIZES = [
 
 export default function SettingsPage() {
   const [activeSetting, setActiveSetting] = useState('appearance');
-  const [theme, setTheme] = useState('light');
+  const [theme, setTheme] = useState('paper');
   const [fontSize, setFontSize] = useState('medium');
   const [chaptersPerOutput, setChaptersPerOutput] = useState(3);
   const [chapterWords, setChapterWords] = useState(2000);

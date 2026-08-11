@@ -5,7 +5,7 @@ import { requireAuth } from '../middleware/auth.js';
 const router = Router();
 router.use(requireAuth);
 
-const THEMES = ['light', 'dark', 'paper'];
+const THEMES = ['system', 'light', 'dark', 'green', 'paper'];
 const FONT_SIZES = ['small', 'medium', 'large'];
 const CHAPTER_RANGE = [1, 2, 3, 4, 5];
 
@@ -13,7 +13,7 @@ router.get('/', (req, res) => {
   const settings = readJson(SETTINGS_FILE, []);
   const current = settings.find((item) => item.userId === req.user.id) || {
     userId: req.user.id,
-    theme: 'light',
+    theme: 'paper',
     fontSize: 'medium',
     chaptersPerOutput: 3,
     chapterWords: 2000,

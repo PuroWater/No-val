@@ -10,7 +10,7 @@ export function getUserSettings(userId) {
   const settings = readJson(SETTINGS_FILE, []);
   const current = settings.find((item) => item.userId === userId) || {};
   return {
-    theme: current.theme || 'light',
+    theme: current.theme || 'paper',
     fontSize: current.fontSize || 'medium',
     chaptersPerOutput: clampInt(current.chaptersPerOutput, 1, 5, 3),
     chapterWords: clampInt(current.chapterWords, 1000, 10000, 2000),

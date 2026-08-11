@@ -27,6 +27,32 @@
   --border: #ddd0b8;
 }
 
+[data-theme='green'] {
+  color-scheme: light;
+  --bg: #d7ebd9;
+  --panel: #eef7ef;
+  --text: #223725;
+  --muted: #5f7a63;
+  --accent: #2f7d43;
+  --border: #bed8c2;
+}
+
+:root[data-theme='system'] {
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-theme='system'] {
+    color-scheme: dark;
+    --bg: #15181d;
+    --panel: #20242b;
+    --text: #e8eaed;
+    --muted: #9aa3af;
+    --accent: #6ea8ff;
+    --border: #353b45;
+  }
+}
+
 * {
   box-sizing: border-box;
 }
