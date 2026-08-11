@@ -3,7 +3,7 @@ import { readJson, writeJson, BOOKS_FILE } from '../lib/store.js';
 import { normalizeBook } from '../lib/bookUtils.js';
 import { ensureChapterTitle } from '../lib/chapterUtils.js';
 import { requireAuth } from '../middleware/auth.js';
-import { extractRelations, regenerateChapterSummary, updateBook, applyTimelineChanges } from '../services/bookService.js';
+import { extractRelations, regenerateChapterSummary, updateBook, rebuildOverview } from '../services/bookService.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -115,10 +115,20 @@ router.delete('/:id/chapters/:chapterId', (req, res) => {
     const index = book.chapters.findIndex((item) => item.id === req.params.chapterId);
     if (index === -1) return res.status(404).json({ error: '章节不存在' });
     book.chapters.splice(index, 1);
-    // 纯后端移除该章的时间线条目，不调用 AI；全书概况散文保持原样，可在聊天中让 AI 重建
-    applyTimelineChanges(book, [index], [], '');
     book.updatedAt = new Date().toISOString();
     writeJson(BOOKS_FILE, books);
+    // 前端乐观删除已即时返回；概况在后台自动重建（若失败可让 AI 通过工具重建）
+    setImmediate(async () => {
+      try {
+        const latest = readJson(BOOKS_FILE, []).map(normalizeBook);
+        const target = latest.find((item) => item.id === book.id);
+        if (!target) return;
+        await rebuildOverview(target);
+        writeJson(BOOKS_FILE, latest);
+      } catch (err) {
+        console.error('[storyOverview] 删除后概况重建失败:', err.message);
+      }
+    });
     return res.json({ book });
   } catch (err) {
     return res.status(502).json({ error: err.message });

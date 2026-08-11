@@ -103,11 +103,8 @@ test('replaceTextInBook replaces text across chapter fields', () => {
     outline: '陈默的修真之路',
     storySummary: '陈默捡到古卷。',
     draft: { concept: '主角陈默', summary: '陈默得宝' },
-    timeline: [
-      { id: 't1', chapterIndex: 0, event: '陈默捡到古卷', characters: ['陈默'] }
-    ],
     chapters: [
-      { id: 'r1', title: '第一章 陈默', content: '陈默捡到玉佩，陈默开始修炼。', summary: '陈默得宝。', updatedAt: 'T0' },
+      { id: 'r1', title: '第一章 陈默', content: '陈默捡到玉佩，陈默开始修炼。', summary: '陈默得宝。', events: [{ id: 'e1', event: '陈默捡到古卷', characters: ['陈默'] }], updatedAt: 'T0' },
       { id: 'r2', title: '第二章 试炼', content: '陈默进入试炼场。', summary: '试炼。', updatedAt: 'T0' }
     ]
   };
@@ -122,8 +119,8 @@ test('replaceTextInBook replaces text across chapter fields', () => {
   assert.equal(book.storySummary, '高远捡到古卷。');
   assert.equal(book.draft.concept, '主角高远');
   assert.equal(book.draft.summary, '高远得宝');
-  assert.equal(book.timeline[0].event, '高远捡到古卷');
-  assert.deepEqual(book.timeline[0].characters, ['高远']);
+  assert.equal(book.chapters[0].events[0].event, '高远捡到古卷');
+  assert.deepEqual(book.chapters[0].events[0].characters, ['高远']);
   assert.equal(changeLog.has('r1'), true);
   assert.equal(changeLog.has('r2'), true);
 });

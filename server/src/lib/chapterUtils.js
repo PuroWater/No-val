@@ -114,14 +114,6 @@ export function replaceTextInBook(book, from, to, changeLog = new Set()) {
       book.draft[field] = replaceIn(book.draft[field]);
     }
   }
-  if (Array.isArray(book.timeline)) {
-    for (const item of book.timeline) {
-      item.event = replaceIn(item.event);
-      if (Array.isArray(item.characters)) {
-        item.characters = item.characters.map((name) => replaceIn(String(name)));
-      }
-    }
-  }
   book.chapters.forEach((chapter) => {
     let changed = false;
     for (const field of ['title', 'content', 'summary']) {
@@ -129,6 +121,22 @@ export function replaceTextInBook(book, from, to, changeLog = new Set()) {
       if (value !== chapter[field]) {
         chapter[field] = value;
         changed = true;
+      }
+    }
+    if (Array.isArray(chapter.events)) {
+      for (const item of chapter.events) {
+        const event = replaceIn(item.event);
+        if (event !== item.event) {
+          item.event = event;
+          changed = true;
+        }
+        if (Array.isArray(item.characters)) {
+          const characters = item.characters.map((name) => replaceIn(String(name)));
+          if (characters.some((name, index) => name !== item.characters[index])) {
+            item.characters = characters;
+            changed = true;
+          }
+        }
       }
     }
     if (changed) {

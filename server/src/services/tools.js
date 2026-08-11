@@ -1,5 +1,5 @@
 import { ensureChapterTitle, searchChapters, fixChapterPrefixes, replaceTextInBook } from '../lib/chapterUtils.js';
-import { rewriteChapter, continueBook, syncBookOverview } from './bookService.js';
+import { rewriteChapter, continueBook, syncChapterOverview, rebuildOverview } from './bookService.js';
 
 export const READY_TOOL_GROUPS = [
   { name: 'read', summary: '查询书籍信息、章节目录或指定章节内容', tools: ['read_book'] },
@@ -50,9 +50,16 @@ const EDIT_FIELDS = {
       chapter.summary = String(value || '').trim();
       chapter.updatedAt = new Date().toISOString();
       deps.changeLog.add(chapter.id);
-      await syncBookOverview(book, [{ chapterIndex: index, oldSummary, newSummary: chapter.summary }])
+      await syncChapterOverview(book, [{ chapterIndex: index, oldSummary, newSummary: chapter.summary }])
         .catch((err) => console.error('[storyOverview] 摘要编辑概况更新失败:', err.message));
       return { followUp: true, data: `第 ${index + 1} 章摘要已更新。` };
+    }
+  },
+  overview: {
+    needsChapter: false,
+    apply: async (book, { value }) => {
+      await rebuildOverview(book, String(value || ''));
+      return { content: '已重建全书概况。', kind: 'text' };
     }
   }
 };
@@ -109,20 +116,51 @@ export function defineReadyTools(book, settings, signal, changeLog) {
     {
       group: 'edit',
       name: 'edit_book',
-      description: '修改书籍内容。target 为修改目标，只能是 title（章节标题）/ summary（章节摘要）/ content（章节内容）/ outline（整书简介）四选一；target 为 content/title/summary 时必须提供 chapter（章节号或标题）；value 为新的标题/摘要/内容/简介。',
+      description: '修改书籍内容或结构。action 为 update（默认）或 insert（插入新章）；target 为 title（章节标题）/ summary（章节摘要）/ content（章节内容）/ outline（整书简介）/ overview（重建全书概况）五选一；target 为 content/title/summary 时必须提供 chapter；insert 时 chapter 为插入锚点、value 为新章标题；value 为新的标题/摘要/内容/简介/概况要求。',
       parameters: {
         type: 'object',
         properties: {
-          target: { type: 'string', enum: ['title', 'summary', 'content', 'outline'], description: 'title=章节标题 / summary=章节摘要 / content=章节内容 / outline=整书简介' },
+          action: { type: 'string', enum: ['update', 'insert'], description: 'update=修改 / insert=插入新章（默认 update）' },
+          target: { type: 'string', enum: ['title', 'summary', 'content', 'outline', 'overview'], description: 'title=章节标题 / summary=章节摘要 / content=章节内容 / outline=整书简介 / overview=重建全书概况' },
           chapter: { type: 'string', description: '章节号或标题，如 "第二章"、"古卷传承"' },
-          value: { type: 'string', minLength: 1, description: '新的标题/摘要/章节内容/简介' }
+          value: { type: 'string', minLength: 1, description: '新的标题/摘要/章节内容/简介/概况要求' }
         },
-        required: ['target', 'value']
+        required: []
       },
-      handler: async ({ target, chapter, value }, context) => {
+      handler: async ({ action = 'update', target, chapter, value }, context) => {
+        if (action === 'insert') {
+          const requestText = String(chapter || '').trim() || context.user || '';
+          const matches = requestText ? searchChapters(book, requestText) : [];
+          if (matches.length === 0) {
+            return {
+              content: '没有找到要插入新章的锚点章节。请在下方书籍中打开并列查看或详情确认章节，然后回复章节号或章节名。',
+              kind: 'book',
+              extra: { bookId: book.id }
+            };
+          }
+          if (matches.length > 1) {
+            const list = matches.slice(0, 5).map((item, order) => `${order + 1}. ${item.title}`).join('\n');
+            return { content: `找到多个相似章节，请选择插入位置：\n${list}`, kind: 'question' };
+          }
+          const anchorIndex = matches[0].index;
+          const newIndex = anchorIndex + 1;
+          const now = new Date().toISOString();
+          const newChapter = {
+            id: `c_${book.id}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            title: ensureChapterTitle(newIndex, value),
+            content: '',
+            summary: '',
+            events: [],
+            createdAt: now,
+            updatedAt: now
+          };
+          book.chapters.splice(newIndex, 0, newChapter);
+          changeLog.chapterIds.add(newChapter.id);
+          return { followUp: true, data: `已在第 ${anchorIndex + 1} 章《${matches[0].title}》后插入新章《${newChapter.title}》（空章节，可继续用本工具填充内容）。` };
+        }
         const field = EDIT_FIELDS[target];
         if (!field) {
-          return { content: '未知的修改目标，仅支持 title / summary / content / outline。', kind: 'text' };
+          return { content: '未知的修改目标，仅支持 title / summary / content / outline / overview。', kind: 'text' };
         }
         const deps = { changeLog: changeLog.chapterIds, settings, signal };
         if (!field.needsChapter) {
@@ -172,17 +210,26 @@ export function defineReadyTools(book, settings, signal, changeLog) {
     {
       group: 'read',
       name: 'read_book',
-      description: '查询书籍信息或章节内容。field 为 info（书名/简介/章节数/进度/目标字数）、chapters（章节目录）、chapter（指定章节内容）；查询具体章节时必须先调用本工具读取后再回答，不要凭摘要猜测。',
+      description: '查询书籍信息、全书概况或章节内容。field 为 info（书名/简介/章节数/进度/目标字数）、chapters（章节目录）、chapter（指定章节内容）、overview（当前全书概况）；查询具体章节时必须先调用本工具读取后再回答，不要凭摘要猜测；正文过长时用 maxChars 控制节选长度。',
       parameters: {
         type: 'object',
         properties: {
-          field: { type: 'string', description: 'info | chapters | chapter' },
+          field: { type: 'string', description: 'info | chapters | chapter | overview' },
           target: { type: 'string', description: '章节号或标题，field=chapter 时必填' },
-          scope: { type: 'string', description: 'summary 或 content，field=chapter 时生效' }
+          scope: { type: 'string', description: 'summary 或 content，field=chapter 时生效' },
+          maxChars: { type: 'integer', minimum: 100, maximum: 8000, description: '正文节选最大字数，默认 3000、上限 8000（仅 field=chapter 且 scope=content 时生效）' }
         },
         required: ['field']
       },
-      handler: async ({ field, target, scope }, context) => {
+      handler: async ({ field, target, scope, maxChars }, context) => {
+        if (field === 'overview') {
+          return {
+            followUp: true,
+            data: book.storySummary
+              ? `当前全书概况：\n${book.storySummary}`
+              : '当前全书概况：暂无（章节生成或修改后会自动重建，也可用 edit_book 的 overview 目标重建）'
+          };
+        }
         if (field === 'info') {
           const totalWords = book.chapters.reduce((sum, chapter) => sum + (chapter.content || '').length, 0);
           return {
@@ -214,7 +261,8 @@ export function defineReadyTools(book, settings, signal, changeLog) {
         const index = matches[0].index;
         const chapter = book.chapters[index];
         const useContent = String(scope || '') === 'content';
-        const excerpt = useContent && chapter.content ? chapter.content.slice(0, 1200) : '';
+        const limit = Math.min(Math.max(Number(maxChars) || 3000, 100), 8000);
+        const excerpt = useContent && chapter.content ? chapter.content.slice(0, limit) : '';
         const data = [
           `第 ${index + 1} 章《${chapter.title}》`,
           `摘要：${chapter.summary || '无'}`,

@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-- 当前版本：0.5.18
+- 当前版本：0.5.19
 - 当前分支：Develop
 - 技术栈：React 18 + Vite 5，Express 4，Node.js 18+，JSON 本地持久化
 - 大模型：DeepSeek，模型默认 `deepseek-v4-flash`
@@ -69,9 +69,9 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 - 改写章节：输入修改意见，Agent 判断目标章节并重写。
 - 剧情问答：询问设定、角色或剧情，Agent 直接回答。
 - 续写、改写只自动维护章节摘要与全书概况；关系网需手动重新生成。
-- 全书概况采用结构化时间线（`book.timeline`，按章节索引）配合精简散文（`storySummary`），章节新增/改写/删除后由后端自动差分更新。
+- 全书概况采用“章节事件（`chapter.events` 内嵌，含事件与人物）+ 精简散文（`storySummary`）”结构，章节新增/改写/删除后由后端自动差分更新；`read_book` 可读全书概况，`edit_book` 的 `overview` 目标可重建，作为自动重建失败的兜底。
 - 聊天意图由 Agent 通过 function calling 决策：模型返回标准工具与参数，后端按 schema 硬校验后执行；工具协议为 ReAct 多步循环（默认 4 步），工具结果回填后模型可继续调用或直接回复，失败自动回传重试。
-- 通用读工具 `read_book` 覆盖书籍信息（书名/简介/章节数/进度/目标字数）、章节目录与指定章节内容；摘要维护保持后端自动，关系网保持手动触发。
+- 通用读工具 `read_book` 覆盖书籍信息（书名/简介/章节数/进度/目标字数）、章节目录、指定章节内容与全书概况（`field: overview`）；正文节选默认 3000 字、上限 8000（`maxChars`）；摘要维护保持后端自动，关系网保持手动触发。
 
 ### 删除与回收站
 
@@ -161,14 +161,14 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
       "title": "章节标题",
       "content": "章节正文",
       "summary": "章节摘要",
+      "events": [
+        { "id": "e_1", "event": "事件", "characters": ["人物"] }
+      ],
       "updatedAt": "..."
     }
   ],
   "relations": { "nodes": [], "edges": [] },
   "storySummary": "全书剧情摘要",
-  "timeline": [
-    { "id": "t_1", "chapterIndex": 0, "event": "事件", "characters": ["人物"] }
-  ],
   "chat": [],
   "draft": { "concept": "", "summary": "" },
   "deletedAt": null,
@@ -945,3 +945,16 @@ npm start
 - 版本号升级到 0.5.18。
 
 完成结果：删除章节即时响应、错误不再打穿整页，关系网空态提示与实际交互一致。
+
+### 2026-08-11 v0.5.19 章节事件内嵌与编辑动作统一
+
+更新内容：
+
+- 数据结构重构：删除 `book.timeline` 数组，结构化事件内嵌到各章 `chapter.events`（事件 + 人物）；旧书加载时自动迁移并清理 `timeline` 字段。
+- `edit_book` 支持 `action: update | insert`：insert 在锚点章节后插入新章（自动补标题前缀），与 update 共用同一套写内核。
+- `edit_book` 新增 `target: overview` 重建全书概况；`read_book` 新增 `field: overview` 读取概况、`maxChars` 控制正文节选长度（默认 3000、上限 8000），作为自动重建失败的兜底读写通道。
+- 删除章节：前端乐观移除 + 后端异步删除并自动重建全书概况（`rebuildOverview`，不阻塞请求；失败不打断操作，可在聊天中让 AI 重建）。
+- 批量替换 `replaceTextInBook` 覆盖 `chapter.events` 的事件与人物名，替换后全书一致。
+- 单元测试 35/35（含 timeline→events 迁移、applyChapterEvents、replaceTextInBook 事件覆盖）；版本号升级到 0.5.19。
+
+完成结果：数据模型统一为“章节内嵌事件”，写路径（新增/续写/改写/摘要编辑/删除/重建概况）全部走同一内核，AI 可自主读写全书概况。

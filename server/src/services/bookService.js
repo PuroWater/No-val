@@ -55,43 +55,55 @@ function buildStorySummary(chapters) {
   return summaries.length > 0 ? summaries.join('\n') : '';
 }
 
-export function applyTimelineChanges(book, changedIndexes, items, prose) {
-  if (!Array.isArray(book.timeline)) book.timeline = [];
+export function applyChapterEvents(book, changedIndexes, eventsByChapter, prose) {
   const indexes = new Set(changedIndexes.map(Number));
-  book.timeline = book.timeline.filter((item) => !indexes.has(Number(item.chapterIndex)));
-  for (const item of items || []) {
-    book.timeline.push({
+  book.chapters.forEach((chapter, index) => {
+    if (!indexes.has(index)) return;
+    const events = (eventsByChapter && eventsByChapter[index]) || [];
+    chapter.events = events.map((item) => ({
       id: `t_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-      chapterIndex: Number(item.chapterIndex),
       event: String(item.event || '').trim(),
       characters: Array.isArray(item.characters) ? item.characters.map(String) : []
-    });
-  }
-  book.timeline.sort((a, b) => Number(a.chapterIndex) - Number(b.chapterIndex));
+    }));
+  });
   if (typeof prose === 'string' && prose.trim()) book.storySummary = prose.trim();
 }
 
-export async function ensureTimeline(book) {
-  if (!Array.isArray(book.timeline)) book.timeline = [];
-  if (book.timeline.length > 0) return book;
+function chapterEventsText(book) {
+  const lines = [];
+  book.chapters.forEach((chapter, index) => {
+    for (const item of chapter.events || []) {
+      lines.push(`第${index + 1}章：${item.event}`);
+    }
+  });
+  return lines.length > 0 ? lines.join('\n') : '暂无';
+}
+
+export async function ensureChapterEvents(book) {
+  const missing = book.chapters.some((chapter) => (chapter.events || []).length === 0 && chapter.summary);
+  if (!missing) return book;
   const summaries = book.chapters
     .map((chapter, index) => (chapter.summary ? `第${index + 1}章：${chapter.summary}` : ''))
     .filter(Boolean);
   if (summaries.length === 0) return book;
   const result = await callModel(
     () => ({
-      system: '你是全书概况维护助手。根据各章摘要生成结构化剧情事件列表。只返回 JSON，不要包含 Markdown。',
-      user: `各章摘要：\n${summaries.join('\n')}\n\n返回 JSON：{"items":[{"chapterIndex":0,"event":"事件","characters":["人物"]}]}，每章 1-3 条。`,
+      system: '你是全书概况维护助手。根据各章摘要为每章生成结构化剧情事件。只返回 JSON，不要包含 Markdown。',
+      user: `各章摘要：\n${summaries.join('\n')}\n\n返回 JSON：{"chapters":[{"chapterIndex":0,"events":[{"event":"事件","characters":["人物"]}]}]}，每章 1-3 条。`,
       temperature: 0.4,
       maxTokens: 1500
     }),
-    (result) => Array.isArray(result?.items)
+    (result) => Array.isArray(result?.chapters)
   );
-  applyTimelineChanges(book, [], result.items, '');
+  const byChapter = {};
+  for (const item of result.chapters || []) {
+    byChapter[Number(item.chapterIndex)] = item.events || [];
+  }
+  applyChapterEvents(book, book.chapters.map((_, index) => index), byChapter, '');
   return book;
 }
 
-export async function syncBookOverview(book, changes = []) {
+export async function syncChapterOverview(book, changes = []) {
   const valid = changes.filter((change) => change && Number.isInteger(change.chapterIndex));
   if (valid.length === 0) return book;
   const desc = valid
@@ -101,24 +113,43 @@ export async function syncBookOverview(book, changes = []) {
       return `第${index}章（${action}）\n${change.oldSummary ? `旧摘要：${change.oldSummary}` : ''}\n${change.newSummary ? `新摘要：${change.newSummary}` : ''}`.trim();
     })
     .join('\n');
-  const timelineText = (book.timeline || []).length > 0
-    ? book.timeline.map((item) => `第${item.chapterIndex + 1}章：${item.event}`).join('\n')
-    : '暂无';
   const result = await callModel(
     () => ({
-      system: '你是全书概况维护助手。根据章节变更返回该章剧情事件条目与更新后的精简全书概况。只返回 JSON，不要包含 Markdown。',
-      user: `当前全书概况：\n${book.storySummary || '暂无'}\n\n当前时间线条目：\n${timelineText}\n\n章节变更：\n${desc}\n\n返回 JSON：{"items":[{"chapterIndex":0,"event":"事件","characters":["人物"]}],"prose":"更新后的精简全书概况"}。items 只包含本次变更的章节。`,
+      system: '你是全书概况维护助手。根据章节变更返回该章结构化事件与更新后的精简全书概况。只返回 JSON，不要包含 Markdown。',
+      user: `当前全书概况：\n${book.storySummary || '暂无'}\n\n当前章节事件：\n${chapterEventsText(book)}\n\n章节变更：\n${desc}\n\n返回 JSON：{"chapters":[{"chapterIndex":0,"events":[{"event":"事件","characters":["人物"]}]}],"prose":"更新后的精简全书概况"}。chapters 只包含本次变更的章节，删除章节时返回空 events。`,
       temperature: 0.4,
       maxTokens: 1200
     }),
-    (result) => Array.isArray(result?.items) && typeof result.prose === 'string'
+    (result) => Array.isArray(result?.chapters) && typeof result.prose === 'string'
   );
   const deletedIndexes = new Set(
     valid.filter((change) => change.oldSummary && !change.newSummary).map((change) => change.chapterIndex)
   );
-  const items = (result.items || []).filter((item) => !deletedIndexes.has(Number(item.chapterIndex)));
-  applyTimelineChanges(book, valid.map((change) => change.chapterIndex), items, result.prose);
+  const byChapter = {};
+  for (const item of result.chapters || []) {
+    const index = Number(item.chapterIndex);
+    byChapter[index] = deletedIndexes.has(index) ? [] : item.events || [];
+  }
+  applyChapterEvents(book, valid.map((change) => change.chapterIndex), byChapter, result.prose);
   return book;
+}
+
+export async function rebuildOverview(book, instruction = '') {
+  const summaries = book.chapters
+    .map((chapter, index) => (chapter.summary ? `第${index + 1}章：${chapter.summary}` : ''))
+    .filter(Boolean);
+  if (summaries.length === 0) return book.storySummary || '';
+  const result = await callModel(
+    () => ({
+      system: '你是全书概况维护助手。根据全部章节摘要重新压缩生成精简全书概况。只返回 JSON，不要包含 Markdown。',
+      user: `各章摘要：\n${summaries.join('\n')}\n\n${instruction ? `要求：${instruction}\n` : ''}返回 JSON：{"prose":"更新后的精简全书概况"}。`,
+      temperature: 0.4,
+      maxTokens: 1200
+    }),
+    (result) => result && typeof result.prose === 'string' && result.prose.trim()
+  );
+  book.storySummary = result.prose.trim();
+  return book.storySummary;
 }
 
 export function sanitizeRelations(result) {
@@ -232,7 +263,7 @@ export async function createBookFromConcept(userId, concept, settings = {}) {
     updatedAt: now
   });
   book.storySummary = buildStorySummary(book.chapters);
-  await ensureTimeline(book).catch((err) => console.error('[storyOverview] 新书概况初始化失败:', err.message));
+  await ensureChapterEvents(book).catch((err) => console.error('[storyOverview] 新书概况初始化失败:', err.message));
   const books = readJson(BOOKS_FILE, []).map(normalizeBook);
   books.push(book);
   writeJson(BOOKS_FILE, books);
@@ -256,7 +287,7 @@ export async function finalizeDraftBook(book, settings = {}) {
     updatedAt: now
   }));
   book.storySummary = buildStorySummary(book.chapters);
-  await ensureTimeline(book).catch((err) => console.error('[storyOverview] 新书概况初始化失败:', err.message));
+  await ensureChapterEvents(book).catch((err) => console.error('[storyOverview] 新书概况初始化失败:', err.message));
   book.status = 'ready';
   book.targetWords = book.draft.targetWords || book.targetWords || 0;
   book.updatedAt = now;
@@ -314,7 +345,7 @@ export async function continueBook(book, instruction, settings = {}) {
     throw err;
   }
   book.updatedAt = now;
-  await syncBookOverview(book, added.map((chapter, i) => ({ chapterIndex: startCount + i, newSummary: chapter.summary })))
+  await syncChapterOverview(book, added.map((chapter, i) => ({ chapterIndex: startCount + i, newSummary: chapter.summary })))
     .catch((err) => console.error('[storyOverview] 续写概况更新失败:', err.message));
   return book;
 }
@@ -348,7 +379,7 @@ export async function rewriteChapter(book, chapterIndex, instruction, settings =
   target.summary = String(result.summary || target.summary || '').trim();
   target.updatedAt = new Date().toISOString();
   book.updatedAt = target.updatedAt;
-  await syncBookOverview(book, [{ chapterIndex, oldSummary, newSummary: target.summary }])
+  await syncChapterOverview(book, [{ chapterIndex, oldSummary, newSummary: target.summary }])
     .catch((err) => console.error('[storyOverview] 改写概况更新失败:', err.message));
   return book;
 }
@@ -364,7 +395,7 @@ export async function regenerateChapterSummary(book, chapterId) {
     maxTokens: 900
   });
   chapter.summary = String(result.summary || oldSummary || '').trim();
-  await syncBookOverview(book, [{ chapterIndex: book.chapters.indexOf(chapter), oldSummary, newSummary: chapter.summary }])
+  await syncChapterOverview(book, [{ chapterIndex: book.chapters.indexOf(chapter), oldSummary, newSummary: chapter.summary }])
     .catch((err) => console.error('[storyOverview] 章节摘要概况更新失败:', err.message));
   return book;
 }

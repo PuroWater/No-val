@@ -2,16 +2,16 @@ import fs from 'node:fs';
 import { hashPassword } from './security.js';
 import { readJson, writeJson, USERS_FILE, BOOKS_FILE, SETTINGS_FILE } from './store.js';
 import { normalizeBook } from './bookUtils.js';
-import { ensureTimeline } from '../services/bookService.js';
+import { ensureChapterEvents } from '../services/bookService.js';
 
 async function migrateBooks() {
   if (!fs.existsSync(BOOKS_FILE)) return;
   const books = readJson(BOOKS_FILE, []).map(normalizeBook);
   let changed = false;
   for (const book of books) {
-    if (book.chapters.length > 0 && book.timeline.length === 0 && book.chapters.some((chapter) => chapter.summary)) {
+    if (book.chapters.length > 0 && book.chapters.some((chapter) => (chapter.events || []).length === 0 && chapter.summary)) {
       try {
-        await ensureTimeline(book);
+        await ensureChapterEvents(book);
         changed = true;
       } catch (err) {
         console.error('[storyOverview] 旧书概况迁移失败:', book.id, err.message);

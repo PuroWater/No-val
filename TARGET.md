@@ -1,8 +1,8 @@
 【项目目标】
 在当前开发环境下（已安装 VSCode、Node.js），生成一个可直接运行的**小说创作平台 Web 应用**。项目不连接任何数据库，后端数据使用本地 JSON 文件持久化。前端为 React 单页应用（SPA），后端为 Express，调用 DeepSeek 大模型辅助创作。
 
-当前版本：0.5.18  
-最近更新：2026-08-11 删除章节与关系网空态修复
+当前版本：0.5.19  
+最近更新：2026-08-11 章节事件内嵌与编辑动作统一
 
 【文档职责】
 - `TARGET.md`：每次更新的目标文件。每次更新前先修改本文档，按“日期 + 版本”划分，写明待更新说明、待更新功能；开发完成后记录实际完成内容。
@@ -1010,3 +1010,20 @@ Novel Agent/
 - `DELETE /:id/chapters/:chapterId` 纯后端：移除章节 + 移除该章时间线条目（`applyTimelineChanges`），不调用 AI；`storySummary` 保持原样。
 - `BookSidePanel` 删除章节：本地先移除 + 定位第一章 + 独立错误提示（不再整页空白）。
 - `.side-panel-head p` 间距还原 16px；测试与构建通过，版本号升级到 0.5.18。
+
+### 2026-08-11 v0.5.19 章节事件内嵌与编辑动作统一
+
+待更新说明：
+- 全书时间线（`book.timeline`）与章节一一对应，却作为独立数组维护，容易失配；时间线本质是各章事件的结构化表达，应作为章节内部字段。
+- 删除/插入等结构操作与内容修改分散在不同路径，缺乏统一写内核；自动重建概况失败后，AI 没有读写全书概况的兜底通道。
+
+待更新功能：
+- 删除 `book.timeline`，结构化事件内嵌为 `chapter.events`（事件 + 人物），全书概况作为被动派生视图，AI 不直接维护；旧书自动迁移。
+- `edit_book` 增加 `action`（update/insert）与 `target: overview`（重建概况）；`read_book` 增加 `field: overview` 与 `maxChars`。
+- 删除章节 = 前端乐观刷新 + 后端异步删除并自动重建概况；保留聊天内 AI 重建/读取概况的兜底。
+
+完成内容：
+- `normalizeBook` 迁移 timeline → chapter.events 并清理字段；`ensureChapterEvents` / `syncChapterOverview` / `rebuildOverview` / `applyChapterEvents` 统一写内核。
+- `tools.js`：`edit_book` 支持 `action: update|insert` 与 `target: overview`；`read_book` 支持 `field: overview` 与 `maxChars`（默认 3000 / 上限 8000）。
+- `DELETE /:id/chapters/:chapterId`：纯后端移除章节并 `setImmediate` 后台 `rebuildOverview`；前端 `BookSidePanel` 乐观移除 + 定位第一章。
+- `replaceTextInBook` 批量替换覆盖 `chapter.events`；单元测试 35/35（新增迁移与事件测试），构建通过，版本号升级到 0.5.19。
