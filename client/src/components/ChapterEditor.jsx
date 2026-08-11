@@ -3,9 +3,16 @@ import { useEffect, useRef, useState } from 'react';
 export default function ChapterEditor({ chapter, onSave, onCommit }) {
   const [title, setTitle] = useState(chapter.title);
   const [content, setContent] = useState(chapter.content);
-  const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [savedToast, setSavedToast] = useState(false);
   const first = useRef(true);
+  const savedTimerRef = useRef(null);
+
+  function showSavedToast() {
+    setSavedToast(true);
+    clearTimeout(savedTimerRef.current);
+    savedTimerRef.current = setTimeout(() => setSavedToast(false), 1000);
+  }
 
   useEffect(() => {
     if (first.current) {
@@ -13,11 +20,11 @@ export default function ChapterEditor({ chapter, onSave, onCommit }) {
       return undefined;
     }
     const timer = setTimeout(async () => {
-      setSaving(true);
       try {
         await onSave({ title, content });
-      } finally {
-        setSaving(false);
+        showSavedToast();
+      } catch {
+        // 保存失败保持 dirty，下次失焦或改动时重试
       }
     }, 1000);
     return () => clearTimeout(timer);
@@ -28,6 +35,7 @@ export default function ChapterEditor({ chapter, onSave, onCommit }) {
     setDirty(false);
     try {
       await onSave({ title, content });
+      showSavedToast();
       onCommit?.();
     } catch {
       setDirty(true);
@@ -36,9 +44,6 @@ export default function ChapterEditor({ chapter, onSave, onCommit }) {
 
   return (
     <div className="chapter-editor">
-      <div className="editor-toolbar">
-        <span>{saving ? '保存中…' : '已自动保存'}</span>
-      </div>
       <input
         value={title}
         onChange={(e) => { setTitle(e.target.value); setDirty(true); }}
@@ -51,6 +56,11 @@ export default function ChapterEditor({ chapter, onSave, onCommit }) {
         onBlur={handleBlur}
         placeholder={content ? '正文内容' : '还没有内容，可键入章节构思'}
       />
+      {savedToast && (
+        <div className="toast-layer">
+          <div className="saved-toast">已保存</div>
+        </div>
+      )}
     </div>
   );
 }

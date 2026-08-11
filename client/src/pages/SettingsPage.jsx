@@ -122,6 +122,12 @@ export default function SettingsPage() {
             外观
           </button>
           <button
+            className={`directory-item ${activeSetting === 'general' ? 'active' : ''}`}
+            onClick={() => setActiveSetting('general')}
+          >
+            常规
+          </button>
+          <button
             className={`directory-item ${activeSetting === 'trash' ? 'active' : ''}`}
             onClick={() => setActiveSetting('trash')}
           >
@@ -157,6 +163,11 @@ export default function SettingsPage() {
                   ))}
                 </div>
               </div>
+              {appearanceError && <p className="form-error">{appearanceError}</p>}
+            </>
+          )}
+          {activeSetting === 'general' && (
+            <>
               <div className="settings-group">
                 <span>默认输出章节数</span>
                 <input
@@ -192,19 +203,20 @@ export default function SettingsPage() {
               </div>
               <div className="settings-group">
                 <span>发送快捷键</span>
-                <label className="option-row">
-                  <input
-                    type="checkbox"
-                    checked={enterToSend}
-                    onChange={(e) => {
-                      const value = e.target.checked;
-                      setEnterToSend(value);
-                      save(theme, fontSize, chaptersPerOutput, chapterWords, value);
-                    }}
-                  />
-                  Enter 发送（Ctrl+Enter 换行）
-                </label>
-                <p className="muted">取消勾选后改为 Ctrl+Enter 发送、Enter 换行。</p>
+                <div className="option-row">
+                  <button
+                    className={enterToSend ? 'active' : ''}
+                    onClick={() => { setEnterToSend(true); save(theme, fontSize, chaptersPerOutput, chapterWords, true); }}
+                  >
+                    Enter
+                  </button>
+                  <button
+                    className={!enterToSend ? 'active' : ''}
+                    onClick={() => { setEnterToSend(false); save(theme, fontSize, chaptersPerOutput, chapterWords, false); }}
+                  >
+                    Ctrl+Enter
+                  </button>
+                </div>
               </div>
               {appearanceError && <p className="form-error">{appearanceError}</p>}
             </>

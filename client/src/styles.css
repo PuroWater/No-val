@@ -578,8 +578,11 @@ button, input, textarea, select {
 
 .route-overlay {
   position: fixed;
-  inset: 0;
-  z-index: 100;
+  top: 56px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 90;
   background: var(--bg);
   padding: 24px 24px 40px;
   overflow: hidden;
