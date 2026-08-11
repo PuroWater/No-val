@@ -86,6 +86,7 @@ function computeLayout(nodes, edges) {
 function RelationGraphInner({ relations }) {
   const nodes = relations?.nodes || [];
   const edges = relations?.edges || [];
+  const hasGraph = nodes.length > 0;
   const layout = useMemo(() => computeLayout(nodes, edges), [relations]);
   const [view, setView] = useState({ x: VIEW_W / 2, y: VIEW_H / 2, scale: 1 });
   const drag = useRef(null);
@@ -97,6 +98,8 @@ function RelationGraphInner({ relations }) {
   }
 
   useEffect(() => {
+    // 关系网为空时组件提前返回空态，容器 div 不存在；有节点后再挂滚轮监听。
+    if (!hasGraph) return undefined;
     const el = containerRef.current;
     if (!el) return undefined;
     const handler = (event) => {
@@ -106,7 +109,7 @@ function RelationGraphInner({ relations }) {
     };
     el.addEventListener('wheel', handler, { passive: false });
     return () => el.removeEventListener('wheel', handler);
-  }, []);
+  }, [hasGraph]);
 
   useEffect(() => () => {
     if (dragHandlers.current) {

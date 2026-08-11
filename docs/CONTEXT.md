@@ -43,6 +43,7 @@
 - 0.5.22：`syncChapterOverview` 输入差分（去掉全书事件列表）；模块拆分（overviewService / storyMetaService / modelCall）；删除 `ensureChapterEvents` 全量迁移函数（新书首章事件走 syncChapterOverview，旧 timeline 迁移由 normalizeBook 确定性完成）。
 - 0.6.0：关系网改为“顺序分块增量”（full 置空逐块重建 / incremental 保留现有只处理新增变更章节，消除唯一 O(章数) 输入）；`relations` 新增 `generatedAt`/`coveredUpTo`/`mode` 标记；新增 `GET /api/books/:id/timeline`（章节事迹轴，零 AI）；详情页新增“时间线”第三标签（章节展开显示事件卡）；版本号统一 0.6.0（根 package.json 由 0.5.18 补齐）。
 - 0.6.1：修复新建章节“只有第n章前缀也创建”的 bug（必须有实际章节名才新建）；摘要/事件维护触发从“失焦”改为“编辑器卸载”（切标签/关面板/返回），先保存最新改动再 `POST /summary`，与改写共用 `syncChapterOverview` 内核。
+- 0.6.1（续）：修复关系网重新生成后滚轮缩放失效——滚轮监听改依赖 `hasGraph`，空态转有数据时重新绑定。
 
 ## 已知问题与后续规划（0.6.1 / 0.6.2）
 
