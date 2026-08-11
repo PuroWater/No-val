@@ -101,13 +101,33 @@ export function replaceTextInBook(book, from, to, changeLog = new Set()) {
   const target = String(to ?? '');
   if (!source) return 0;
   let count = 0;
+  const replaceIn = (value) => {
+    if (typeof value !== 'string' || !value.includes(source)) return value;
+    count += value.split(source).length - 1;
+    return value.split(source).join(target);
+  };
+  for (const field of ['title', 'outline', 'storySummary']) {
+    book[field] = replaceIn(book[field]);
+  }
+  if (book.draft) {
+    for (const field of ['concept', 'summary']) {
+      book.draft[field] = replaceIn(book.draft[field]);
+    }
+  }
+  if (Array.isArray(book.timeline)) {
+    for (const item of book.timeline) {
+      item.event = replaceIn(item.event);
+      if (Array.isArray(item.characters)) {
+        item.characters = item.characters.map((name) => replaceIn(String(name)));
+      }
+    }
+  }
   book.chapters.forEach((chapter) => {
     let changed = false;
     for (const field of ['title', 'content', 'summary']) {
-      const value = chapter[field];
-      if (typeof value === 'string' && value.includes(source)) {
-        chapter[field] = value.split(source).join(target);
-        count += value.split(source).length - 1;
+      const value = replaceIn(chapter[field]);
+      if (value !== chapter[field]) {
+        chapter[field] = value;
         changed = true;
       }
     }

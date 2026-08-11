@@ -73,6 +73,7 @@ export async function runToolDecision({
   system = '',
   tools: toolList = [],
   user,
+  context = '',
   signal,
   ask = chatCompletion,
   maxAttempts = 3,
@@ -85,6 +86,7 @@ export async function runToolDecision({
   const basePrompt = [
     '你是协作 Agent，根据用户消息调用工具或直接回答。只能使用下面列出的工具：',
     toolText,
+    context ? `近期对话：\n${context}\n` : '',
     '返回 JSON：需要调用工具时返回 {"tool":"工具名","arguments":{...}}；已经可以回答用户时返回 {"reply":"回答文本"}。不要包含 Markdown。'
   ].join('\n');
   const history = [`用户消息：${user}`];
@@ -145,25 +147,35 @@ export async function runToolDecision({
 export async function prefilterIntent({
   groups = [],
   user,
+  history = '',
   signal,
   ask = chatCompletion,
+  system = '你是工具筛选 Agent。',
   maxAttempts = 2,
   maxTokens = 120
 }) {
   const names = groups.map((group) => group.name);
   const groupText = groups.map((group) => `- ${group.name}：${group.summary}`).join('\n');
   const prompt = [
-    '你是工具筛选 Agent。根据用户消息判断最可能需要哪个能力组，最多返回 2 个。',
+    '你是工具筛选 Agent。根据用户消息判断是普通聊天还是需要调用工具。',
+    `近期对话：\n${history || '（无）'}`,
     '可用能力组：',
     groupText,
-    '如果用户明确指定了输出规模（如“续写一章”“每章 5000 字”），同时在 output 中返回：{"groups":["组名", ...],"output":{"chapters":1,"chapterWords":5000}}；未指定时可省略 output。',
+    '普通聊天时返回 {"mode":"chat","reply":"回答文本"}；需要调用工具时返回 {"mode":"tool","groups":["组名", ...]}，最多 2 个组；用户明确指定输出规模（如“续写一章”“每章 5000 字”）时在 tool 模式下附带 {"output":{"chapters":1,"chapterWords":5000}}。',
     '必须返回 JSON，groups 只能使用上面的组名。不要包含 Markdown。',
     `用户消息：${user}`
   ].join('\n');
   let lastError = '';
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     try {
-      const result = await ask({ system: '你是工具筛选 Agent。', user: prompt, maxTokens, signal });
+      const result = await ask({ system, user: prompt, maxTokens, signal });
+      const rawMode = String(result?.mode || 'tool');
+      if (rawMode === 'chat') {
+        const reply = String(result?.reply || '').trim();
+        if (reply) return { mode: 'chat', reply, groups: [], output: null };
+        lastError = 'chat 模式缺少 reply';
+        continue;
+      }
       const picked = (Array.isArray(result?.groups) ? result.groups : [])
         .map((name) => String(name))
         .filter((name) => names.includes(name));
@@ -175,7 +187,7 @@ export async function prefilterIntent({
         const chapterWords = Number(rawOutput.chapterWords);
         if (Number.isInteger(chapters)) output.chapters = Math.min(5, Math.max(1, chapters));
         if (Number.isFinite(chapterWords)) output.chapterWords = Math.min(10000, Math.max(1000, Math.round(chapterWords)));
-        return { groups: unique, output: Object.keys(output).length > 0 ? output : null };
+        return { mode: 'tool', groups: unique, output: Object.keys(output).length > 0 ? output : null };
       }
       lastError = '未返回有效能力组';
     } catch (err) {
@@ -183,5 +195,5 @@ export async function prefilterIntent({
       lastError = err.message;
     }
   }
-  return { groups: [], output: null };
+  return { mode: 'tool', groups: [], output: null };
 }

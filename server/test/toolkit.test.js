@@ -176,14 +176,17 @@ test('prefilterIntent returns only valid group names', async () => {
   const decision = await prefilterIntent({
     groups,
     user: '把第二章标题改一下',
+    history: '用户：你好\n助手：你好！',
     ask: async (options) => {
       asked.push(options);
       return { groups: ['edit', 'unknown', 'edit'], output: { chapters: 9, chapterWords: 5000 } };
     }
   });
+  assert.equal(decision.mode, 'tool');
   assert.deepEqual(decision.groups, ['edit']);
   assert.deepEqual(decision.output, { chapters: 5, chapterWords: 5000 });
   assert.equal(asked[0].model, undefined);
+  assert.equal(asked[0].user.includes('近期对话'), true);
 });
 
 test('prefilterIntent retries then falls back to empty on invalid results', async () => {
@@ -194,6 +197,19 @@ test('prefilterIntent retries then falls back to empty on invalid results', asyn
     ask: async () => ({ groups: ['nope'] }),
     maxAttempts: 2
   });
+  assert.equal(decision.mode, 'tool');
   assert.deepEqual(decision.groups, []);
   assert.equal(decision.output, null);
+});
+
+test('prefilterIntent returns chat mode with reply when no tool needed', async () => {
+  const groups = [{ name: 'read', summary: '读取' }];
+  const decision = await prefilterIntent({
+    groups,
+    user: '我觉得主角应该更勇敢一些',
+    ask: async () => ({ mode: 'chat', reply: '好的，那后续写作会突出主角的勇敢。' })
+  });
+  assert.equal(decision.mode, 'chat');
+  assert.equal(decision.reply, '好的，那后续写作会突出主角的勇敢。');
+  assert.deepEqual(decision.groups, []);
 });

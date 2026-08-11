@@ -14,6 +14,25 @@ export function hasPending(book) {
   return book.chat.some((message) => message.kind === 'processing');
 }
 
+function localDateKey(iso) {
+  const date = new Date(iso);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+export function buildTodayHistory(book) {
+  const chat = book.chat || [];
+  const end = chat[chat.length - 1]?.kind === 'processing' ? chat.length - 2 : chat.length - 1;
+  const today = localDateKey(new Date().toISOString());
+  return chat
+    .slice(0, Math.max(0, end))
+    .filter((message) => message.kind !== 'processing' && message.kind !== 'typing' && localDateKey(message.createdAt) === today)
+    .map((message) => `${message.role === 'user' ? '用户' : '助手'}：${message.content}`)
+    .join('\n');
+}
+
 function appendMessage(book, role, content, kind = 'text', extra = {}) {
   book.chat.push({
     id: newId('m'),
@@ -257,11 +276,23 @@ async function handleDraftMessage(book, content, settings, signal) {
 
 async function handleReadyMessage(book, content, settings, signal, changeLog) {
   const last = book.chapters[book.chapters.length - 1];
-  const { groups, output } = await prefilterIntent({
+  const prefilter = await prefilterIntent({
     groups: READY_TOOL_GROUPS,
     user: content,
-    signal
+    history: buildTodayHistory(book),
+    signal,
+    system: [
+      '你是小说协作 Agent，负责判断用户是在聊天还是需要调用工具，必要时直接回答。',
+      `全书概况：${book.storySummary || '暂无'}`,
+      `最近章节摘要：${last?.summary || last?.title || '暂无'}`,
+      `现有关系网：${JSON.stringify(book.relations || { nodes: [], edges: [] })}`
+    ].join('\n')
   });
+  if (prefilter.mode === 'chat') {
+    replaceProcessing(book, prefilter.reply || '好的，我记下了。', 'text', { bookId: book.id });
+    return;
+  }
+  const { groups, output } = prefilter;
   const allowed = new Set(groups.length > 0 ? groups : READY_TOOL_GROUPS.map((group) => group.name));
   const effectiveSettings = output
     ? {
@@ -280,6 +311,7 @@ async function handleReadyMessage(book, content, settings, signal, changeLog) {
     ].join('\n'),
     tools,
     user: content,
+    context: buildTodayHistory(book),
     signal
   });
   if (!decision.tool) {

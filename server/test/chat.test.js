@@ -4,12 +4,32 @@ import { searchChapters, fixChapterPrefixes, replaceTextInBook } from '../src/li
 import {
   isConfirmation,
   mergeBookState,
+  buildTodayHistory
 } from '../src/services/chatService.js';
 
 test('isConfirmation recognizes confirmation phrases', () => {
   assert.equal(isConfirmation('确认'), true);
   assert.equal(isConfirmation('不用修改，开始生成吧'), true);
   assert.equal(isConfirmation('主角叫林晚'), false);
+});
+
+test('buildTodayHistory keeps today chat and excludes current user and processing', () => {
+  const today = new Date().toISOString();
+  const yesterday = new Date(Date.now() - 86400000).toISOString();
+  const book = {
+    chat: [
+      { role: 'user', content: '昨天的讨论', kind: 'text', createdAt: yesterday },
+      { role: 'user', content: '我们约定主角叫高远', kind: 'text', createdAt: today },
+      { role: 'agent', content: '好的', kind: 'text', createdAt: today },
+      { role: 'user', content: '主角叫什么？', kind: 'text', createdAt: today },
+      { role: 'agent', content: '正在处理，请稍候…', kind: 'processing', createdAt: today }
+    ]
+  };
+  const history = buildTodayHistory(book);
+  assert.equal(history.includes('昨天的讨论'), false);
+  assert.equal(history.includes('我们约定主角叫高远'), true);
+  assert.equal(history.includes('主角叫什么？'), false);
+  assert.equal(history.includes('正在处理'), false);
 });
 
 test('searchChapters matches chapter number, exact title and fuzzy title', () => {
@@ -79,6 +99,13 @@ test('fixChapterPrefixes batches prefixes in arabic or chinese format', () => {
 
 test('replaceTextInBook replaces text across chapter fields', () => {
   const book = {
+    title: '陈默传奇',
+    outline: '陈默的修真之路',
+    storySummary: '陈默捡到古卷。',
+    draft: { concept: '主角陈默', summary: '陈默得宝' },
+    timeline: [
+      { id: 't1', chapterIndex: 0, event: '陈默捡到古卷', characters: ['陈默'] }
+    ],
     chapters: [
       { id: 'r1', title: '第一章 陈默', content: '陈默捡到玉佩，陈默开始修炼。', summary: '陈默得宝。', updatedAt: 'T0' },
       { id: 'r2', title: '第二章 试炼', content: '陈默进入试炼场。', summary: '试炼。', updatedAt: 'T0' }
@@ -86,10 +113,17 @@ test('replaceTextInBook replaces text across chapter fields', () => {
   };
   const changeLog = new Set();
   const count = replaceTextInBook(book, '陈默', '高远', changeLog);
-  assert.equal(count, 5);
+  assert.equal(count, 12);
   assert.equal(book.chapters[0].content.includes('高远'), true);
   assert.equal(book.chapters[0].content.includes('陈默'), false);
   assert.equal(book.chapters[1].summary, '试炼。');
+  assert.equal(book.title, '高远传奇');
+  assert.equal(book.outline, '高远的修真之路');
+  assert.equal(book.storySummary, '高远捡到古卷。');
+  assert.equal(book.draft.concept, '主角高远');
+  assert.equal(book.draft.summary, '高远得宝');
+  assert.equal(book.timeline[0].event, '高远捡到古卷');
+  assert.deepEqual(book.timeline[0].characters, ['高远']);
   assert.equal(changeLog.has('r1'), true);
   assert.equal(changeLog.has('r2'), true);
 });
