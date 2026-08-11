@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  extractOutputScale,
   normalizeOutputScale,
   OVER_LIMIT_REPLY,
+  prefilterDraftIntent,
   validateArgs,
   registerTool,
   callTool,
@@ -225,25 +225,34 @@ test('prefilterIntent returns over-limit chat reply instead of silent clamping',
   assert.equal(decision.output, null);
 });
 
-test('extractOutputScale detects user-specified scale and over-limit', async () => {
-  const inRange = await extractOutputScale({
-    user: '生成3章，每章1000字',
-    ask: async () => ({ present: true, chapters: 3, chapterWords: 1000 })
+test('prefilterDraftIntent classifies chat, confirm and over-limit', async () => {
+  const chat = await prefilterDraftIntent({
+    user: '我失恋了',
+    ask: async () => ({ mode: 'chat', reply: '先专心创作吧，这本书的主角还缺故事背景。' })
   });
-  assert.deepEqual(inRange.output, { chapters: 3, chapterWords: 1000 });
-  assert.equal(inRange.over, false);
-  const over = await extractOutputScale({
-    user: '生成10章',
-    ask: async () => ({ present: true, chapters: 10 })
+  assert.equal(chat.mode, 'chat');
+  assert.equal(chat.reply.includes('创作'), true);
+
+  const confirm = await prefilterDraftIntent({
+    user: '主角林默，背景现代都市，一共10万字，你来定',
+    ask: async () => ({ mode: 'confirm', output: { chapterWords: 1000 } })
   });
-  assert.equal(over.over, true);
-  assert.equal(over.output, null);
-  const none = await extractOutputScale({
-    user: '确认',
-    ask: async () => ({ present: false })
+  assert.equal(confirm.mode, 'confirm');
+  assert.deepEqual(confirm.output, { chapterWords: 1000 });
+
+  const over = await prefilterDraftIntent({
+    user: '生成10章，每章500字',
+    ask: async () => ({ mode: 'confirm', output: { chapters: 10, chapterWords: 500 } })
   });
-  assert.equal(none.over, false);
-  assert.equal(none.output, null);
+  assert.equal(over.mode, 'over');
+  assert.equal(over.reply, OVER_LIMIT_REPLY);
+
+  const fallback = await prefilterDraftIntent({
+    user: 'hi',
+    ask: async () => ({ mode: 'bogus' }),
+    maxAttempts: 1
+  });
+  assert.equal(fallback.mode, 'chat');
 });
 
 test('prefilterIntent retries then falls back to empty on invalid results', async () => {

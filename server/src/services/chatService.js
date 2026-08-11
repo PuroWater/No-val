@@ -1,7 +1,7 @@
 import { readJson, writeJson, BOOKS_FILE } from '../lib/store.js';
 import { newId, normalizeBook, parseTargetWords } from '../lib/bookUtils.js';
 import { finalizeDraftBook } from './bookService.js';
-import { extractOutputScale, OVER_LIMIT_REPLY, prefilterIntent, runToolDecision } from './toolkit.js';
+import { OVER_LIMIT_REPLY, prefilterDraftIntent, prefilterIntent, runToolDecision } from './toolkit.js';
 import { defineReadyTools, READY_TOOL_GROUPS } from './tools.js';
 
 const activeJobs = new Map();
@@ -221,15 +221,19 @@ export async function handleMessage(userId, bookId, content, settings = {}) {
 
 async function handleDraftMessage(book, content, settings, signal) {
   const conversation = book.chat.map((message) => `${message.role}: ${message.content}`).join('\n');
-  // 构思路径复用初筛/规模解析：用户明确指定“N章 × 每章M字”时存入草稿，确认后覆盖默认设置。
-  const scale = await extractOutputScale({ user: content, history: conversation, signal });
-  if (scale.over) {
-    replaceProcessing(book, OVER_LIMIT_REPLY, 'text');
+  // 构思统一走“意愿初筛”：chat（信息不足/无关闲聊，引导回创作）/ confirm（信息齐全或由用户决定）/ over（规模越界）。
+  const filter = await prefilterDraftIntent({ user: content, history: conversation, signal });
+  if (filter.mode === 'over') {
+    replaceProcessing(book, filter.reply || OVER_LIMIT_REPLY, 'text');
     return;
   }
-  if (scale.output) {
-    if (Number.isInteger(scale.output.chapters)) book.draft.chaptersPerOutput = scale.output.chapters;
-    if (Number.isFinite(scale.output.chapterWords)) book.draft.chapterWords = scale.output.chapterWords;
+  if (filter.mode === 'chat') {
+    replaceProcessing(book, filter.reply || '请继续补充你的小说构思。', 'text');
+    return;
+  }
+  if (filter.output) {
+    if (Number.isInteger(filter.output.chapters)) book.draft.chaptersPerOutput = filter.output.chapters;
+    if (Number.isFinite(filter.output.chapterWords)) book.draft.chapterWords = filter.output.chapterWords;
   }
   if (book.draft.summary && isConfirmation(content)) {
     await finalizeDraftBook(book, {
@@ -242,21 +246,8 @@ async function handleDraftMessage(book, content, settings, signal) {
     return;
   }
   const decision = await runToolDecision({
-    system: '你是小说构思采集 Agent。根据对话判断构思信息是否齐全（主角、故事背景、小说总字数，字数可选千字/万字/10万/20万/50万/百万）。分类/类型不是必填信息：用户提到类型时正常回应即可，不要追问；用户表示由你自行决定或全权发挥时，不要追问缺失信息，直接整合构思调用 confirm_draft。信息不足时调用 ask_draft_question 只问当前最缺的一项；信息齐全时调用 confirm_draft 输出整合后的完整构思。',
+    system: '你是小说构思整合 Agent。构思信息已齐全（或由用户决定），调用 confirm_draft 输出整合后的完整构思摘要；用户此前已确认过摘要时，根据最新修改意见重新整合。',
     tools: [
-      {
-        name: 'ask_draft_question',
-        description: '构思信息不足时，向用户追问当前最需要的一个缺失信息。',
-        parameters: {
-          type: 'object',
-          properties: { question: { type: 'string', minLength: 2 } },
-          required: ['question']
-        },
-        handler: async ({ question }) => ({
-          content: String(question || '').trim() || '请补充主角、故事背景或小说总字数。',
-          kind: 'question'
-        })
-      },
       {
         name: 'confirm_draft',
         description: '构思信息齐全时，输出整合后的完整构思摘要供用户确认。',
