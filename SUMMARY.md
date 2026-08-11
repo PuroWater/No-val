@@ -273,7 +273,7 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
   - 提交信息必须使用中文，推荐格式 `类型(模块): 中文描述`，示例：`feat(聊天): 新增持久化会话`。
   - 日常开发在 `Develop` 分支进行，大功能先建功能分支，验证通过后再合并。
   - 默认只在本地提交/更新，**不主动推送**；仅在用户明确要求推送时才推送到远程。
-  - main 发布规矩：等 `develop` 推送到远端后，由用户在 GitHub 远端决定并合并 `develop → main`（远端合并），随后 `git pull origin main` 拉回本地；本地默认不直接合并 main，除非用户明确要求。
+  - main 发布规矩（远端合并流程）：① 本地 `git push origin develop` 推送 develop；② 在 GitHub 网页打开 `https://github.com/PuroWater/Creative-Novel/compare/main...develop` 创建 PR（develop → main）并点击 Merge 合并（勿删 develop 分支）；③ 本地 `git checkout main && git pull origin main` 拉回合并结果；本地默认不直接合并 main，除非用户明确要求。
   - 开发新功能前先确认 TARGET 需求，必要时补充设计文档和实施计划。
 - 功能完成后必须同步更新 `README.md`、`SUMMARY.md`，涉及需求时同步更新 `TARGET.md`。
 
