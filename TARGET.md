@@ -1133,13 +1133,13 @@ Novel Agent/
 - 护眼纸纹改为用户默认主题（后端默认值、设置页初始值、前端主题应用兜底一致）。
 - 设置保存失败改用“已保存”同款 toast 提示（红底），不再使用容器内 `form-error`。
 - 构思信息必填收敛为主角/故事背景/小说总字数，分类不再追问；“由你决定”时直接整合构思。
-- 构思统一“意愿初筛”：chat（信息不足/无关闲聊）继续聊、confirm（信息齐全/由你决定）进入构思整合、越界（>5 章、每章非 1000-10000）直接回复“当前输出超过限定”，不静默截断。
+- 构思统一“意愿初筛”：chat（纯文本回复、不调工具：信息不足/无关闲聊/规模越界）继续聊、confirm（信息齐全/由你决定）进入构思整合；越界（>5 章、每章非 1000-10000）以 chat 模式回复“当前输出超过限定”，不静默截断。
 - 筛选模型不能“太闲聊”：chat 只答与当前小说创作相关的内容，无关问题引导回创作；防提示词注入。
 
 完成内容：
 - 后端 `THEMES` 白名单增加 `system` / `green`，`GET /settings` 兜底与 `settingsService.getUserSettings` 默认主题统一改为 `paper`。
 - 设置页背景风格顺序更新为“跟随系统 / 浅色 / 深色 / 护眼绿 / 护眼纸纹”，初始值改为 `paper`；`SettingsApplier` 兜底同步 `paper`。
 - `styles.css` 新增 `[data-theme='green']` 护眼绿配色，以及 `:root[data-theme='system']` + `prefers-color-scheme` 跟随系统深浅色（含 `color-scheme: light dark`）。
-- `toolkit.js` 新增 `normalizeOutputScale` / `prefilterDraftIntent` / `OVER_LIMIT_REPLY`：构思意图初筛分类 chat/confirm/over，越界确定性拒绝；`chatService` 构思 prompt 去掉分类必填并支持“由你决定”，草稿记录章节数/每章字数并在确认生成时覆盖默认设置；初筛与已生成预筛提示词加入“只谈创作”与防注入约束。
+- `toolkit.js` 新增 `normalizeOutputScale` / `prefilterDraftIntent` / `OVER_LIMIT_REPLY`：构思意图初筛分类 chat（纯文本回复，含越界拒绝）/ confirm，与已生成路径的 chat/tool 语义统一；`chatService` 构思 prompt 去掉分类必填并支持“由你决定”，草稿记录章节数/每章字数并在确认生成时覆盖默认设置；初筛与已生成预筛提示词加入“只谈创作”与防注入约束。
 - 单元测试 44/44（新增输出规模校验、越界拒绝、构思意图初筛用例）。
 - 版本号升级到 0.6.2（根/server/client 同步）；构建通过。

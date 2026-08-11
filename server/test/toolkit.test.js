@@ -225,7 +225,7 @@ test('prefilterIntent returns over-limit chat reply instead of silent clamping',
   assert.equal(decision.output, null);
 });
 
-test('prefilterDraftIntent classifies chat, confirm and over-limit', async () => {
+test('prefilterDraftIntent classifies chat, confirm and chat-mode over-limit', async () => {
   const chat = await prefilterDraftIntent({
     user: '我失恋了',
     ask: async () => ({ mode: 'chat', reply: '先专心创作吧，这本书的主角还缺故事背景。' })
@@ -244,7 +244,7 @@ test('prefilterDraftIntent classifies chat, confirm and over-limit', async () =>
     user: '生成10章，每章500字',
     ask: async () => ({ mode: 'confirm', output: { chapters: 10, chapterWords: 500 } })
   });
-  assert.equal(over.mode, 'over');
+  assert.equal(over.mode, 'chat');
   assert.equal(over.reply, OVER_LIMIT_REPLY);
 
   const fallback = await prefilterDraftIntent({

@@ -19,8 +19,8 @@ export function normalizeOutputScale(rawOutput) {
   return { output: Object.keys(output).length > 0 ? output : null, over: false };
 }
 
-// 构思阶段意图筛选：chat（信息不足/无关闲聊，引导回创作）/ confirm（信息齐全或由用户决定）/
-// over（输出规模越界，代码确定性判断）。规模解析与越界判定与已生成路径共用 normalizeOutputScale。
+// 构思阶段意图筛选：chat（纯文本回复，不调工具：信息不足/无关闲聊/输出规模越界）/ confirm（信息齐全或由用户决定）。
+// 规模解析与越界判定与已生成路径共用 normalizeOutputScale；chat 与已生成路径的 chat 同为“只返回文本”的工作方式。
 export async function prefilterDraftIntent({ user, history = '', signal, ask = chatCompletion, maxAttempts = 2, maxTokens = 4096 }) {
   const prompt = [
     '你是小说构思阶段的意图筛选 Agent。根据近期对话把用户消息分为两类：',
@@ -37,7 +37,7 @@ export async function prefilterDraftIntent({ user, history = '', signal, ask = c
     try {
       const result = await ask({ system: '你是小说构思阶段的意图筛选 Agent。', user: prompt, maxTokens, signal });
       const { output, over } = normalizeOutputScale(result?.output);
-      if (over) return { mode: 'over', reply: OVER_LIMIT_REPLY, output: null };
+      if (over) return { mode: 'chat', reply: OVER_LIMIT_REPLY, output: null };
       const mode = String(result?.mode || '');
       if (mode === 'chat') {
         const reply = String(result?.reply || '').trim();

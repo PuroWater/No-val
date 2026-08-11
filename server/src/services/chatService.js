@@ -1,7 +1,7 @@
 import { readJson, writeJson, BOOKS_FILE } from '../lib/store.js';
 import { newId, normalizeBook, parseTargetWords } from '../lib/bookUtils.js';
 import { finalizeDraftBook } from './bookService.js';
-import { OVER_LIMIT_REPLY, prefilterDraftIntent, prefilterIntent, runToolDecision } from './toolkit.js';
+import { prefilterDraftIntent, prefilterIntent, runToolDecision } from './toolkit.js';
 import { defineReadyTools, READY_TOOL_GROUPS } from './tools.js';
 
 const activeJobs = new Map();
@@ -221,12 +221,8 @@ export async function handleMessage(userId, bookId, content, settings = {}) {
 
 async function handleDraftMessage(book, content, settings, signal) {
   const conversation = book.chat.map((message) => `${message.role}: ${message.content}`).join('\n');
-  // 构思统一走“意愿初筛”：chat（信息不足/无关闲聊，引导回创作）/ confirm（信息齐全或由用户决定）/ over（规模越界）。
+  // 构思统一走“意愿初筛”：chat = 纯文本回复不调工具（信息不足/无关闲聊/规模越界），confirm = 进入构思整合。
   const filter = await prefilterDraftIntent({ user: content, history: conversation, signal });
-  if (filter.mode === 'over') {
-    replaceProcessing(book, filter.reply || OVER_LIMIT_REPLY, 'text');
-    return;
-  }
   if (filter.mode === 'chat') {
     replaceProcessing(book, filter.reply || '请继续补充你的小说构思。', 'text');
     return;
