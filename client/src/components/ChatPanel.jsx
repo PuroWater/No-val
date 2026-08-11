@@ -311,7 +311,7 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
           </button>
         )}
         {!isNew && book.status === 'ready' && (
-          <button className="primary" onClick={() => open({ bookId: book.id })}>
+          <button className="primary side-toggle" onClick={() => open({ bookId: book.id })}>
             详情查看
           </button>
         )}
