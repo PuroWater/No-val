@@ -5,7 +5,7 @@
 ## 现状
 
 - 项目：Novel Agent，本地小说创作平台（React 18 + Vite 5 / Express 4 / DeepSeek，JSON 本地持久化），当前版本 **0.6.3**（批量删除末尾章节工具 + 并列工作台宽度约束）。
-- 当前开发分支：`feature/0.6-relations-timeline`（自 `Develop` 创建，0.6.0 已完成并提交；按 0.6 规划**暂不合并** develop，0.6.x 继续在本分支开发，功能大部分完成后并入 develop）。
+- 分支状态：0.6.0 → 0.6.3 已在 `feature/0.6-relations-timeline` 完成并**合并入 develop**（fast-forward，本地未推送）；后续 0.6.x 可继续在 feature 分支开发（或从 develop 重建分支）。
 - 后端测试 41/41；前端构建通过；后端运行于 3001（有外网权限，DeepSeek 真实调用可验证；沙箱内本机 HTTP 直连需 curl + 提权）。
 - 数据：`data/*.json`（books/users/settings），原子写 + `.bak` 备份，gitignore 排除。
 - 模型：`deepseek-v4-flash`（推理模型，官方输出上限 384K，实测接受 65536+ 的 max_tokens）。
