@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ensureChapterTitle } from '../src/lib/chapterUtils.js';
-import { sanitizeRelations, applyChapterEvents } from '../src/services/bookService.js';
+import { sanitizeRelations } from '../src/services/storyMetaService.js';
+import { applyChapterEvents, changedEventsContext } from '../src/services/overviewService.js';
 
 test('sanitizeRelations keeps valid nodes and edges', () => {
   const result = sanitizeRelations({
@@ -45,4 +46,25 @@ test('applyChapterEvents replaces chapter event items and updates prose', () => 
   assert.deepEqual(book.chapters[0].events[0].characters, ['A', 'C']);
   assert.equal(book.chapters[1].events[0].event, '事件2');
   assert.equal(book.storySummary, '新概况');
+});
+
+test('changedEventsContext only includes changed chapters events', () => {
+  const book = {
+    chapters: [
+      { id: 'c1', title: '第一章', events: [{ event: '事件A' }, { event: '事件B' }] },
+      { id: 'c2', title: '第二章', events: [{ event: '事件C' }] },
+      { id: 'c3', title: '第三章', events: [] }
+    ]
+  };
+  const text = changedEventsContext(book, [
+    { chapterIndex: 0, oldSummary: 'a', newSummary: 'b' },
+    { chapterIndex: 2, oldSummary: 'x', newSummary: 'y' }
+  ]);
+  assert.equal(text.includes('第1章现有事件'), true);
+  assert.equal(text.includes('事件A'), true);
+  assert.equal(text.includes('事件B'), true);
+  assert.equal(text.includes('事件C'), false);
+  assert.equal(text.includes('第3章'), false);
+  assert.equal(changedEventsContext(book, [{ chapterIndex: 1 }]).includes('事件C'), true);
+  assert.equal(changedEventsContext(book, []), '');
 });

@@ -1,5 +1,6 @@
 import { ensureChapterTitle, searchChapters, fixChapterPrefixes, replaceTextInBook } from '../lib/chapterUtils.js';
-import { rewriteChapter, continueBook, syncChapterOverview } from './bookService.js';
+import { rewriteChapter, continueBook } from './bookService.js';
+import { syncChapterOverview } from './overviewService.js';
 
 export const READY_TOOL_GROUPS = [
   { name: 'read', summary: '查询书籍信息、章节目录或指定章节内容', tools: ['read_book'] },

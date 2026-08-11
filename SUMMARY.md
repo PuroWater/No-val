@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-- 当前版本：0.5.21
+- 当前版本：0.5.22
 - 当前分支：Develop
 - 技术栈：React 18 + Vite 5，Express 4，Node.js 18+，JSON 本地持久化
 - 大模型：DeepSeek，模型默认 `deepseek-v4-flash`
@@ -124,7 +124,9 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
   - `src/routes/chat.js`：草稿会话、消息推进、兼容旧接口。
   - `src/routes/settings.js`：主题与字号设置。
   - `src/services/chatService.js`：聊天状态机、构思采集、摘要确认。
-  - `src/services/bookService.js`：生成、续写、改写、关系网提取。
+  - `src/services/bookService.js`：书籍生命周期与写编排（新建、定稿、续写、改写、章节摘要编辑）。
+  - `src/services/overviewService.js`：概况/事件写内核（`syncChapterOverview` 差分维护、`updateOverviewTail` 删末章结尾更新、`applyChapterEvents`）。
+  - `src/services/storyMetaService.js`：故事元数据（关系网提取与清洗 + 未来时间/章节事迹轴派生视图占位）。
   - `src/services/deepseek.js`：DeepSeek API 调用与 JSON 解析。
   - `src/services/toolkit.js`：Agent 工具协议层（schema 校验、ReAct 多步循环调用与失败重试）。
   - `src/services/tools.js`：已生成图书工具定义（按 read/edit/write/navigate 分组，供意图预筛加载）。
@@ -133,6 +135,7 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
   - `src/lib/security.js`：bcrypt 密码哈希。
   - `src/lib/token.js`：JWT 签发与校验。
   - `src/lib/bookUtils.js`：书籍数据规范化与 ID 生成。
+  - `src/lib/modelCall.js`：公共模型调用（重试 + 校验）。
 
 ### 数据模型
 
@@ -292,13 +295,12 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 
 ### 长小说与全书聚合操作注意事项
 
-- `ensureChapterEvents` 是**数据迁移/初始化专用**函数：一次性把全部章节摘要发给 AI 生成章节事件，输入为 O(章数)。仅用于新书初始化（几章）和旧数据结构迁移（如 timeline→chapter.events）。**不要**在长篇小说（数百章以上）上直接触发全量迁移，否则单次调用会超出模型上下文；未来若需再次迁移长书，必须先改为分块处理。当前开发阶段暂不解决，代码中已注释标注。
-- 正常使用中仍有两处“全书聚合”AI 调用输入为 O(章数)，长篇小说（数百章以上）尚不能完全应对：
-  - `syncChapterOverview`（续写/改写/摘要编辑后的差分维护）：输出侧已做差分（只改变更章事件 + 散文），但 prompt 中的 `chapterEventsText(book)` 仍携带全书事件列表；
-  - `extractRelations`（重新生成关系网）：`chapterContext(book)` 发送全部章节摘要。
+- 旧“全量事件迁移/初始化”函数（`ensureChapterEvents`）已删除：旧 `book.timeline → chapter.events` 迁移改由 `normalizeBook` 确定性完成，新书首章事件走 `syncChapterOverview` 差分内核（O(首章数)）。未来若需对长书做全量事件补齐，必须先分块，属后续规划。
+- 正常使用中仍有一处“全书聚合”AI 调用输入为 O(章数)：`extractRelations`（重新生成关系网）的 `chapterContext(book)` 发送全部章节摘要，长篇小说（数百章以上）尚不能完全应对。
+- `syncChapterOverview` 已改为输入差分：只发“全书概况 + 变更章旧/新摘要 + 变更章自身旧事件”（O(变更数)），不再携带全书事件列表，长小说安全。
 - 日常续写、改写、问答、读章已走局部上下文（全书概况 + 目标章/附近章 + 关系网），不随章数膨胀，长篇小说在这些路径上没有障碍。
 - 删除章节已改为“仅末尾章 + 概况结尾差分（O(1)）”，不存在全量重建路径，无此问题。
-- 后续规划（当前未实现）：`syncChapterOverview` 去掉/裁剪全量事件输入（只发变更章旧事件），`extractRelations` 改为分块/增量生成，使全书级操作在长小说上可用。
+- 后续规划（当前未实现）：`extractRelations` 改为分块/增量生成，使全书级操作在长小说上可用。
 
 ## 启动方式
 
@@ -995,3 +997,17 @@ npm start
 - 单元测试 36/36，构建通过，版本号升级到 0.5.21。
 
 完成结果：写书调用按模型实测能力放开上限，设置范围与模型能力匹配，小调用仍保持轻量。
+
+### 2026-08-11 v0.5.22 概况维护输入差分与故事元数据模块拆分
+
+更新内容：
+
+- `syncChapterOverview` 输入差分：prompt 不再携带全书事件列表，改为只发“全书概况 + 变更章旧/新摘要 + 变更章自身旧事件”（`changedEventsContext`，O(变更数)），长小说安全；prose 增加“一般 300-800 字、不超过 800 字”的硬约束。
+- 清理旧引用：删除不再使用的 `chapterEventsText` 全量事件拼接函数；删除章节改走 `updateOverviewTail` 后，概况维护不再有全量事件输入。
+- 模块拆分：新增 `server/src/services/storyMetaService.js`，关系网（`extractRelations` / `sanitizeRelations` / `chapterContext`）从 bookService 迁出，与未来“时间事迹轴 / 章节事迹轴”派生视图同模块扩展（暂未实现，已注释占位）。
+- 模块拆分：新增 `server/src/services/overviewService.js`，概况/事件写内核（`syncChapterOverview` / `updateOverviewTail` / `applyChapterEvents` / `changedEventsContext`）从 bookService 迁出，bookService 只保留生命周期与写编排，职责平行清晰。
+- 公共调用抽取：`callModel`（重试 + 校验）从 bookService 抽到 `server/src/lib/modelCall.js`，bookService / overviewService / storyMetaService 共用。
+- 删除 `ensureChapterEvents`（全量摘要 → 事件的迁移/初始化残留函数）：旧 timeline 迁移交给 `normalizeBook` 确定性完成，新书首章事件改走 `syncChapterOverview` 差分内核（O(首章数)）。
+- 单元测试 37/37（新增 `changedEventsContext` 用例），构建通过，版本号升级到 0.5.22。
+
+完成结果：概况维护在长小说上的 O(章数) 输入隐患消除；概况/事件、故事元数据、书籍生命周期三个服务模块职责平行清晰，命名与位置统一。

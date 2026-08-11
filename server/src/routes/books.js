@@ -3,7 +3,9 @@ import { readJson, writeJson, BOOKS_FILE } from '../lib/store.js';
 import { normalizeBook } from '../lib/bookUtils.js';
 import { ensureChapterTitle, isLastChapter } from '../lib/chapterUtils.js';
 import { requireAuth } from '../middleware/auth.js';
-import { extractRelations, regenerateChapterSummary, updateBook, updateOverviewTail } from '../services/bookService.js';
+import { regenerateChapterSummary, updateBook } from '../services/bookService.js';
+import { updateOverviewTail } from '../services/overviewService.js';
+import { extractRelations } from '../services/storyMetaService.js';
 
 const router = Router();
 router.use(requireAuth);

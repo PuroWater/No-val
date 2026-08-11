@@ -1,8 +1,8 @@
 【项目目标】
 在当前开发环境下（已安装 VSCode、Node.js），生成一个可直接运行的**小说创作平台 Web 应用**。项目不连接任何数据库，后端数据使用本地 JSON 文件持久化。前端为 React 单页应用（SPA），后端为 Express，调用 DeepSeek 大模型辅助创作。
 
-当前版本：0.5.21  
-最近更新：2026-08-11 写书调用上限按模型实测提升
+当前版本：0.5.22  
+最近更新：2026-08-11 概况维护输入差分与故事元数据模块拆分
 
 【文档职责】
 - `TARGET.md`：每次更新的目标文件。每次更新前先修改本文档，按“日期 + 版本”划分，写明待更新说明、待更新功能；开发完成后记录实际完成内容。
@@ -1060,3 +1060,21 @@ Novel Agent/
 - `maxTokensForWords`：8192 → 32768，仅写书工具使用；`bookService` / `settingsService` / `routes/settings` / `toolkit`（用户意图覆盖）/ 前端设置页一致保持 1000-10000。
 - 元数据/工具调用（概况、事件、摘要、关系网、意图预筛）maxTokens 统一为 4096。
 - 测试 36/36，构建通过，版本号升级到 0.5.21。
+
+### 2026-08-11 v0.5.22 概况维护输入差分与故事元数据模块拆分
+
+待更新说明：
+- `syncChapterOverview` 的 prompt 仍携带全书事件列表（O(章数)），长小说会爆；且 `chapterEventsText` 是旧“全量事件”思路的残留。
+- 关系网与未来“时间事迹轴 / 章节事迹轴”没有独立模块，散落在 bookService 中。
+- `ensureChapterEvents`（全量摘要 → 事件）是迁移/初始化残留函数，O(章数)，迁移已完成不再需要。
+
+待更新功能：
+- `syncChapterOverview` 改为输入差分：只发 全书概况 + 变更章旧/新摘要 + 变更章自身旧事件；prose 加长度上限。
+- 关系网迁到独立 `storyMetaService.js`，与未来事迹轴派生视图同模块；`callModel` 抽到 `lib/modelCall.js` 共用。
+- 删除 `ensureChapterEvents`：旧 timeline 迁移交给 `normalizeBook` 确定性完成，新书首章事件改走 `syncChapterOverview`。
+- 概况/事件写内核抽到独立 `overviewService.js`，与 bookService（生命周期/编排）职责平行清晰。
+
+完成内容：
+- `changedEventsContext`（O(变更数)）替代 `chapterEventsText`，删除旧函数；删除章节不再经过 syncChapterOverview。
+- 新增 `storyMetaService.js`（关系网）、`overviewService.js`（概况/事件写内核）与 `lib/modelCall.js`（公共调用）；删除 `ensureChapterEvents`；`books.js`、`tools.js`、`bootstrap.js` 与测试导入同步更新。
+- 单元测试 37/37，构建通过，版本号升级到 0.5.22。

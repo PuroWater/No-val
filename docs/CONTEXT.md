@@ -4,7 +4,7 @@
 
 ## 现状
 
-- 项目：Novel Agent，本地小说创作平台（React + Express + DeepSeek），分支 `Develop`，当前版本 **0.5.21**（生成上限提升与设置范围收敛）。
+- 项目：Novel Agent，本地小说创作平台（React + Express + DeepSeek），分支 `Develop`，当前版本 **0.5.22**（概况维护输入差分与故事元数据模块拆分）。
 - 后端测试 35/35；构建通过；后端运行于 3001（有外网权限）。
 - 数据：`data/*.json`（books/users/settings），原子写 + `.bak` 备份，gitignore 排除。
 
@@ -20,7 +20,8 @@
   - `batch_replace_text`：批量替换文本（覆盖书名/简介/概况/草稿/章节正文摘要事件全字段）；
   - `open_book_widget`：书籍卡片（并列/详情，带 chapter 定位）。
 - 草稿阶段：`ask_draft_question` / `confirm_draft`（完整聊天记录作上下文）。
-- 全书概况：各章内嵌 `chapter.events`（事件 + 人物）+ `book.storySummary`（散文，被动派生视图）。写路径统一走 bookService 写内核：`ensureChapterEvents` / `syncChapterOverview` / `updateOverviewTail` / `applyChapterEvents`。
+- 全书概况：各章内嵌 `chapter.events`（事件 + 人物）+ `book.storySummary`（散文，被动派生视图）。概况/事件写内核在 `overviewService.js`：`syncChapterOverview`（输入差分，O(变更数)）/ `updateOverviewTail` / `applyChapterEvents`；新书首章事件也走 `syncChapterOverview`。
+- 故事元数据：`storyMetaService.js` 承载关系网（`extractRelations` / `sanitizeRelations`）与未来“时间事迹轴 / 章节事迹轴”派生视图（同模块扩展）；公共模型调用在 `lib/modelCall.js`。
 - 其他：DeepSeek 调用 120s 超时、可中断（■）；写回前合并防覆盖；章节/书籍详情覆盖层在顶栏（56px）下方，压栈保留原页状态。
 
 ## 行为约定（重要）
@@ -36,7 +37,7 @@
 ## 未来功能（暂不做）
 
 - 时间线视图（可基于 chapter.events 派生）、按章节锚点、关系网事件溯源、“回到某时间点分支”。
-- 长小说全书聚合优化：`syncChapterOverview` 输入差分（去全量事件）、`extractRelations` / `ensureChapterEvents` 分块 map-reduce。当前这些路径输入为 O(章数)，数百章以上会爆上下文；删除已收敛为末尾章 + O(1) 结尾差分；日常续写/改写/问答无此问题。
+- 长小说全书聚合优化：`extractRelations` 改为分块/增量生成。`syncChapterOverview` 已做输入差分，删除已收敛为末尾章 + O(1) 结尾差分，旧全量迁移函数已删除；日常续写/改写/问答无此问题。
 
 ## 常用命令
 
