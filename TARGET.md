@@ -2,7 +2,7 @@
 在当前开发环境下（已安装 VSCode、Node.js），生成一个可直接运行的**小说创作平台 Web 应用**。项目不连接任何数据库，后端数据使用本地 JSON 文件持久化。前端为 React 单页应用（SPA），后端为 Express，调用 DeepSeek 大模型辅助创作。
 
 当前版本：0.6.4  
-最近更新：2026-08-11 并列工作台宽度 1/3 与每书独立聊天草稿
+最近更新：2026-08-11 并列工作台 1/3、每书独立聊天草稿与拖拽防选中
 
 【文档职责】
 - `TARGET.md`：每次更新的目标文件。每次更新前先修改本文档，按“日期 + 版本”划分，写明待更新说明、待更新功能；开发完成后记录实际完成内容。
@@ -1169,12 +1169,18 @@ Novel Agent/
 待更新说明：
 - 并列工作台左右最少保留 1/4 仍显局促，需要改为 1/3。
 - 聊天输入框的正在编辑内容跨书共享，切换图书会带着上一本的草稿；需要每本书独立维护，并在页面不关闭期间（切到我的/设置、刷新）保持草稿不丢。
+- 并列分隔条拖拽时两侧文本会被选中（蓝色选区），影响观感。
+- 协作与推送规则未成文：默认应只在本地更新，不主动推送；main 的合并应由远端 develop 合并后拉回本地。
 
 待更新功能：
 - 并列工作台拖动约束改为左栏最少 1/3、右侧聊天区最少保留 1/3。
 - 聊天输入草稿按书隔离（新创作独立一份），存 sessionStorage：切换图书、切到我的/设置、页面刷新均保活，关闭标签页后清除；发送成功后清除该书草稿。
+- 并列分隔条拖拽期间禁用文本选中（body 级 user-select + 分隔条样式），并补 pointercancel 清理。
+- 文档写入 Git 与协作约定：默认本地提交不主动推送；main 发布 = develop 推送远端后由用户决定远端合并 develop → main，再 `git pull origin main` 拉回本地。
 
 完成内容：
 - 并列工作台拖动约束改为左右各至少 1/3（左栏 1/3-2/3）：`WorkspacePage.startResize` 的 min/max 由 0.25/0.75 改为 1/3 与 2/3。
 - 聊天草稿按书隔离并保活：`WorkspacePage` 三个 `ChatPanel` 渲染点按 `bookId`（新创作为 `__new__`）加 key；`ChatPanel` 用 `sessionStorage`（`novel_chat_draft_<bookId>`）读写草稿，挂载时恢复、输入时保存、发送成功后清除。
-- 版本号升级到 0.6.4（根/server/client 同步）；构建通过。
+- `WorkspacePage.startResize` 拖拽防选中：`event.preventDefault()` + 临时 body `user-select: none`，pointerup/pointercancel 恢复；`.split-divider` 样式补 `user-select` / `touch-action`。
+- SUMMARY「Git 与协作约定」成文：默认本地提交不主动推送；main 发布走“develop 推远端 → GitHub 远端合并 develop → main → 拉回本地 main”。CONTEXT 同步。
+- 版本号升级到 0.6.4（根/server/client 同步）；构建通过，本地提交未推送（按新规矩默认本地）。

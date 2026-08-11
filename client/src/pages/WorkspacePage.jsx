@@ -79,6 +79,7 @@ export default function WorkspacePage() {
   }
 
   function startResize(event) {
+    event.preventDefault();
     const startX = event.clientX;
     const startWidth = leftWidth;
     const container = document.querySelector('.workspace-body');
@@ -86,15 +87,21 @@ export default function WorkspacePage() {
     // 左栏最少保留 1/3，右侧聊天区最少保留 1/3，避免拖太右导致聊天框挤压变形。
     const minWidth = Math.max(260, Math.floor(containerWidth / 3));
     const maxWidth = Math.max(minWidth, Math.floor((containerWidth * 2) / 3));
+    // 拖动期间禁止选中两侧文本，避免拖拽时出现蓝色选区。
+    const prevUserSelect = document.body.style.userSelect;
+    document.body.style.userSelect = 'none';
     const onMove = (moveEvent) => {
       setLeftWidth(clamp(startWidth + moveEvent.clientX - startX, minWidth, maxWidth));
     };
     const onUp = () => {
+      document.body.style.userSelect = prevUserSelect;
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
     };
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
   }
 
   async function confirmDelete() {
