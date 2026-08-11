@@ -942,6 +942,10 @@ button, input, textarea, select {
   animation: toast-fade 1s ease forwards;
 }
 
+.saved-toast.error {
+  background: #d64541;
+}
+
 @keyframes toast-fade {
   0% {
     opacity: 0;

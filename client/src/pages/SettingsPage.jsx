@@ -27,7 +27,6 @@ export default function SettingsPage() {
   const [trash, setTrash] = useState([]);
   const [toasts, setToasts] = useState([]);
   const toastIdRef = useRef(0);
-  const [appearanceError, setAppearanceError] = useState('');
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -38,6 +37,14 @@ export default function SettingsPage() {
   async function loadTrash() {
     const data = await api('/books/trash');
     setTrash(data.books);
+  }
+
+  function pushToast(text, error = false) {
+    const id = ++toastIdRef.current;
+    setToasts((list) => [...list, { id, text, error }]);
+    setTimeout(() => {
+      setToasts((list) => list.filter((item) => item.id !== id));
+    }, 1000);
   }
 
   useEffect(() => {
@@ -54,7 +61,6 @@ export default function SettingsPage() {
 
   async function save(nextTheme, nextSize, nextChapters, nextWords, nextEnter) {
     try {
-      setAppearanceError('');
       const data = await api('/settings', {
         method: 'PUT',
         body: JSON.stringify({
@@ -66,13 +72,9 @@ export default function SettingsPage() {
         })
       });
       applySettings(data.settings);
-      const id = ++toastIdRef.current;
-      setToasts((list) => [...list, id]);
-      setTimeout(() => {
-        setToasts((list) => list.filter((item) => item !== id));
-      }, 1000);
+      pushToast('已保存');
     } catch (err) {
-      setAppearanceError(err.message);
+      pushToast(`保存失败：${err.message}`, true);
     }
   }
 
@@ -165,7 +167,6 @@ export default function SettingsPage() {
                   ))}
                 </div>
               </div>
-              {appearanceError && <p className="form-error">{appearanceError}</p>}
             </>
           )}
           {activeSetting === 'general' && (
@@ -220,7 +221,6 @@ export default function SettingsPage() {
                   </button>
                 </div>
               </div>
-              {appearanceError && <p className="form-error">{appearanceError}</p>}
             </>
           )}
           {activeSetting === 'trash' && (
@@ -284,8 +284,8 @@ export default function SettingsPage() {
       />
       {toasts.length > 0 && (
         <div className="toast-layer">
-          {toasts.map((id) => (
-            <div key={id} className="saved-toast">已保存</div>
+          {toasts.map((toast) => (
+            <div key={toast.id} className={`saved-toast${toast.error ? ' error' : ''}`}>{toast.text}</div>
           ))}
         </div>
       )}

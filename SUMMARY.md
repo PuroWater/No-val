@@ -1056,6 +1056,7 @@ npm start
 - “跟随系统”通过 `:root[data-theme='system']` + `prefers-color-scheme` 媒体查询实现，操作系统切换深浅色时页面即时跟随，无需 JS 监听。
 - 新增 `[data-theme='green']` 护眼绿配色（柔和绿色背景）。
 - 护眼纸纹改为用户默认主题：后端 `THEMES` 白名单增加 `system/green`，GET 兜底与 `getUserSettings` 默认值、设置页初始值、`SettingsApplier` 兜底统一为 `paper`。
+- 设置保存失败提示改为“已保存”同款 toast（红底“保存失败：原因”），移除容器内 `form-error` 行内提示；toast 支持成功/失败两种样式。
 - 版本号升级到 0.6.2（根/server/client 同步）；测试与构建通过。
 
 完成结果：主题数量扩展为五种并按序展示，默认主题切到护眼纸纹，跟随系统无需额外配置即自动适配。

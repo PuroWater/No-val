@@ -1131,6 +1131,7 @@ Novel Agent/
 - 设置页背景风格新增“跟随系统”“护眼绿”，顺序为：跟随系统 / 浅色 / 深色 / 护眼绿 / 护眼纸纹。
 - “跟随系统”跟随操作系统深浅色（CSS `prefers-color-scheme`，切换 OS 主题即时生效，无需 JS 监听）。
 - 护眼纸纹改为用户默认主题（后端默认值、设置页初始值、前端主题应用兜底一致）。
+- 设置保存失败改用“已保存”同款 toast 提示（红底），不再使用容器内 `form-error`。
 
 完成内容：
 - 后端 `THEMES` 白名单增加 `system` / `green`，`GET /settings` 兜底与 `settingsService.getUserSettings` 默认主题统一改为 `paper`。
