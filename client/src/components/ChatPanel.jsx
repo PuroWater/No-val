@@ -303,17 +303,17 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
           )}
         </div>
         {!isNew && book.status === 'ready' && (
-          <button
-            className={`primary side-toggle ${sideOpen ? 'active' : ''}`}
-            onClick={() => onToggleSide?.()}
-          >
-            并列查看
-          </button>
-        )}
-        {!isNew && book.status === 'ready' && (
-          <button className="primary side-toggle" onClick={() => open({ bookId: book.id })}>
-            详情查看
-          </button>
+          <div className="chat-head-actions">
+            <button
+              className={`primary side-toggle ${sideOpen ? 'active' : ''}`}
+              onClick={() => onToggleSide?.()}
+            >
+              并列查看
+            </button>
+            <button className="primary side-toggle" onClick={() => open({ bookId: book.id })}>
+              详情查看
+            </button>
+          </div>
         )}
       </div>
       <div className="chat-messages" ref={messagesRef}>

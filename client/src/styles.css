@@ -277,6 +277,13 @@ button, input, textarea, select {
   min-width: 0;
 }
 
+.chat-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
 .chat-head-left > div {
   display: flex;
   align-items: center;
