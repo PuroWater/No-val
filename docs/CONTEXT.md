@@ -4,7 +4,7 @@
 
 ## 现状
 
-- 项目：Novel Agent，本地小说创作平台（React + Express + DeepSeek），分支 `Develop`，当前版本 **0.5.20**（删除收敛为末尾章与概况结尾差分）。
+- 项目：Novel Agent，本地小说创作平台（React + Express + DeepSeek），分支 `Develop`，当前版本 **0.5.21**（生成上限提升与设置范围收敛）。
 - 后端测试 35/35；构建通过；后端运行于 3001（有外网权限）。
 - 数据：`data/*.json`（books/users/settings），原子写 + `.bak` 备份，gitignore 排除。
 
@@ -30,7 +30,7 @@
 - `deepseek-v4-flash` 为推理模型：小规模元数据/工具调用 `maxTokens` 必须 ≥ 3000，否则 `reasoning_tokens` 会挤占预算导致空内容（已统一）。
 - 批量替换后书内全字段一致（含章节事件），不依赖聊天记忆覆盖。
 - 关系网仅手动“重新生成”（`POST /api/books/:id/relations`）。
-- 设置：默认输出章节数/默认输出字数（用户明确指定时顶替）；发送快捷键 Enter/Ctrl+Enter 互斥；常规与外观分标签。
+- 设置：默认输出章节数 1-5 / 默认输出字数每章 1000-10000（用户明确指定时顶替）；写书调用 maxTokens 上限 32768（API 实测 deepseek-v4-flash 支持远大于 8192），元数据/工具调用统一 4096；发送快捷键 Enter/Ctrl+Enter 互斥；常规与外观分标签。
 - 当天聊天记忆只作讨论上下文，不覆盖书内真实状态。
 
 ## 未来功能（暂不做）

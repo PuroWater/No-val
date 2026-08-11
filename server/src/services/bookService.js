@@ -19,7 +19,7 @@ function clampOutput(value, min, max, fallback) {
 }
 
 function maxTokensForWords(chapterWords) {
-  return Math.min(8192, Math.max(3000, Math.round(Number(chapterWords) * 2.2)));
+  return Math.min(32768, Math.max(3000, Math.round(Number(chapterWords) * 2.2)));
 }
 
 async function callModel(makeOptions, validate, retries = 1, signal) {
@@ -96,7 +96,7 @@ export async function ensureChapterEvents(book) {
       system: '你是全书概况维护助手。根据各章摘要为每章生成结构化剧情事件。只返回 JSON，不要包含 Markdown。',
       user: `各章摘要：\n${summaries.join('\n')}\n\n返回 JSON：{"chapters":[{"chapterIndex":0,"events":[{"event":"事件","characters":["人物"]}]}]}，每章 1-3 条。`,
       temperature: 0.4,
-      maxTokens: 3000
+      maxTokens: 4096
     }),
     (result) => Array.isArray(result?.chapters)
   );
@@ -126,7 +126,7 @@ export async function syncChapterOverview(book, changes = []) {
       system: '你是全书概况维护助手。根据章节变更返回该章结构化事件与更新后的精简全书概况。只返回 JSON，不要包含 Markdown。',
       user: `当前全书概况：\n${book.storySummary || '暂无'}\n\n当前章节事件：\n${chapterEventsText(book)}\n\n章节变更：\n${desc}\n\n返回 JSON：{"chapters":[{"chapterIndex":0,"events":[{"event":"事件","characters":["人物"]}]}],"prose":"更新后的精简全书概况"}。chapters 只包含本次变更的章节，删除章节时返回空 events。`,
       temperature: 0.4,
-      maxTokens: 3000
+      maxTokens: 4096
     }),
     (result) => Array.isArray(result?.chapters) && typeof result.prose === 'string'
   );
@@ -159,7 +159,7 @@ export async function updateOverviewTail(book) {
       system: '你是小说编辑。根据“当前全书概况”和“新的最后一章”修改概况结尾，使故事收束在新最后一章。只返回 JSON。',
       user: `【当前全书概况】\n${book.storySummary}\n\n【新的最后一章】第 ${book.chapters.length} 章《${last.title}》：${tailSource}\n\n【要求】\n- 概况里不能再出现已删除章节的内容；\n- 在概况末尾补上 2-3 句新结尾，与新最后一章衔接，不要改动概况前半段；\n- 新结尾约 100-200 字。\n\n【输出】{"prose":"完整的修改后概况"}`,
       temperature: 0.2,
-      maxTokens: 3000
+      maxTokens: 4096
     }),
     (result) => result && typeof result.prose === 'string' && result.prose.trim()
   );
@@ -206,7 +206,7 @@ export async function extractRelations(book) {
     () => ({
       system: '你是小说关系网维护助手。根据剧情摘要和现有关系网更新关系，只返回 JSON，不要包含 Markdown。',
       user: `现有关系网：\n${existing}\n\n剧情摘要：\n${text}\n\n返回更新后的完整关系网 JSON：{"nodes":[{"id":"n_1","name":"名称","type":"person|faction","weight":5,"isMain":true}],"edges":[{"from":"n_1","to":"n_2","label":"关系"}]}。节点 id 必须唯一，边必须引用已有节点；weight 表示重要度 1-10，主角节点 isMain 为 true。`,
-      maxTokens: 3000
+      maxTokens: 4096
     }),
     (result) => Array.isArray(result?.nodes)
   );
@@ -409,7 +409,7 @@ export async function regenerateChapterSummary(book, chapterId) {
     system: '你是小说章节摘要维护助手。只返回 JSON，不要包含 Markdown。',
     user: `章节标题：${chapter.title}\n章节内容：${chapter.content}\n原有摘要：${oldSummary || '无'}\n\n请生成新的 80-150 字章节摘要，并对比原摘要给出最小化差异说明，返回 JSON：{"summary":"新摘要","diff":"与原摘要的关键差异"}`,
     temperature: 0.4,
-    maxTokens: 3000
+    maxTokens: 4096
   });
   chapter.summary = String(result.summary || oldSummary || '').trim();
   await syncChapterOverview(book, [{ chapterIndex: book.chapters.indexOf(chapter), oldSummary, newSummary: chapter.summary }])
