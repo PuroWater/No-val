@@ -52,15 +52,23 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter }) 
     setTimeout(() => addInputRef.current?.focus(), 0);
   }
 
+  // 提取章节名部分：去掉“第n章”前缀（含冒号/空格），只剩“第n章”时返回空。
+  function chapterNamePart(raw) {
+    const match = raw.match(/^第\s*([0-9零一二两三四五六七八九十百千]+)\s*章[\s:：]*/);
+    return match ? raw.slice(match[0].length).trim() : raw.trim();
+  }
+
   async function commitAddChapter() {
-    const title = newTitle.trim();
+    const raw = newTitle.trim();
     setAddingChapter(false);
     setNewTitle('');
-    if (!book || !title) return;
+    if (!book || !raw) return;
+    // 只输入了自动生成的“第n章”前缀、没有实际章节名时不新建。
+    if (!chapterNamePart(raw)) return;
     try {
       const data = await api(`/books/${book.id}/chapters`, {
         method: 'POST',
-        body: JSON.stringify({ title })
+        body: JSON.stringify({ title: raw })
       });
       setBook(data.book);
       setChapterIndex(data.book.chapters.length - 1);

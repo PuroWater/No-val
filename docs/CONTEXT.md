@@ -4,7 +4,7 @@
 
 ## 现状
 
-- 项目：Novel Agent，本地小说创作平台（React 18 + Vite 5 / Express 4 / DeepSeek，JSON 本地持久化），当前版本 **0.6.0**（图形化地基：关系网增量/分块生成 + 时间线派生视图）。
+- 项目：Novel Agent，本地小说创作平台（React 18 + Vite 5 / Express 4 / DeepSeek，JSON 本地持久化），当前版本 **0.6.1**（新建章节名校验 + 编辑完成触发摘要维护）。
 - 当前开发分支：`feature/0.6-relations-timeline`（自 `Develop` 创建，0.6.0 已完成并提交；按 0.6 规划**暂不合并** develop，0.6.x 继续在本分支开发，功能大部分完成后并入 develop）。
 - 后端测试 41/41；前端构建通过；后端运行于 3001（有外网权限，DeepSeek 真实调用可验证；沙箱内本机 HTTP 直连需 curl + 提权）。
 - 数据：`data/*.json`（books/users/settings），原子写 + `.bak` 备份，gitignore 排除。
@@ -28,19 +28,21 @@
 ## 行为约定（重要）
 
 - 删除仅支持末尾章：前端仅末尾章悬停显示删除按钮，后端 `isLastChapter` 校验并 400 拒绝非末尾删除；删除后异步 `updateOverviewTail` 更新概况结尾（不阻塞请求，失败仅记日志）；`read_book(field:overview)` 保留只读兜底。
-- 手动编辑章节正文 = 冷保存，不触发 AI；问 AI 时 `read_book` 读最新内容。
+- 手动编辑章节正文：失焦/自动保存只写库；“真正编辑完成”（切换标签、关闭面板、返回导航，即编辑器卸载）才先保存再触发 `POST /summary` 维护摘要/事件/概况；问 AI 时 `read_book` 读最新内容。
+- 手动新建章节必须输入实际章节名：去掉“第n章”前缀后为空（只回车/失焦）则不创建。
 - 批量替换后书内全字段一致（含章节事件），不依赖聊天记忆覆盖。
 - 关系网仅手动“重新生成”（`POST /api/books/:id/relations`，支持 `{mode: 'incremental'|'full'}`，缺省按标记自动选择）；续写/改写不自动更新关系网。增量只处理 `coveredUpTo` 之后与覆盖范围内 `updatedAt > generatedAt` 的章节，每块摘要 ≤ 3500 字符 / 25 章。
 - 设置：默认输出章节数 1-5 / 默认输出字数每章 1000-10000（用户明确指定时顶替）；写书调用（生成/续写/改写）maxTokens 32768，元数据/工具调用统一 4096；发送快捷键 Enter/Ctrl+Enter 互斥；常规与外观分标签。
 - 当天聊天记忆只作讨论上下文，不覆盖书内真实状态；工具决策循环也携带当天聊天。
 - 推理模型注意：maxTokens 过低会因 `reasoning_tokens` 挤占预算返回空内容（“未返回内容”），小调用不得低于 4096。
 
-## 最近完成（0.5.20 → 0.6.0）
+## 最近完成（0.5.20 → 0.6.1）
 
 - 0.5.20：删除收敛为仅末尾章 + 概况结尾差分；移除 `rebuildOverview` 与 `edit_book(overview)`；修复推理模型空响应（小调用 maxTokens 统一 4096）。
 - 0.5.21：写书调用 maxTokens 8192 → 32768（按模型实测）；设置范围定 1000-10000。
 - 0.5.22：`syncChapterOverview` 输入差分（去掉全书事件列表）；模块拆分（overviewService / storyMetaService / modelCall）；删除 `ensureChapterEvents` 全量迁移函数（新书首章事件走 syncChapterOverview，旧 timeline 迁移由 normalizeBook 确定性完成）。
 - 0.6.0：关系网改为“顺序分块增量”（full 置空逐块重建 / incremental 保留现有只处理新增变更章节，消除唯一 O(章数) 输入）；`relations` 新增 `generatedAt`/`coveredUpTo`/`mode` 标记；新增 `GET /api/books/:id/timeline`（章节事迹轴，零 AI）；详情页新增“时间线”第三标签（章节展开显示事件卡）；版本号统一 0.6.0（根 package.json 由 0.5.18 补齐）。
+- 0.6.1：修复新建章节“只有第n章前缀也创建”的 bug（必须有实际章节名才新建）；摘要/事件维护触发从“失焦”改为“编辑器卸载”（切标签/关面板/返回），先保存最新改动再 `POST /summary`，与改写共用 `syncChapterOverview` 内核。
 
 ## 已知问题与后续规划（0.6.1 / 0.6.2）
 

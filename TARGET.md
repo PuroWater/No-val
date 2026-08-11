@@ -1,8 +1,8 @@
 【项目目标】
 在当前开发环境下（已安装 VSCode、Node.js），生成一个可直接运行的**小说创作平台 Web 应用**。项目不连接任何数据库，后端数据使用本地 JSON 文件持久化。前端为 React 单页应用（SPA），后端为 Express，调用 DeepSeek 大模型辅助创作。
 
-当前版本：0.6.0  
-最近更新：2026-08-11 图形化地基：关系网增量/分块生成与时间线派生视图
+当前版本：0.6.1  
+最近更新：2026-08-11 新建章节名校验与编辑完成触发摘要维护
 
 【文档职责】
 - `TARGET.md`：每次更新的目标文件。每次更新前先修改本文档，按“日期 + 版本”划分，写明待更新说明、待更新功能；开发完成后记录实际完成内容。
@@ -1097,4 +1097,23 @@ Novel Agent/
 - 版本号统一为 0.6.0（根目录 package.json 补齐，server/client 同步）。
 
 完成内容：
-- （开发完成后记录）
+- 关系网 `extractRelations` 重构为“顺序分块增量”：`full` 置空后按块重建，`incremental` 保留现有关系只处理 `coveredUpTo` 之后与覆盖范围内 `updatedAt > generatedAt` 的变更章节；新增纯函数 `splitIntoBlocks` / `changedChaptersSince`，消除唯一 O(章数) 输入。
+- `book.relations` 新增 `generatedAt` / `coveredUpTo` / `mode` 标记，`normalizeBook` 补默认值并保证 nodes/edges 数组类型。
+- `POST /api/books/:id/relations` 支持 `{ mode: 'incremental' | 'full' }`，非法 mode 返回 400；新增 `GET /api/books/:id/timeline` 派生接口（`buildTimeline`，章节事迹轴，零 AI）。
+- 详情页/并列窗口新增“时间线”第三标签：章节为可展开节点，展示事件卡（事件 + 人物），无事件章节显示空态。
+- 版本号统一为 0.6.0（根目录 package.json 由过期的 0.5.18 补齐）；单元测试 41/41，构建通过，真实接口验证 timeline 与 mode 校验。
+
+### 2026-08-11 v0.6.1 新建章节名校验与编辑完成触发摘要维护
+
+待更新说明：
+- 手动新建章节时输入框预填“第n章”前缀，直接回车或失焦（未输入实际章节名）仍会创建只有前缀的空章节，属于小 bug。
+- 章节摘要/事件维护目前由“编辑后失焦”触发，用户预期只有“真正编辑完成”（切换标签、关闭面板、返回导航）才应触发。
+
+待更新功能：
+- 新建章节必须有实际章节名：去掉“第n章”前缀后为空则不创建。
+- 摘要/事件维护改为编辑器卸载时触发（先保存最新改动，再调用 `POST /summary`）；失焦只保存、不再触发维护。
+
+完成内容：
+- 新建章节校验：`commitAddChapter` 用 `chapterNamePart` 去掉“第n章”前缀（含空格/冒号），剩余为空则不调用新建接口（此前“第3章”会被创建）。
+- 维护触发时机：`ChapterEditor` 移除失焦时的 `onCommit`；改为在编辑器卸载时（切标签/关面板/返回导航）若存在编辑，先以最新内容保存再触发 `POST /summary`（`regenerateChapterSummary` → `syncChapterOverview`，与 AI 改写同一内核），用 ref 防止重复触发。
+- 版本号升级到 0.6.1（根/server/client 同步）；前端构建通过，后端无改动。

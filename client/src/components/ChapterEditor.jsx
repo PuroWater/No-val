@@ -7,6 +7,9 @@ export default function ChapterEditor({ chapter, onSave, onCommit }) {
   const [savedToast, setSavedToast] = useState(false);
   const first = useRef(true);
   const savedTimerRef = useRef(null);
+  const editedRef = useRef(false);
+  const committedRef = useRef(false);
+  const latestRef = useRef({ title: chapter.title, content: chapter.content });
 
   function showSavedToast() {
     setSavedToast(true);
@@ -30,13 +33,29 @@ export default function ChapterEditor({ chapter, onSave, onCommit }) {
     return () => clearTimeout(timer);
   }, [title, content]);
 
+  useEffect(() => {
+    latestRef.current = { title, content };
+  }, [title, content]);
+
+  // 真正编辑完成 = 编辑器卸载（切换标签 / 关闭面板 / 返回导航）：
+  // 先确保最新改动已保存，再触发章节摘要与事件维护；失焦只保存不触发维护。
+  useEffect(() => {
+    return () => {
+      if (!editedRef.current || committedRef.current) return;
+      committedRef.current = true;
+      const latest = latestRef.current;
+      onSave({ title: latest.title, content: latest.content })
+        .then(() => onCommit?.())
+        .catch(() => {});
+    };
+  }, []);
+
   async function handleBlur() {
     if (!dirty) return;
     setDirty(false);
     try {
       await onSave({ title, content });
       showSavedToast();
-      onCommit?.();
     } catch {
       setDirty(true);
     }
@@ -46,13 +65,13 @@ export default function ChapterEditor({ chapter, onSave, onCommit }) {
     <div className="chapter-editor">
       <input
         value={title}
-        onChange={(e) => { setTitle(e.target.value); setDirty(true); }}
+        onChange={(e) => { setTitle(e.target.value); setDirty(true); editedRef.current = true; }}
         onBlur={handleBlur}
         placeholder="章节标题"
       />
       <textarea
         value={content}
-        onChange={(e) => { setContent(e.target.value); setDirty(true); }}
+        onChange={(e) => { setContent(e.target.value); setDirty(true); editedRef.current = true; }}
         onBlur={handleBlur}
         placeholder={content ? '正文内容' : '还没有内容，可键入章节构思'}
       />
