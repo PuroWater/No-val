@@ -307,7 +307,7 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter }) 
       <ConfirmModal
         open={Boolean(deleteChapterTarget)}
         title="删除章节"
-        message={`删除最后一章不会进入回收站，删除后全书概况结尾会自动更新。确定要删除《${deleteChapterTarget?.title || ''}》吗？`}
+        message={`删除最后一章不会进入回收站，删除后全书概况结尾会自动更新；也可以在聊天中让 AI 批量删除末尾章节（不可恢复）。确定要删除《${deleteChapterTarget?.title || ''}》吗？`}
         confirmText="删除"
         onConfirm={confirmDeleteChapter}
         onCancel={() => setDeleteChapterTarget(null)}

@@ -3,7 +3,7 @@ import { readJson, writeJson, BOOKS_FILE } from '../lib/store.js';
 import { normalizeBook } from '../lib/bookUtils.js';
 import { ensureChapterTitle, isLastChapter } from '../lib/chapterUtils.js';
 import { requireAuth } from '../middleware/auth.js';
-import { regenerateChapterSummary, updateBook } from '../services/bookService.js';
+import { deleteLastChapters, regenerateChapterSummary, updateBook } from '../services/bookService.js';
 import { updateOverviewTail } from '../services/overviewService.js';
 import { buildTimeline, extractRelations } from '../services/storyMetaService.js';
 
@@ -146,6 +146,21 @@ router.delete('/:id/chapters/:chapterId', (req, res) => {
     return res.json({ book });
   } catch (err) {
     return res.status(502).json({ error: err.message });
+  }
+});
+
+router.delete('/:id/chapters', (req, res) => {
+  const count = Number(req.body?.count);
+  try {
+    const books = readJson(BOOKS_FILE, []).map(normalizeBook);
+    const book = books.find((item) => item.id === req.params.id && item.userId === req.user.id);
+    if (!book || book.deletedAt) return res.status(404).json({ error: '书籍不存在' });
+    // 批量删除末尾章节：与单章删除一致，删除后后台异步维护概况结尾（O(1)），请求秒回。
+    deleteLastChapters(book, count, { awaitTail: false });
+    writeJson(BOOKS_FILE, books);
+    return res.json({ book });
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
   }
 });
 

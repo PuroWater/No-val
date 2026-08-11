@@ -3,7 +3,20 @@ import { newId, normalizeBook } from '../lib/bookUtils.js';
 import { ensureChapterTitle } from '../lib/chapterUtils.js';
 import { chatCompletion } from './deepseek.js';
 import { callModel } from '../lib/modelCall.js';
-import { syncChapterOverview } from './overviewService.js';
+import { syncChapterOverview, updateOverviewTail } from './overviewService.js';
+
+export const MAX_BATCH_DELETE = 50;
+
+// 批量删除末尾章节的校验（纯函数）：count 需为 1-MAX_BATCH_DELETE 的整数，且至少保留 1 章。
+export function validateBatchDelete(count, chapterCount) {
+  if (!Number.isInteger(count) || count < 1 || count > MAX_BATCH_DELETE) {
+    return `删除章节数需为 1-${MAX_BATCH_DELETE} 的整数`;
+  }
+  if (count >= chapterCount) {
+    return '至少保留 1 章，删除数量需小于当前章节总数';
+  }
+  return '';
+}
 
 export function updateBook(userId, bookId, apply) {
   const books = readJson(BOOKS_FILE, []).map(normalizeBook);
@@ -225,6 +238,26 @@ export async function rewriteChapter(book, chapterIndex, instruction, settings =
   book.updatedAt = target.updatedAt;
   await syncChapterOverview(book, [{ chapterIndex, oldSummary, newSummary: target.summary }])
     .catch((err) => console.error('[storyOverview] 改写概况更新失败:', err.message));
+  return book;
+}
+
+// 批量删除末尾 N 章（不可恢复）：splice 后调用 updateOverviewTail 以新末章维护概况结尾。
+// awaitTail=true 供 AI 工具等待概况更新完成；HTTP 请求走 setImmediate 后台更新，保持秒回。
+// tailUpdater 可注入以便单元测试，默认走真实概况结尾维护。
+export async function deleteLastChapters(book, count, { awaitTail = false, tailUpdater = updateOverviewTail } = {}) {
+  const error = validateBatchDelete(count, book.chapters.length);
+  if (error) throw new Error(error);
+  book.chapters.splice(book.chapters.length - count, count);
+  book.updatedAt = new Date().toISOString();
+  const runTail = async () => {
+    try {
+      await tailUpdater(book, { lastIndex: book.chapters.length - 1 });
+    } catch (err) {
+      console.error('[storyOverview] 批量删除概况结尾更新失败:', err.message);
+    }
+  };
+  if (awaitTail) await runTail();
+  else setImmediate(runTail);
   return book;
 }
 

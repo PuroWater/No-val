@@ -1,8 +1,8 @@
 【项目目标】
 在当前开发环境下（已安装 VSCode、Node.js），生成一个可直接运行的**小说创作平台 Web 应用**。项目不连接任何数据库，后端数据使用本地 JSON 文件持久化。前端为 React 单页应用（SPA），后端为 Express，调用 DeepSeek 大模型辅助创作。
 
-当前版本：0.6.2  
-最近更新：2026-08-11 外观更新：跟随系统与护眼绿主题
+当前版本：0.6.3  
+最近更新：2026-08-11 批量删除末尾章节工具与并列工作台宽度约束
 
 【文档职责】
 - `TARGET.md`：每次更新的目标文件。每次更新前先修改本文档，按“日期 + 版本”划分，写明待更新说明、待更新功能；开发完成后记录实际完成内容。
@@ -1143,3 +1143,23 @@ Novel Agent/
 - `toolkit.js` 新增 `normalizeOutputScale` / `prefilterDraftIntent` / `OVER_LIMIT_REPLY`：构思意图初筛分类 chat（纯文本回复，含越界拒绝）/ confirm，与已生成路径的 chat/tool 语义统一；`chatService` 构思 prompt 去掉分类必填并支持“由你决定”，草稿记录章节数/每章字数并在确认生成时覆盖默认设置；初筛与已生成预筛提示词加入“只谈创作”与防注入约束。
 - 单元测试 44/44（新增输出规模校验、越界拒绝、构思意图初筛用例）。
 - 版本号升级到 0.6.2（根/server/client 同步）；构建通过。
+
+### 2026-08-11 v0.6.3 批量删除末尾章节工具与并列工作台宽度约束
+
+待更新说明：
+- AI 只能单章删除末尾章节，批量删除需要逐章调用，缺少批量小工具。
+- 并列工作台左栏拖动过右时，右侧聊天区会被挤压变形，缺少左右各至少 1/4 的宽度约束。
+- 单章删除确认弹窗未提示“可以在聊天中让 AI 批量删除”。
+
+待更新功能：
+- 新增批量删除末尾章节工具 `batch_delete_last_chapters`（batch_ 前缀规范）：删除末尾 N 章（1-50，至少保留 1 章），工具描述明确“不可恢复、不进回收站”，删除后调用 `updateOverviewTail` 以新末章维护概况结尾。
+- 单章删除确认弹窗增加“可在聊天中让 AI 批量删除末尾章节（不可恢复）”提示。
+- 并列工作台拖动约束：左栏最少 1/4、右侧聊天区最少保留 1/4。
+
+完成内容：
+- `overviewService.updateOverviewTail` 增加 `{ lastIndex }` 可选参数（缺省取数组末尾，单章删除行为不变）。
+- `bookService` 新增 `deleteLastChapters`（校验 + splice + 概况结尾维护，`awaitTail` 供 AI 工具等待、HTTP 走 `setImmediate` 秒回）与纯函数 `validateBatchDelete`；`routes/books.js` 新增 `DELETE /:id/chapters`（body `{ count }`，1-50、至少保留 1 章）。
+- `tools.js` 新增 `batch_delete_last_chapters`（edit 组），描述明确“不可恢复、不会进入回收站”，删除后以新末章更新概况结尾；`mergeBookState` / `changeLog` 增加 `deletedChapterIds` 支持工具写回移除被删章节。
+- 单章删除确认弹窗增加“可在聊天中让 AI 批量删除末尾章节（不可恢复）”提示。
+- 并列工作台拖动约束：左栏最少 1/4、右侧聊天区最少保留 1/4（`WorkspacePage.startResize`）。
+- 版本号升级到 0.6.3（根/server/client 同步）；单元测试 47/47，构建通过。

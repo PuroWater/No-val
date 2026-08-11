@@ -83,9 +83,11 @@ export default function WorkspacePage() {
     const startWidth = leftWidth;
     const container = document.querySelector('.workspace-body');
     const containerWidth = container?.clientWidth || window.innerWidth;
-    const maxWidth = Math.max(260, containerWidth - 320);
+    // 左栏最少保留 1/4，右侧聊天区最少保留 1/4，避免拖太右导致聊天框挤压变形。
+    const minWidth = Math.max(260, Math.floor(containerWidth * 0.25));
+    const maxWidth = Math.max(minWidth, Math.floor(containerWidth * 0.75));
     const onMove = (moveEvent) => {
-      setLeftWidth(clamp(startWidth + moveEvent.clientX - startX, 260, maxWidth));
+      setLeftWidth(clamp(startWidth + moveEvent.clientX - startX, minWidth, maxWidth));
     };
     const onUp = () => {
       window.removeEventListener('pointermove', onMove);

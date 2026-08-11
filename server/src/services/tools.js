@@ -1,10 +1,10 @@
 import { ensureChapterTitle, searchChapters, fixChapterPrefixes, replaceTextInBook } from '../lib/chapterUtils.js';
-import { rewriteChapter, continueBook } from './bookService.js';
+import { continueBook, deleteLastChapters, rewriteChapter } from './bookService.js';
 import { syncChapterOverview } from './overviewService.js';
 
 export const READY_TOOL_GROUPS = [
   { name: 'read', summary: '查询书籍信息、章节目录或指定章节内容', tools: ['read_book'] },
-  { name: 'edit', summary: '修改章节标题/简介/章节内容，或批量修复章节标题前缀、批量替换文本', tools: ['edit_book', 'batch_fix_chapter_prefixes', 'batch_replace_text'] },
+  { name: 'edit', summary: '修改章节标题/简介/章节内容，或批量修复章节标题前缀、批量替换文本、批量删除末尾章节', tools: ['edit_book', 'batch_fix_chapter_prefixes', 'batch_replace_text', 'batch_delete_last_chapters'] },
   { name: 'write', summary: '续写小说下一批章节', tools: ['continue_book'] },
   { name: 'navigate', summary: '打开并列查看/详情，展示书籍卡片', tools: ['open_book_widget'] }
 ];
@@ -105,6 +105,27 @@ export function defineReadyTools(book, settings, signal, changeLog) {
         return count > 0
           ? { content: `已批量替换 ${count} 处（${from} → ${to ?? ''}）。`, kind: 'text' }
           : { content: `未找到可替换的“${from}”。`, kind: 'text' };
+      }
+    },
+    {
+      group: 'edit',
+      name: 'batch_delete_last_chapters',
+      description: '批量删除末尾章节（不可恢复，不会进入回收站）：从最后一章开始向前删除 count 章，至少保留 1 章；删除后自动更新全书概况结尾。请确认用户明确要求删除后再调用。',
+      parameters: {
+        type: 'object',
+        properties: {
+          count: { type: 'integer', description: '要删除的末尾章节数量（1-50）' }
+        },
+        required: ['count']
+      },
+      handler: async ({ count }) => {
+        const deleted = book.chapters.slice(-count);
+        deleted.forEach((chapter) => changeLog.deletedChapterIds.add(chapter.id));
+        await deleteLastChapters(book, count, { awaitTail: true });
+        return {
+          content: `已删除末尾 ${count} 章（不可恢复），当前共 ${book.chapters.length} 章，全书概况结尾已更新。`,
+          kind: 'text'
+        };
       }
     },
     {

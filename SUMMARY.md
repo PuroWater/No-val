@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-- 当前版本：0.6.2（外观更新：跟随系统与护眼绿主题）
+- 当前版本：0.6.3（批量删除末尾章节工具 + 并列工作台宽度约束）
 - 当前分支：Develop
 - 技术栈：React 18 + Vite 5，Express 4，Node.js 18+，JSON 本地持久化
 - 大模型：DeepSeek，模型默认 `deepseek-v4-flash`
@@ -214,6 +214,7 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 - `POST /api/books/:id/restore`
 - `DELETE /api/books/:id/permanent`
 - `DELETE /api/books/:id/chapters/:chapterId`（仅支持删除末尾章节）
+- `DELETE /api/books/:id/chapters`（批量删除末尾章节，body `{ count }`，1-50、至少保留 1 章）
 - `PUT /api/books/:id/chapters/:chapterId`
 - `POST /api/chat/sessions`
 - `POST /api/chat/message`
@@ -1063,3 +1064,17 @@ npm start
 - 版本号升级到 0.6.2（根/server/client 同步）；测试与构建通过。
 
 完成结果：主题数量扩展为五种并按序展示，默认主题切到护眼纸纹，跟随系统无需额外配置即自动适配。
+
+### 2026-08-11 v0.6.3 批量删除末尾章节工具与并列工作台宽度约束
+
+更新内容：
+
+- 新增批量删除末尾章节工具 `batch_delete_last_chapters`（edit 组，batch_ 前缀）：删除末尾 N 章（1-50、至少保留 1 章），工具描述明确“不可恢复、不会进入回收站”；删除后等待 `updateOverviewTail`（传入新末章索引）更新全书概况结尾再返回。
+- `overviewService.updateOverviewTail` 支持 `{ lastIndex }` 参数显式指定新末章（单章删除缺省取数组末尾，行为不变）。
+- `bookService.deleteLastChapters` 负责批量删除编排（校验 + splice + 概况结尾维护），HTTP 走 `setImmediate` 后台维护秒回，AI 工具走 `awaitTail` 等待完成；`validateBatchDelete` 纯函数校验。
+- 工具写回支持删除章节：`mergeBookState` / `changeLog` 增加 `deletedChapterIds`，AI 删除后的写回会从最新数据移除被删章节。
+- 单章删除确认弹窗增加“也可以在聊天中让 AI 批量删除末尾章节（不可恢复）”提示。
+- 并列工作台拖动约束：左栏最少保留 1/4，右侧聊天区最少保留 1/4，拖动不再挤压变形。
+- 版本号升级到 0.6.3（根/server/client 同步）；单元测试 47/47，构建通过。
+
+完成结果：AI 可一次性批量删除末尾章节且概况结尾自动维护；并列工作台在任何窗口宽度下左右两侧都保留至少 1/4 可用区域。

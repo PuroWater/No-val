@@ -90,7 +90,7 @@ export function createDraft(userId) {
   return book;
 }
 
-export function mergeBookState(latest, mutated, changedChapterIds = new Set()) {
+export function mergeBookState(latest, mutated, changedChapterIds = new Set(), deletedChapterIds = new Set()) {
   latest.title = mutated.title;
   latest.outline = mutated.outline;
   latest.status = mutated.status;
@@ -100,11 +100,13 @@ export function mergeBookState(latest, mutated, changedChapterIds = new Set()) {
   latest.updatedAt = mutated.updatedAt;
   const mutatedChapters = new Map(mutated.chapters.map((chapter) => [chapter.id, chapter]));
   const seen = new Set();
-  latest.chapters = latest.chapters.map((chapter) => {
-    seen.add(chapter.id);
-    const ours = mutatedChapters.get(chapter.id);
-    return ours && changedChapterIds.has(chapter.id) ? Object.assign(chapter, ours) : chapter;
-  });
+  latest.chapters = latest.chapters
+    .filter((chapter) => !deletedChapterIds.has(chapter.id))
+    .map((chapter) => {
+      seen.add(chapter.id);
+      const ours = mutatedChapters.get(chapter.id);
+      return ours && changedChapterIds.has(chapter.id) ? Object.assign(chapter, ours) : chapter;
+    });
   for (const chapter of mutated.chapters) {
     if (!seen.has(chapter.id)) {
       latest.chapters.push(chapter);
@@ -125,11 +127,11 @@ export function mergeBookState(latest, mutated, changedChapterIds = new Set()) {
   }
 }
 
-function writeMergedBook(userId, mutated, changedChapterIds = new Set()) {
+function writeMergedBook(userId, mutated, changedChapterIds = new Set(), deletedChapterIds = new Set()) {
   const books = readJson(BOOKS_FILE, []).map(normalizeBook);
   const latest = books.find((item) => item.id === mutated.id && item.userId === userId);
   if (latest) {
-    mergeBookState(latest, mutated, changedChapterIds);
+    mergeBookState(latest, mutated, changedChapterIds, deletedChapterIds);
   } else {
     books.push(mutated);
   }
@@ -194,7 +196,7 @@ export async function handleMessage(userId, bookId, content, settings = {}) {
 
   const jobKey = `${userId}:${book.id}`;
   const controller = new AbortController();
-  const changeLog = { chapterIds: new Set() };
+  const changeLog = { chapterIds: new Set(), deletedChapterIds: new Set() };
   activeJobs.set(jobKey, { controller, isNewDraft: created });
   try {
     if (book.status === 'draft') {
@@ -214,7 +216,7 @@ export async function handleMessage(userId, bookId, content, settings = {}) {
     }
   } finally {
     activeJobs.delete(jobKey);
-    writeMergedBook(userId, book, changeLog.chapterIds);
+    writeMergedBook(userId, book, changeLog.chapterIds, changeLog.deletedChapterIds);
   }
   return book;
 }

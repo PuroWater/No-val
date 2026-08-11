@@ -66,8 +66,10 @@ export async function syncChapterOverview(book, changes = []) {
 
 // 删除末尾章后的概况结尾更新：输入 O(1)（旧概况 + 新末章摘要/结尾节选），
 // 让 AI 按本书篇幅比例 + 保底字数重新裁定概况结尾，不涉及全量章节，长小说安全。
-export async function updateOverviewTail(book) {
-  const last = book.chapters[book.chapters.length - 1];
+// lastIndex 可显式指定新末章（批量删除倒数 N 章后传入新的最后一章索引），缺省取数组末尾。
+export async function updateOverviewTail(book, { lastIndex } = {}) {
+  const index = Number.isInteger(lastIndex) ? lastIndex : book.chapters.length - 1;
+  const last = book.chapters[index];
   if (!last) {
     book.storySummary = '';
     return book.storySummary;
@@ -79,7 +81,7 @@ export async function updateOverviewTail(book) {
   const result = await callModel(
     () => ({
       system: '你是小说编辑。根据“当前全书概况”和“新的最后一章”修改概况结尾，使故事收束在新最后一章。只返回 JSON。',
-      user: `【当前全书概况】\n${book.storySummary}\n\n【新的最后一章】第 ${book.chapters.length} 章《${last.title}》：${tailSource}\n\n【要求】\n- 概况里不能再出现已删除章节的内容；\n- 在概况末尾补上 2-3 句新结尾，与新最后一章衔接，不要改动概况前半段；\n- 新结尾约 100-200 字。\n\n【输出】{"prose":"完整的修改后概况"}`,
+      user: `【当前全书概况】\n${book.storySummary}\n\n【新的最后一章】第 ${index + 1} 章《${last.title}》：${tailSource}\n\n【要求】\n- 概况里不能再出现已删除章节的内容；\n- 在概况末尾补上 2-3 句新结尾，与新最后一章衔接，不要改动概况前半段；\n- 新结尾约 100-200 字。\n\n【输出】{"prose":"完整的修改后概况"}`,
       temperature: 0.2,
       maxTokens: 4096
     }),
