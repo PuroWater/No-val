@@ -35,6 +35,7 @@
 ## 未来功能（暂不做）
 
 - 时间线视图（可基于 chapter.events 派生）、按章节锚点、关系网事件溯源、“回到某时间点分支”。
+- 长小说全书聚合优化：`syncChapterOverview` 输入差分（去全量事件）、`rebuildOverview` / `extractRelations` / `ensureChapterEvents` 分块 map-reduce。当前这些路径输入为 O(章数)，数百章以上会爆上下文；日常续写/改写/问答无此问题。
 
 ## 常用命令
 

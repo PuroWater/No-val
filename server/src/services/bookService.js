@@ -69,6 +69,8 @@ export function applyChapterEvents(book, changedIndexes, eventsByChapter, prose)
   if (typeof prose === 'string' && prose.trim()) book.storySummary = prose.trim();
 }
 
+// 注意：输出“全书事件列表”（O(章数)），仅供 syncChapterOverview 作上下文使用。
+// 长篇小说时这是全量输入的主要来源，后续应改为只发送变更章自身旧事件或直接去掉。
 function chapterEventsText(book) {
   const lines = [];
   book.chapters.forEach((chapter, index) => {
@@ -79,6 +81,9 @@ function chapterEventsText(book) {
   return lines.length > 0 ? lines.join('\n') : '暂无';
 }
 
+// 迁移/初始化专用（新书初始化、旧数据结构迁移如 timeline→chapter.events）。
+// 输入为全部章节摘要（O(章数)）：短书安全；长篇小说全量迁移会超出模型上下文，
+// 未来如需对长书执行迁移，必须先改为分块处理，不要在长书上直接全量调用。
 export async function ensureChapterEvents(book) {
   const missing = book.chapters.some((chapter) => (chapter.events || []).length === 0 && chapter.summary);
   if (!missing) return book;
@@ -103,6 +108,9 @@ export async function ensureChapterEvents(book) {
   return book;
 }
 
+// 差分维护：输入只含“全书概况 + 变更章旧/新摘要”（O(1)），输出只返回变更章事件与更新后散文。
+// 遗留隐患：prompt 内的 chapterEventsText(book) 仍会携带全书事件列表（O(章数)），
+// 长篇小说时是主要爆炸源；规划改为只发变更章自身旧事件或直接去掉该行。
 export async function syncChapterOverview(book, changes = []) {
   const valid = changes.filter((change) => change && Number.isInteger(change.chapterIndex));
   if (valid.length === 0) return book;
@@ -134,6 +142,8 @@ export async function syncChapterOverview(book, changes = []) {
   return book;
 }
 
+// 全量重建：输入为全部章节摘要（O(章数)），用于删除章节后自动重建与 edit_book overview。
+// 长篇小说需改为分块 map-reduce（组内压缩 → 聚合）；当前仅供短书使用。
 export async function rebuildOverview(book, instruction = '') {
   const summaries = book.chapters
     .map((chapter, index) => (chapter.summary ? `第${index + 1}章：${chapter.summary}` : ''))
@@ -180,6 +190,8 @@ export function sanitizeRelations(result) {
   return { nodes, edges };
 }
 
+// 关系网重新生成：chapterContext(book) 发送全部章节摘要（O(章数)）。
+// 长篇小说需改为分块组摘要聚合，或“全书概况 + 最近 N 章”输入。
 export async function extractRelations(book) {
   const text = chapterContext(book);
   const existing = book.relations?.nodes?.length
