@@ -77,7 +77,7 @@ export async function runToolDecision({
   signal,
   ask = chatCompletion,
   maxAttempts = 3,
-  maxTokens = 1200,
+  maxTokens = 3000,
   maxSteps = 30
 }) {
   const toolText = toolList
@@ -152,7 +152,7 @@ export async function prefilterIntent({
   ask = chatCompletion,
   system = '你是工具筛选 Agent。',
   maxAttempts = 2,
-  maxTokens = 120
+  maxTokens = 3000
 }) {
   const names = groups.map((group) => group.name);
   const groupText = groups.map((group) => `- ${group.name}：${group.summary}`).join('\n');

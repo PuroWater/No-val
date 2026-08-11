@@ -1,8 +1,8 @@
 【项目目标】
 在当前开发环境下（已安装 VSCode、Node.js），生成一个可直接运行的**小说创作平台 Web 应用**。项目不连接任何数据库，后端数据使用本地 JSON 文件持久化。前端为 React 单页应用（SPA），后端为 Express，调用 DeepSeek 大模型辅助创作。
 
-当前版本：0.5.19  
-最近更新：2026-08-11 章节事件内嵌与编辑动作统一
+当前版本：0.5.20  
+最近更新：2026-08-11 删除收敛为末尾章与概况结尾差分
 
 【文档职责】
 - `TARGET.md`：每次更新的目标文件。每次更新前先修改本文档，按“日期 + 版本”划分，写明待更新说明、待更新功能；开发完成后记录实际完成内容。
@@ -1027,3 +1027,21 @@ Novel Agent/
 - `tools.js`：`edit_book` 支持 `action: update|insert` 与 `target: overview`；`read_book` 支持 `field: overview` 与 `maxChars`（默认 3000 / 上限 8000）。
 - `DELETE /:id/chapters/:chapterId`：纯后端移除章节并 `setImmediate` 后台 `rebuildOverview`；前端 `BookSidePanel` 乐观移除 + 定位第一章。
 - `replaceTextInBook` 批量替换覆盖 `chapter.events`；单元测试 35/35（新增迁移与事件测试），构建通过，版本号升级到 0.5.19。
+
+### 2026-08-11 v0.5.20 删除收敛为末尾章与概况结尾差分
+
+待更新说明：
+- 删除中间章是伪需求：中间删除会造成剧情断层、需要全量重建兜底，且全量重建在长小说上 O(章数) 会爆上下文。
+- `edit_book` 的 `overview` 全量重建通道不应保留；`read_book` 的 `overview` 只读保留。
+
+待更新功能：
+- 删除仅支持末尾章节：按钮只在末尾章悬停出现，后端校验拒绝非末尾删除。
+- 删除后自动差分更新概况结尾：只发旧概况 + 新末章（原倒数第二章），按篇幅比例 + 保底字数重写结尾。
+- 移除 `rebuildOverview` 与 `edit_book(target: overview)`。
+
+完成内容：
+- `updateOverviewTail`（O(1) 结尾差分）替换 `rebuildOverview`；`isLastChapter` 后端校验 + 400 拒绝非末尾删除。
+- `tools.js`：`edit_book` target 枚举收敛为 `title / summary / content / outline`。
+- `BookSidePanel`：删除按钮仅末尾章悬停显示，确认文案简化为“删除后概况结尾自动更新”。
+- 修复空响应根因：推理模型 `deepseek-v4-flash` 的小调用 `maxTokens` 统一提到 3000（原 120-1500）。
+- 真实接口验证：非末尾章删除 400、末尾章删除成功且概况结尾 10 秒内自动更新；单元测试 36/36（新增 `isLastChapter`），构建通过，版本号升级到 0.5.20。

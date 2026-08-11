@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { searchChapters, fixChapterPrefixes, replaceTextInBook } from '../src/lib/chapterUtils.js';
+import { searchChapters, fixChapterPrefixes, replaceTextInBook, isLastChapter } from '../src/lib/chapterUtils.js';
 import {
   isConfirmation,
   mergeBookState,
@@ -95,6 +95,14 @@ test('fixChapterPrefixes batches prefixes in arabic or chinese format', () => {
 
   const noop = fixChapterPrefixes(book, 'arabic');
   assert.equal(noop, 0);
+});
+
+test('isLastChapter only accepts the final chapter', () => {
+  const book = { chapters: [{ id: 'c1' }, { id: 'c2' }, { id: 'c3' }] };
+  assert.equal(isLastChapter(book, 'c3'), true);
+  assert.equal(isLastChapter(book, 'c2'), false);
+  assert.equal(isLastChapter(book, 'nope'), false);
+  assert.equal(isLastChapter({ chapters: [] }, 'x'), false);
 });
 
 test('replaceTextInBook replaces text across chapter fields', () => {

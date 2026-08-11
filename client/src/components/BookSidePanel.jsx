@@ -178,12 +178,14 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter }) 
                 onClick={() => setChapterIndex(book.chapters.indexOf(item))}
               >
                 <span className="directory-label">{item.title}</span>
-                <span
-                  className="directory-delete"
-                  onClick={(e) => { e.stopPropagation(); setDeleteChapterTarget(item); }}
-                >
-                  删除
-                </span>
+                {book.chapters[book.chapters.length - 1]?.id === item.id && (
+                  <span
+                    className="directory-delete"
+                    onClick={(e) => { e.stopPropagation(); setDeleteChapterTarget(item); }}
+                  >
+                    删除
+                  </span>
+                )}
               </button>
             ))}
             {addingChapter ? (
@@ -225,7 +227,7 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter }) 
       <ConfirmModal
         open={Boolean(deleteChapterTarget)}
         title="删除章节"
-        message={`删除章节不会进入回收站，书籍内容可能缺失，全书概况可能不再准确。如非必要，可只修改章节内容。确定要删除《${deleteChapterTarget?.title || ''}》吗？删除后可在聊天中让 AI 重建全书概况。`}
+        message={`删除最后一章不会进入回收站，删除后全书概况结尾会自动更新。确定要删除《${deleteChapterTarget?.title || ''}》吗？`}
         confirmText="删除"
         onConfirm={confirmDeleteChapter}
         onCancel={() => setDeleteChapterTarget(null)}

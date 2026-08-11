@@ -56,6 +56,12 @@ export function ensureChapterTitle(index, title) {
   return `第${index + 1}章 ${text}`.trim();
 }
 
+export function isLastChapter(book, chapterId) {
+  const chapters = Array.isArray(book?.chapters) ? book.chapters : [];
+  const last = chapters[chapters.length - 1];
+  return Boolean(last && last.id === chapterId);
+}
+
 export function searchChapters(book, text) {
   const value = String(text || '').trim();
   if (!value) return [];

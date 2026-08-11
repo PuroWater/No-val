@@ -12,7 +12,7 @@ async function requestCompletion({
   system,
   user,
   temperature = 0.8,
-  maxTokens = 2400,
+  maxTokens = 3000,
   signal,
   timeoutMs = 120000
 }) {

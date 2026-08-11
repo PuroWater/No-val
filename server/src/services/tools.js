@@ -1,5 +1,5 @@
 import { ensureChapterTitle, searchChapters, fixChapterPrefixes, replaceTextInBook } from '../lib/chapterUtils.js';
-import { rewriteChapter, continueBook, syncChapterOverview, rebuildOverview } from './bookService.js';
+import { rewriteChapter, continueBook, syncChapterOverview } from './bookService.js';
 
 export const READY_TOOL_GROUPS = [
   { name: 'read', summary: '查询书籍信息、章节目录或指定章节内容', tools: ['read_book'] },
@@ -55,13 +55,6 @@ const EDIT_FIELDS = {
       return { followUp: true, data: `第 ${index + 1} 章摘要已更新。` };
     }
   },
-  overview: {
-    needsChapter: false,
-    apply: async (book, { value }) => {
-      await rebuildOverview(book, String(value || ''));
-      return { content: '已重建全书概况。', kind: 'text' };
-    }
-  }
 };
 
 function continueMessage(book, count) {
@@ -116,12 +109,12 @@ export function defineReadyTools(book, settings, signal, changeLog) {
     {
       group: 'edit',
       name: 'edit_book',
-      description: '修改书籍内容或结构。action 为 update（默认）或 insert（插入新章）；target 为 title（章节标题）/ summary（章节摘要）/ content（章节内容）/ outline（整书简介）/ overview（重建全书概况）五选一；target 为 content/title/summary 时必须提供 chapter；insert 时 chapter 为插入锚点、value 为新章标题；value 为新的标题/摘要/内容/简介/概况要求。',
+      description: '修改书籍内容或结构。action 为 update（默认）或 insert（插入新章）；target 为 title（章节标题）/ summary（章节摘要）/ content（章节内容）/ outline（整书简介）四选一；target 为 content/title/summary 时必须提供 chapter；insert 时 chapter 为插入锚点、value 为新章标题；value 为新的标题/摘要/内容/简介。',
       parameters: {
         type: 'object',
         properties: {
           action: { type: 'string', enum: ['update', 'insert'], description: 'update=修改 / insert=插入新章（默认 update）' },
-          target: { type: 'string', enum: ['title', 'summary', 'content', 'outline', 'overview'], description: 'title=章节标题 / summary=章节摘要 / content=章节内容 / outline=整书简介 / overview=重建全书概况' },
+          target: { type: 'string', enum: ['title', 'summary', 'content', 'outline'], description: 'title=章节标题 / summary=章节摘要 / content=章节内容 / outline=整书简介' },
           chapter: { type: 'string', description: '章节号或标题，如 "第二章"、"古卷传承"' },
           value: { type: 'string', minLength: 1, description: '新的标题/摘要/章节内容/简介/概况要求' }
         },
@@ -160,7 +153,7 @@ export function defineReadyTools(book, settings, signal, changeLog) {
         }
         const field = EDIT_FIELDS[target];
         if (!field) {
-          return { content: '未知的修改目标，仅支持 title / summary / content / outline / overview。', kind: 'text' };
+          return { content: '未知的修改目标，仅支持 title / summary / content / outline。', kind: 'text' };
         }
         const deps = { changeLog: changeLog.chapterIds, settings, signal };
         if (!field.needsChapter) {
@@ -227,7 +220,7 @@ export function defineReadyTools(book, settings, signal, changeLog) {
             followUp: true,
             data: book.storySummary
               ? `当前全书概况：\n${book.storySummary}`
-              : '当前全书概况：暂无（章节生成或修改后会自动重建，也可用 edit_book 的 overview 目标重建）'
+              : '当前全书概况：暂无（章节生成、修改或删除末尾章后会自动重建）'
           };
         }
         if (field === 'info') {
