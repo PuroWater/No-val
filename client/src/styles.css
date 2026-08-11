@@ -1481,7 +1481,7 @@ button, input, textarea, select {
 .side-panel-head {
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 0;
 }
 
 .side-panel-title-row {
