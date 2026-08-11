@@ -15,6 +15,7 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter }) 
   const [addingChapter, setAddingChapter] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [deleteChapterTarget, setDeleteChapterTarget] = useState(null);
+  const [deleteChapterError, setDeleteChapterError] = useState('');
   const directoryRef = useRef(null);
   const addInputRef = useRef(null);
 
@@ -66,17 +67,21 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter }) 
 
   async function confirmDeleteChapter() {
     if (!deleteChapterTarget || !book) return;
-    const removedIndex = book.chapters.findIndex((item) => item.id === deleteChapterTarget.id);
+    setDeleteChapterError('');
+    // 先本地移除条目并定位到第一章，避免等待接口导致卡顿或整页空白
+    setBook((prev) => (
+      prev
+        ? { ...prev, chapters: prev.chapters.filter((item) => item.id !== deleteChapterTarget.id) }
+        : prev
+    ));
+    setChapterIndex(0);
+    setDeleteChapterTarget(null);
     try {
       const data = await api(`/books/${book.id}/chapters/${deleteChapterTarget.id}`, { method: 'DELETE' });
       setBook(data.book);
-      if (removedIndex !== -1) {
-        setChapterIndex(Math.min(removedIndex, data.book.chapters.length - 1));
-      }
+      setChapterIndex(0);
     } catch (err) {
-      setError(err.message);
-    } finally {
-      setDeleteChapterTarget(null);
+      setDeleteChapterError(err.message);
     }
   }
 
@@ -197,6 +202,7 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter }) 
               </button>
             )}
             {filteredChapters.length === 0 && <p className="muted">没有匹配的章节</p>}
+            {deleteChapterError && <p className="form-error">{deleteChapterError}</p>}
           </aside>
           <div className="chapter-editor-area">
             {chapter ? (
@@ -219,7 +225,7 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter }) 
       <ConfirmModal
         open={Boolean(deleteChapterTarget)}
         title="删除章节"
-        message={`删除章节不会进入回收站，书籍内容可能出现断层，全书概况可能不再准确。如非必要，可改用“改写”调整章节内容。确定要删除《${deleteChapterTarget?.title || ''}》吗？删除后可使用 AI 重建全书概况。`}
+        message={`删除章节不会进入回收站，书籍内容可能缺失，全书概况可能不再准确。如非必要，可只修改章节内容。确定要删除《${deleteChapterTarget?.title || ''}》吗？删除后可在聊天中让 AI 重建全书概况。`}
         confirmText="删除"
         onConfirm={confirmDeleteChapter}
         onCancel={() => setDeleteChapterTarget(null)}

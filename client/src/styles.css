@@ -1415,7 +1415,7 @@ button, input, textarea, select {
 }
 
 .side-panel-head p {
-  margin: 0;
+  margin: 16px 0 0;
 }
 
 .close-button {

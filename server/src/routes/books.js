@@ -3,7 +3,7 @@ import { readJson, writeJson, BOOKS_FILE } from '../lib/store.js';
 import { normalizeBook } from '../lib/bookUtils.js';
 import { ensureChapterTitle } from '../lib/chapterUtils.js';
 import { requireAuth } from '../middleware/auth.js';
-import { extractRelations, regenerateChapterSummary, updateBook, syncBookOverview } from '../services/bookService.js';
+import { extractRelations, regenerateChapterSummary, updateBook, applyTimelineChanges } from '../services/bookService.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -107,18 +107,17 @@ router.post('/:id/chapters', (req, res) => {
   }
 });
 
-router.delete('/:id/chapters/:chapterId', async (req, res) => {
+router.delete('/:id/chapters/:chapterId', (req, res) => {
   try {
     const books = readJson(BOOKS_FILE, []).map(normalizeBook);
     const book = books.find((item) => item.id === req.params.id && item.userId === req.user.id);
     if (!book || book.deletedAt) return res.status(404).json({ error: '书籍不存在' });
     const index = book.chapters.findIndex((item) => item.id === req.params.chapterId);
     if (index === -1) return res.status(404).json({ error: '章节不存在' });
-    const oldSummary = book.chapters[index].summary || '';
     book.chapters.splice(index, 1);
+    // 纯后端移除该章的时间线条目，不调用 AI；全书概况散文保持原样，可在聊天中让 AI 重建
+    applyTimelineChanges(book, [index], [], '');
     book.updatedAt = new Date().toISOString();
-    await syncBookOverview(book, [{ chapterIndex: index, oldSummary }])
-      .catch((err) => console.error('[storyOverview] 章节删除概况更新失败:', err.message));
     writeJson(BOOKS_FILE, books);
     return res.json({ book });
   } catch (err) {

@@ -144,7 +144,7 @@ function RelationGraphInner({ relations }) {
     window.addEventListener('pointercancel', onUp);
   }
 
-  if (nodes.length === 0) return <p className="muted">关系网暂无数据，完成章节创作后会生成。</p>;
+  if (nodes.length === 0) return <p className="muted">关系网暂无数据，章节创作或修改后请点击重新生成按钮。</p>;
 
   const showEdgeLabels = edges.length <= 30;
 
