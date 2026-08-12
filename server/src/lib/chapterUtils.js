@@ -1,18 +1,3 @@
-export function fuzzyScore(title, query) {
-  const t = String(title || '').toLowerCase();
-  const q = String(query || '').toLowerCase();
-  if (!t || !q) return 0;
-  if (t === q) return 100;
-  if (t.includes(q) || q.includes(t)) return 90;
-  const setT = new Set(t.split(''));
-  const setQ = new Set(q.split(''));
-  let overlap = 0;
-  for (const ch of setQ) {
-    if (setT.has(ch)) overlap += 1;
-  }
-  return Math.round((overlap / setQ.size) * 60);
-}
-
 // 输出规模收敛：非有限值回退 fallback，越界夹取到 [min, max]。
 export function clampOutput(value, min, max, fallback) {
   const number = Number(value);
@@ -75,33 +60,6 @@ export function isLastChapter(book, chapterId) {
   const chapters = Array.isArray(book?.chapters) ? book.chapters : [];
   const last = chapters[chapters.length - 1];
   return Boolean(last && last.id === chapterId);
-}
-
-export function searchChapters(book, text) {
-  const value = String(text || '').trim();
-  if (!value) return [];
-  const chapterMatch = value.match(/(?:第)?\s*([0-9零一二两三四五六七八九十百千]+)\s*章/);
-  let chapterNumber = 0;
-  if (chapterMatch) {
-    const raw = chapterMatch[1];
-    chapterNumber = /^\d+$/.test(raw) ? Number(raw) : chineseNumberToInt(raw);
-  }
-  if (!chapterNumber) {
-    const numberMatch = value.match(/\d+/);
-    if (numberMatch) chapterNumber = Number(numberMatch[0]);
-  }
-  if (chapterNumber > 0 && book.chapters[chapterNumber - 1]) {
-    const index = chapterNumber - 1;
-    return [{ index, title: book.chapters[index].title, score: 100 }];
-  }
-  if (chapterNumber > 0) {
-    // 章节号超出当前章节数：不模糊匹配，交由调用方给出明确引导（如“本书目前只有 N 章”）
-    return [];
-  }
-  return book.chapters
-    .map((chapter, index) => ({ index, title: chapter.title, score: fuzzyScore(chapter.title, value) }))
-    .filter((item) => item.score >= 40)
-    .sort((a, b) => b.score - a.score || a.index - b.index);
 }
 
 export function fixChapterPrefixes(book, format, changeLog = new Set()) {

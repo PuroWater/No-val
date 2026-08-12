@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { searchChapters, fixChapterPrefixes, replaceTextInBook, isLastChapter } from '../src/lib/chapterUtils.js';
+import { fixChapterPrefixes, replaceTextInBook, isLastChapter } from '../src/lib/chapterUtils.js';
 import {
   isConfirmation,
   mergeBookState,
@@ -30,37 +30,6 @@ test('buildTodayHistory keeps today chat and excludes current user and processin
   assert.equal(history.includes('我们约定主角叫高远'), true);
   assert.equal(history.includes('主角叫什么？'), false);
   assert.equal(history.includes('正在处理'), false);
-});
-
-test('searchChapters matches chapter number, exact title and fuzzy title', () => {
-  const book = {
-    chapters: [
-      { title: '第一章 循环开始' },
-      { title: '第二章 线索浮现' },
-      { title: '第三章 真相逼近' },
-      { title: '第四章 打破循环' },
-      { title: '第五章 结局揭晓' }
-    ]
-  };
-  assert.equal(searchChapters(book, '第4章')[0].index, 3);
-  assert.equal(searchChapters(book, '修改第二章，扩写500字')[0].index, 1);
-  assert.equal(searchChapters(book, '真相逼近')[0].index, 2);
-  assert.equal(searchChapters(book, '循环').length, 2);
-  assert.deepEqual(searchChapters(book, '不存在的章节'), []);
-});
-
-test('searchChapters returns multiple candidates for similar titles', () => {
-  const book = {
-    chapters: [
-      { title: '风起' },
-      { title: '风起云涌' },
-      { title: '云涌之后' },
-      { title: '山水之间' }
-    ]
-  };
-  const matches = searchChapters(book, '风起');
-  assert.ok(matches.length >= 2);
-  assert.equal(matches[0].index, 0);
 });
 
 test('fixChapterPrefixes batches prefixes in arabic or chinese format', () => {

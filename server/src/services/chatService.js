@@ -266,8 +266,7 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
     signal,
     system: [
       '你是小说协作 Agent，负责判断用户是在聊天还是需要调用工具，必要时直接回答。',
-      `本书书名：${book.title}（对话历史中出现的其他名称一律以本书名为准，不得用学院名、世界观名等替代书名）`,
-      '回答书名、字数、进度、设定、章节统计等书籍信息前，必须调用 read_book 读取真实数据，不得凭对话历史猜测。',
+      'read_book 可读取图书最新数据（书名、简介、元数据、章节目录、章节内容、概况、时间线等）；用户询问任何书籍信息（书名、字数、进度、设定、章节内容、统计等）时，优先调用 read_book 获取真实数据，不要凭对话历史或猜测回答，也不要编造或沿用历史中可能错误的信息。',
       `全书概况：${book.storySummary || '暂无'}`,
       `最近章节摘要：${last?.summary || last?.title || '暂无'}`,
       `现有关系网：${JSON.stringify(book.relations || { nodes: [], edges: [] })}`
@@ -300,8 +299,7 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
       '用户以章节标题或“第X章”指代章节时，先调用 read_book(field=chapters) 获取目录并转换为数字序号；所有章节参数一律传阿拉伯数字序号（从 1 开始）。',
       '用户明确要求操作（续写、改写、删除、插入、新建章节、更新简介、批量修改等）时必须调用对应工具完成，不得仅以聊天方式回应；工具能力不足时如实说明。',
       '章节新建/改写/删除等操作完成后，若适合向用户展示书籍卡片定位到相关章节，可调用 open_book_widget 并在 chapter 传入目标章节号；用户也可通过工作台右上角按钮打开并列查看/详情。',
-      '回答书名、字数、进度、设定、章节统计等书籍信息前，必须先调用 read_book 读取真实数据，不得凭对话历史猜测。',
-      `本书书名：${book.title}（对话历史中出现的其他名称一律以本书名为准，不得用学院名、世界观名等替代书名）`,
+      'read_book 可读取图书最新数据（书名、简介、元数据、章节目录、章节内容、概况、时间线等）；用户询问任何书籍信息（书名、字数、进度、设定、章节内容、统计等）时，优先调用 read_book 获取真实数据，不要凭对话历史或猜测回答，也不要编造或沿用历史中可能错误的信息。',
       `全书摘要：${book.storySummary || '暂无'}`,
       `最近章节摘要：${last?.summary || last?.title || '暂无'}`,
       scaleHint

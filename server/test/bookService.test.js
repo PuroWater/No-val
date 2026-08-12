@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { deleteChapters, validateBatchDelete } from '../src/services/bookService.js';
-import { renumberChapterPrefixes, searchChapters } from '../src/lib/chapterUtils.js';
+import { renumberChapterPrefixes } from '../src/lib/chapterUtils.js';
 
 test('validateBatchDelete enforces count range and keeps at least one chapter', () => {
   assert.equal(validateBatchDelete(3, 10), '');
@@ -84,16 +84,4 @@ test('renumberChapterPrefixes collects changed chapter ids', () => {
   const collect = new Set();
   renumberChapterPrefixes(book, { fromIndex: 1, collect });
   assert.deepEqual([...collect].sort(), ['c1', 'c3']);
-});
-
-test('searchChapters returns empty for out-of-range chapter numbers', () => {
-  const book = {
-    chapters: [
-      { title: '第1章 开端' },
-      { title: '第2章 调查' }
-    ]
-  };
-  assert.equal(searchChapters(book, '第 99 章').length, 0);
-  assert.equal(searchChapters(book, '99').length, 0);
-  assert.equal(searchChapters(book, '第二章')[0].index, 1);
 });

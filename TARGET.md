@@ -1317,4 +1317,7 @@ Novel Agent/
 - 超字数收束：createChapter 达到目标字数后 prompt 引导收束/完结（除非用户明确要求继续），不再无限膨胀。
 - 参数层结构化：工具数字类参数强制阿拉伯数字（update_book_target 目标字数、edit_book/read_book/refresh_chapter_meta 章节序号均 integer），AI 负责把用户话术（“20万字”“第一章”）转换为数字；删除 parseTargetWords 中文硬编码解析；章节定位流程 = 先 read_book(field=chapters) 拿目录 → 传数字序号，后端仅做范围校验，不再正则猜工具参数（searchChapters 保留在用户消息层）。
 - 时间线展开方向与浮窗化：纵向主轴 = 重大事件点击 → 场景向右横排、场景点击 → 章节向下竖排；横向主轴 = 重大事件点击 → 场景向下竖排、场景点击 → 章节向右横排；场景/章节展开为绝对定位浮窗（背景+阴影+z-index），不再挤占其他事件。
+- 书籍信息泛化：撤除 system 里写死书名注入，改为泛化引导“read_book 可读取图书最新数据，询问书籍信息优先调用”；查询词（书名/名字/叫什么）进 read 组；真实验证问书名/章节数由 AI 调 read 正确回答。
+- 章节目录分页：`read_book(field=chapters)` 支持 start/count（默认 start=1、count=200、上限 500），超过一页时提示用 start 继续分页，长书不再截断误导。
+- 清理死代码：删除 `searchChapters` 与 `fuzzyScore`（工具参数层改数字定位后无生产调用）及对应测试。
 - 版本号统一 0.7.4（根/server/client）；单元测试 54/54，前端构建通过；真实维护调用验证新字段产出；本地提交未推送（按协作规矩）。

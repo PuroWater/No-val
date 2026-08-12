@@ -26,7 +26,7 @@ export function detectReadyToolIntent(user) {
   const text = String(user || '').trim();
   if (!text) return null;
   const chapterRef = /第\s*([0-9零一二两三四五六七八九十百千]+)\s*章/.test(text);
-  const strongAction = /(续写|改写|重写|删除|删掉|删去|插入|新建|添加|批量|替换|重排|简介|摘要|重新生成|字数|进度|多少字|统计|多少章)/.test(text);
+  const strongAction = /(续写|改写|重写|删除|删掉|删去|插入|新建|添加|批量|替换|重排|简介|摘要|重新生成|字数|进度|多少字|统计|多少章|书名|名字|叫什么)/.test(text);
   const chapterAction = chapterRef && /(写|改|删|插|看|查|读|修|换|建|讲|内容|目录|摘要)/.test(text);
   if (!strongAction && !chapterAction) return null;
   const output = {};

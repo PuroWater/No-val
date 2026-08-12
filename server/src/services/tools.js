@@ -186,18 +186,20 @@ export function defineReadyTools(book, settings, signal, changeLog) {
     {
       group: 'read',
       name: 'read_book',
-      description: '查询书籍信息（只读，可读除“全部章节全文”与“关系网全量数据”外的所有书籍字段）。field 为 info（书名/简介/章节数/进度/目标字数/构思设定）、meta（完整书籍元数据：状态/目标字数/构思设定与概念/草稿输出规模/关系网概要/时间等）、overview（当前全书概况）、chapters（章节目录）、chapter（指定章节的标题/摘要/事件/正文节选，target 传数字序号）、timeline（全书分层时间线：重大事件→场景→章节）；用户以标题或“第X章”指代章节时，先调用 field=chapters 获取目录再转换数字序号；回答书籍信息前必须先调用本工具读取，不要凭摘要或对话历史猜测；正文过长时用 maxChars 控制节选长度。',
+      description: '查询书籍信息（只读，可读除“全部章节全文”与“关系网全量数据”外的所有书籍字段）。field 为 info（书名/简介/章节数/进度/目标字数/构思设定）、meta（完整书籍元数据：状态/目标字数/构思设定与概念/草稿输出规模/关系网概要/时间等）、overview（当前全书概况）、chapters（章节目录，支持 start/count 分页）、chapter（指定章节的标题/摘要/事件/正文节选，target 传数字序号）、timeline（全书分层时间线：重大事件→场景→章节）；用户以标题或“第X章”指代章节时，先调用 field=chapters 获取目录再转换数字序号；回答书籍信息前必须先调用本工具读取，不要凭摘要或对话历史猜测；正文过长时用 maxChars 控制节选长度。',
       parameters: {
         type: 'object',
         properties: {
           field: { type: 'string', description: 'info | meta | overview | chapters | chapter | timeline' },
           target: { type: 'integer', minimum: 1, description: '章节序号（从 1 开始），field=chapter 时必填；用户以标题指代时先 read_book(field=chapters) 转换' },
+          start: { type: 'integer', minimum: 1, description: '目录分页起始章节号（从 1 开始，默认 1），仅 field=chapters 生效' },
+          count: { type: 'integer', minimum: 1, maximum: 500, description: '目录分页数量（默认 200、上限 500），仅 field=chapters 生效' },
           scope: { type: 'string', description: 'summary 或 content，field=chapter 时生效' },
           maxChars: { type: 'integer', minimum: 100, maximum: 8000, description: '正文节选最大字数，默认 3000、上限 8000（仅 field=chapter 且 scope=content 时生效）' }
         },
         required: ['field']
       },
-      handler: async ({ field, target, scope, maxChars }, context) => {
+      handler: async ({ field, target, start, count, scope, maxChars }) => {
         if (field === 'overview') {
           return {
             followUp: true,
@@ -246,9 +248,15 @@ export function defineReadyTools(book, settings, signal, changeLog) {
           };
         }
         if (field === 'chapters') {
-          const titles = book.chapters.map((chapter, index) => `${index + 1}. ${chapter.title}`);
-          const list = titles.length > 200 ? `${titles.slice(0, 200).join('\n')}\n…（共 ${titles.length} 章）` : titles.join('\n');
-          return { followUp: true, data: `章节目录：\n${list || '暂无章节'}` };
+          const total = book.chapters.length;
+          const from = Math.max(1, Number(start) || 1);
+          const size = Math.min(500, Math.max(1, Number(count) || 200));
+          const titles = book.chapters
+            .slice(from - 1, from - 1 + size)
+            .map((chapter, offset) => `${from + offset}. ${chapter.title}`);
+          const list = titles.join('\n');
+          const more = total > from - 1 + size ? `\n…（全书共 ${total} 章，如需继续请用 start=${from + size} 分页读取）` : '';
+          return { followUp: true, data: `章节目录（第 ${from}-${Math.min(total, from - 1 + size)} 章 / 共 ${total} 章）：\n${list || '暂无章节'}${more}` };
         }
         if (field === 'timeline') {
           const timeline = buildTimeline(book);
