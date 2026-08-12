@@ -170,6 +170,11 @@ export function interruptProcessing(userId, bookId = '') {
   return { interrupted: changed };
 }
 
+export function getJobProgress(userId, bookId = '') {
+  const job = activeJobs.get(`${userId}:${bookId}`);
+  return job?.progress || null;
+}
+
 export async function handleMessage(userId, bookId, content, settings = {}) {
   let book = bookId ? readBookById(bookId) : null;
   let created = false;
@@ -189,13 +194,15 @@ export async function handleMessage(userId, bookId, content, settings = {}) {
 
   const jobKey = `${userId}:${book.id}`;
   const controller = new AbortController();
-  const changeLog = { chapterIds: new Set(), deletedChapterIds: new Set() };
-  activeJobs.set(jobKey, { controller, isNewDraft: created });
+  const changeLog = { chapterIds: new Set(), deletedChapterIds: new Set(), writtenCount: 0 };
+  const job = { controller, isNewDraft: created, progress: { total: 0, done: 0, text: '处理中…' } };
+  activeJobs.set(jobKey, job);
   try {
     if (book.status === 'draft') {
+      job.progress.text = '正在整理构思…';
       await handleDraftMessage(book, content, settings, controller.signal);
     } else {
-      await handleReadyMessage(book, content, settings, controller.signal, changeLog);
+      await handleReadyMessage(book, content, settings, controller.signal, changeLog, job);
     }
   } catch (err) {
     const message = String(err.message || '');
@@ -250,7 +257,7 @@ async function handleDraftMessage(book, content, settings, signal) {
   replaceProcessing(book, outcome.content || '请继续补充构思信息。', outcome.kind || 'question', outcome.extra || {});
 }
 
-async function handleReadyMessage(book, content, settings, signal, changeLog) {
+async function handleReadyMessage(book, content, settings, signal, changeLog, job) {
   const last = book.chapters[book.chapters.length - 1];
   const prefilter = await prefilterIntent({
     groups: READY_TOOL_GROUPS,
@@ -277,6 +284,9 @@ async function handleReadyMessage(book, content, settings, signal, changeLog) {
         ...(output.chapterWords ? { chapterWords: output.chapterWords } : {})
       }
     : settings;
+  const totalChapters = output?.chapters || settings.chaptersPerOutput || 0;
+  job.progress.total = totalChapters;
+  job.progress.text = totalChapters > 0 ? `开始生成（共 ${totalChapters} 章）…` : '正在处理…';
   const scaleHint = output
     ? `\n本次用户指定输出规模：${output.chapters ? `共 ${output.chapters} 章` : ''}${output.chapterWords ? `、每章约 ${output.chapterWords} 字` : ''}。必须严格按指定章数逐章调用 edit_book(mode=new)，全部完成后再回复用户。`
     : `\n用户未指定输出规模，按默认设置执行：共 ${settings.chaptersPerOutput} 章、每章约 ${settings.chapterWords} 字；用户只要求一章时只写一章，全部完成后统一回复。`;
@@ -294,7 +304,26 @@ async function handleReadyMessage(book, content, settings, signal, changeLog) {
     tools,
     user: content,
     context: buildTodayHistory(book),
-    signal
+    signal,
+    onStep: (toolName, outcome, args) => {
+      const mode = String(args?.mode || '');
+      const done = changeLog.writtenCount || 0;
+      if (mode === 'new') {
+        job.progress = {
+          total: totalChapters,
+          done,
+          text: done > 0 ? `正在生成第 ${done}/${totalChapters || '?'} 章…` : '正在生成章节…'
+        };
+      } else if (mode === 'modify') {
+        job.progress = { ...job.progress, done, text: '正在改写章节…' };
+      } else if (mode === 'delete') {
+        job.progress = { ...job.progress, done, text: '正在删除章节…' };
+      } else if (toolName === 'refresh_chapter_meta') {
+        job.progress = { ...job.progress, done, text: '正在维护章节元数据…' };
+      } else if (toolName === 'update_outline') {
+        job.progress = { ...job.progress, done, text: '正在更新整书简介…' };
+      }
+    }
   });
   if (!decision.tool) {
     const outcome = decision.outcome || {};

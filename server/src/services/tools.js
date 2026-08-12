@@ -126,6 +126,7 @@ export function defineReadyTools(book, settings, signal, changeLog) {
           const { chapter: created, affectedIds = [] } = await createChapter(book, { anchorIndex, title, instruction, settings, signal });
           changeLog.chapterIds.add(created.id);
           affectedIds.forEach((id) => changeLog.chapterIds.add(id));
+          changeLog.writtenCount = (changeLog.writtenCount || 0) + 1;
           return { followUp: true, data: `已新建第 ${book.chapters.indexOf(created) + 1} 章《${created.title}》，可打开并列窗口查看。` };
         }
         const requestText = String(chapter || '').trim() || context.user || '';

@@ -61,6 +61,7 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
   const [book, setBook] = useState(null);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [progress, setProgress] = useState(null);
   const [error, setError] = useState('');
   const messagesRef = useRef(null);
   const [selectedDate, setSelectedDate] = useState('__today__');
@@ -103,6 +104,9 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
       api(`/books/${bookId}`)
         .then((data) => setBook(data.book))
         .catch(() => {});
+      api(`/chat/progress?bookId=${bookId}`)
+        .then((data) => { if (data.progress) setProgress(data.progress); })
+        .catch(() => {});
     }, 2000);
     return () => clearInterval(timer);
   }, [bookId, hasProcessing]);
@@ -140,6 +144,7 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
     if (!content || sending || hasProcessing) return;
     setInput('');
     sessionStorage.removeItem(draftKey);
+    setProgress(null);
     setSending(true);
     setError('');
     const optimistic = {
@@ -325,6 +330,19 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
           </div>
         )}
       </div>
+      {hasProcessing && progress && (
+        <div className="chat-progress">
+          <span className="chat-progress-text">{progress.text || '处理中…'}</span>
+          {progress.total > 0 && (
+            <span className="chat-progress-bar">
+              <span
+                className="chat-progress-fill"
+                style={{ width: `${Math.min(100, Math.round((progress.done / progress.total) * 100))}%` }}
+              />
+            </span>
+          )}
+        </div>
+      )}
       <div className="chat-messages" ref={messagesRef}>
         {book.chat.length === 0 && (
           <div className="chat-empty-greeting">{greeting}</div>

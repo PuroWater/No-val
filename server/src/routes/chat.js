@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { readBookById, saveBook } from '../lib/store.js';
 import { requireAuth } from '../middleware/auth.js';
-import { createDraft, handleMessage, interruptProcessing } from '../services/chatService.js';
+import { createDraft, handleMessage, interruptProcessing, getJobProgress } from '../services/chatService.js';
 import { createBookFromConcept } from '../services/draftService.js';
 import { continueBook } from '../services/bookService.js';
 import { getUserSettings } from '../services/settingsService.js';
@@ -40,6 +40,11 @@ router.post('/abort', (req, res) => {
   } catch (err) {
     res.status(502).json({ error: err.message });
   }
+});
+
+router.get('/progress', (req, res) => {
+  const bookId = String(req.query.bookId || '').trim();
+  res.json({ progress: getJobProgress(req.user.id, bookId) });
 });
 
 router.post('/create-book', async (req, res) => {

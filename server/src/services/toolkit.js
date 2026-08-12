@@ -161,6 +161,7 @@ export async function runToolDecision({
   user,
   context = '',
   signal,
+  onStep,
   ask = chatCompletion,
   maxAttempts = 3,
   maxTokens = 4096,
@@ -213,6 +214,7 @@ export async function runToolDecision({
       }
       try {
         const outcome = await tool.handler(result.arguments, { user, signal });
+        onStep?.(toolName, outcome, result.arguments);
         if (outcome && outcome.followUp) {
           history.push(`工具 ${toolName} 返回：\n${String(outcome.data || '')}`);
           settled = true;
