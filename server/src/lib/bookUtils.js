@@ -2,6 +2,10 @@ export function newId(prefix) {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+export function nextChapterId(book) {
+  return `c_${book.id}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+}
+
 export function parseTargetWords(value) {
   if (value === null || value === undefined || value === '') return 0;
   const text = String(value).replace(/[，,、\s]/g, '');
@@ -89,5 +93,7 @@ export function normalizeBook(book) {
   if (!book.deletedAt) book.deletedAt = null;
   if (!book.storySummary) book.storySummary = '';
   if (!book.targetWords) book.targetWords = 0;
+  // 删除记录：删除章节后暂存（不立即维护概况），由下一次 maintainChapterMeta 消费清理。
+  if (!Array.isArray(book.pendingDeletes)) book.pendingDeletes = [];
   return book;
 }

@@ -1,71 +1,12 @@
 import { ensureChapterTitle, searchChapters, fixChapterPrefixes, replaceTextInBook } from '../lib/chapterUtils.js';
-import { continueBook, deleteLastChapters, rewriteChapter } from './bookService.js';
-import { syncChapterOverview } from './overviewService.js';
+import { createChapter, deleteChapters, rewriteChapter, updateOutline } from './bookService.js';
+import { maintainChapterMeta } from './maintenanceService.js';
 
 export const READY_TOOL_GROUPS = [
   { name: 'read', summary: '查询书籍信息、章节目录或指定章节内容', tools: ['read_book'] },
-  { name: 'edit', summary: '修改章节标题/简介/章节内容，或批量修复章节标题前缀、批量替换文本、批量删除末尾章节', tools: ['edit_book', 'batch_fix_chapter_prefixes', 'batch_replace_text', 'batch_delete_last_chapters'] },
-  { name: 'write', summary: '续写小说下一批章节', tools: ['continue_book'] },
+  { name: 'edit', summary: '新建/改写/删除章节、编辑整书简介，或批量修复章节标题前缀、批量替换文本、批量删除末尾章节、主动维护章节元数据', tools: ['edit_book', 'batch_fix_chapter_prefixes', 'batch_replace_text', 'batch_delete_last_chapters', 'update_outline', 'refresh_chapter_meta'] },
   { name: 'navigate', summary: '打开并列查看/详情，展示书籍卡片', tools: ['open_book_widget'] }
 ];
-
-const EDIT_FIELDS = {
-  title: {
-    needsChapter: true,
-    apply: (book, { index, value }, deps) => {
-      const nextTitle = ensureChapterTitle(index, value);
-      const chapter = book.chapters[index];
-      if (chapter.title !== nextTitle) {
-        chapter.title = nextTitle;
-        chapter.updatedAt = new Date().toISOString();
-        deps.changeLog.add(chapter.id);
-      }
-      return { followUp: true, data: `第 ${index + 1} 章标题已更新为《${chapter.title}》。` };
-    }
-  },
-  outline: {
-    needsChapter: false,
-    apply: (book, { value }) => {
-      book.outline = String(value || '').trim();
-      return { content: '已更新书籍简介。', kind: 'text' };
-    }
-  },
-  content: {
-    needsChapter: true,
-    apply: async (book, { index, value }, deps) => {
-      const rewrittenId = book.chapters[index]?.id;
-      await rewriteChapter(book, index, String(value || '').trim(), { ...deps.settings, signal: deps.signal });
-      if (rewrittenId) deps.changeLog.add(rewrittenId);
-      return {
-        content: `已修改第 ${index + 1} 章《${book.chapters[index]?.title || '本章'}》，可打开并列窗口查看。`,
-        kind: 'book',
-        extra: { bookId: book.id, chapter: index + 1 }
-      };
-    }
-  },
-  summary: {
-    needsChapter: true,
-    apply: async (book, { index, value }, deps) => {
-      const chapter = book.chapters[index];
-      const oldSummary = chapter.summary || '';
-      chapter.summary = String(value || '').trim();
-      chapter.updatedAt = new Date().toISOString();
-      deps.changeLog.add(chapter.id);
-      await syncChapterOverview(book, [{ chapterIndex: index, oldSummary, newSummary: chapter.summary }])
-        .catch((err) => console.error('[storyOverview] 摘要编辑概况更新失败:', err.message));
-      return { followUp: true, data: `第 ${index + 1} 章摘要已更新。` };
-    }
-  },
-};
-
-function continueMessage(book, count) {
-  const added = book.chapters.slice(-count);
-  if (count <= 1) {
-    return `已续写下一章《${added[0]?.title || '本章'}》，可打开并列窗口查看。`;
-  }
-  const titles = added.map((chapter) => chapter.title).join('》《');
-  return `已续写 ${count} 章：《${titles}》，可打开并列窗口查看。`;
-}
 
 export function defineReadyTools(book, settings, signal, changeLog) {
   return [
@@ -110,7 +51,7 @@ export function defineReadyTools(book, settings, signal, changeLog) {
     {
       group: 'edit',
       name: 'batch_delete_last_chapters',
-      description: '批量删除末尾章节（不可恢复，不会进入回收站）：从最后一章开始向前删除 count 章，至少保留 1 章；删除后自动更新全书概况结尾。请确认用户明确要求删除后再调用。',
+      description: '批量删除末尾章节（不可恢复，不会进入回收站）：从最后一章开始向前删除 count 章，至少保留 1 章。删除不维护书中已断层的内容，概况残留需在后续改写任意章时自动清除，或调用 refresh_chapter_meta 立即刷新。请确认用户明确要求删除后再调用。',
       parameters: {
         type: 'object',
         properties: {
@@ -121,9 +62,9 @@ export function defineReadyTools(book, settings, signal, changeLog) {
       handler: async ({ count }) => {
         const deleted = book.chapters.slice(-count);
         deleted.forEach((chapter) => changeLog.deletedChapterIds.add(chapter.id));
-        await deleteLastChapters(book, count, { awaitTail: true });
+        await deleteChapters(book, { count });
         return {
-          content: `已删除末尾 ${count} 章（不可恢复），当前共 ${book.chapters.length} 章，全书概况结尾已更新。`,
+          content: `已删除末尾 ${count} 章（不可恢复），当前共 ${book.chapters.length} 章。删除造成的概况残留会在后续改写任意章时自动修复，也可让我调用 refresh_chapter_meta 立即刷新。`,
           kind: 'text'
         };
       }
@@ -131,62 +72,62 @@ export function defineReadyTools(book, settings, signal, changeLog) {
     {
       group: 'edit',
       name: 'edit_book',
-      description: '修改书籍内容或结构。action 为 update（默认）或 insert（插入新章）；target 为 title（章节标题）/ summary（章节摘要）/ content（章节内容）/ outline（整书简介）四选一；target 为 content/title/summary 时必须提供 chapter；insert 时 chapter 为插入锚点、value 为新章标题；value 为新的标题/摘要/内容/简介。',
+      description: '新建/改写/删除章节（正文由后端创作调用生成，不经过工具参数）。mode 为 new（新建：缺省追加末尾，chapter 指定时插入该章之后）/ modify（按 instruction 改写指定章）/ delete（删除指定章，不可恢复、不进入回收站；删除会造成剧情断层，概况残留不会立即清理，需在改写后自动修复，或调用 refresh_chapter_meta 立即刷新，请谨慎使用）。instruction 为写作方向或修改意见；title 仅 new 时可选预置标题。',
       parameters: {
         type: 'object',
         properties: {
-          action: { type: 'string', enum: ['update', 'insert'], description: 'update=修改 / insert=插入新章（默认 update）' },
-          target: { type: 'string', enum: ['title', 'summary', 'content', 'outline'], description: 'title=章节标题 / summary=章节摘要 / content=章节内容 / outline=整书简介' },
-          chapter: { type: 'string', description: '章节号或标题，如 "第二章"、"古卷传承"' },
-          value: { type: 'string', minLength: 1, description: '新的标题/摘要/章节内容/简介/概况要求' }
+          mode: { type: 'string', enum: ['new', 'modify', 'delete'], description: 'new=新建 / modify=改写 / delete=删除（默认 modify）' },
+          chapter: { type: 'string', description: '章节号或标题；modify/delete 指定目标，new 时作为插入锚点（缺省追加末尾）' },
+          title: { type: 'string', description: '新章标题（仅 mode=new 可选，缺省由创作调用生成）' },
+          instruction: { type: 'string', description: '写作方向（new）或修改意见（modify）' }
         },
         required: []
       },
-      handler: async ({ action = 'update', target, chapter, value }, context) => {
-        if (action === 'insert') {
+      handler: async ({ mode = 'modify', chapter, title, instruction }, context) => {
+        if (mode === 'delete') {
           const requestText = String(chapter || '').trim() || context.user || '';
           const matches = requestText ? searchChapters(book, requestText) : [];
           if (matches.length === 0) {
-            return {
-              content: '没有找到要插入新章的锚点章节。请在下方书籍中打开并列查看或详情确认章节，然后回复章节号或章节名。',
-              kind: 'book',
-              extra: { bookId: book.id }
-            };
+            return { content: '没有找到要删除的章节，请提供章节号或标题。', kind: 'text' };
           }
           if (matches.length > 1) {
             const list = matches.slice(0, 5).map((item, order) => `${order + 1}. ${item.title}`).join('\n');
-            return { content: `找到多个相似章节，请选择插入位置：\n${list}`, kind: 'question' };
+            return { content: `找到多个相似章节，请确认要删除哪一章：\n${list}`, kind: 'question' };
           }
-          const anchorIndex = matches[0].index;
-          const newIndex = anchorIndex + 1;
-          const now = new Date().toISOString();
-          const newChapter = {
-            id: `c_${book.id}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-            title: ensureChapterTitle(newIndex, value),
-            content: '',
-            summary: '',
-            events: [],
-            createdAt: now,
-            updatedAt: now
+          const index = matches[0].index;
+          const removedTitle = book.chapters[index].title;
+          changeLog.deletedChapterIds.add(book.chapters[index].id);
+          await deleteChapters(book, { index });
+          return {
+            content: `已删除第 ${index + 1} 章《${removedTitle}》（不可恢复）。删除造成的剧情断层与概况残留会在后续改写任意章时自动修复，也可让我调用 refresh_chapter_meta 立即刷新。`,
+            kind: 'text'
           };
-          book.chapters.splice(newIndex, 0, newChapter);
-          changeLog.chapterIds.add(newChapter.id);
-          return { followUp: true, data: `已在第 ${anchorIndex + 1} 章《${matches[0].title}》后插入新章《${newChapter.title}》（空章节，可继续用本工具填充内容）。` };
         }
-        const field = EDIT_FIELDS[target];
-        if (!field) {
-          return { content: '未知的修改目标，仅支持 title / summary / content / outline。', kind: 'text' };
-        }
-        const deps = { changeLog: changeLog.chapterIds, settings, signal };
-        if (!field.needsChapter) {
-          return field.apply(book, { value }, deps);
+        if (mode === 'new') {
+          let anchorIndex;
+          const anchorText = String(chapter || '').trim();
+          if (anchorText) {
+            const anchorMatches = searchChapters(book, anchorText);
+            if (anchorMatches.length === 0) {
+              return {
+                content: '没有找到要插入新章的锚点章节。请在下方书籍中打开并列查看或详情确认章节，然后回复章节号或章节名。',
+                kind: 'book',
+                extra: { bookId: book.id }
+              };
+            }
+            if (anchorMatches.length > 1) {
+              const list = anchorMatches.slice(0, 5).map((item, order) => `${order + 1}. ${item.title}`).join('\n');
+              return { content: `找到多个相似章节，请选择插入位置：\n${list}`, kind: 'question' };
+            }
+            anchorIndex = anchorMatches[0].index;
+          }
+          const { chapter: created } = await createChapter(book, { anchorIndex, title, instruction, settings, signal });
+          changeLog.chapterIds.add(created.id);
+          return { followUp: true, data: `已新建第 ${book.chapters.indexOf(created) + 1} 章《${created.title}》，可打开并列窗口查看。` };
         }
         const requestText = String(chapter || '').trim() || context.user || '';
         if (!requestText) {
-          return {
-            content: '请提供要修改的章节号或标题，例如“第二章”。',
-            kind: 'text'
-          };
+          return { content: '请提供要改写的章节号或标题，例如“第二章”。', kind: 'text' };
         }
         const matches = searchChapters(book, requestText);
         if (matches.length === 0) {
@@ -200,26 +141,51 @@ export function defineReadyTools(book, settings, signal, changeLog) {
           const list = matches.slice(0, 5).map((item, order) => `${order + 1}. ${item.title}`).join('\n');
           return { content: `找到多个相似章节，请选择要修改哪一章：\n${list}`, kind: 'question' };
         }
-        return field.apply(book, { index: matches[0].index, value }, deps);
+        const index = matches[0].index;
+        const rewrittenId = book.chapters[index].id;
+        await rewriteChapter(book, index, String(instruction || '').trim() || '请按用户意图润色重写本章', { ...settings, signal });
+        changeLog.chapterIds.add(rewrittenId);
+        return {
+          content: `已修改第 ${index + 1} 章《${book.chapters[index]?.title || '本章'}》，可打开并列窗口查看。`,
+          kind: 'book',
+          extra: { bookId: book.id, chapter: index + 1 }
+        };
       }
     },
     {
-      group: 'write',
-      name: 'continue_book',
-      description: '续写小说下一批章节。instruction 为续写方向（可省略）。',
+      group: 'edit',
+      name: 'update_outline',
+      description: '编辑整书简介（outline）。纯写字段，不主动调用、不触发任何维护。',
       parameters: {
         type: 'object',
-        properties: { instruction: { type: 'string' } },
-        required: []
+        properties: { value: { type: 'string', minLength: 1, description: '新的整书简介' } },
+        required: ['value']
       },
-      handler: async ({ instruction }) => {
-        const before = book.chapters.length;
-        await continueBook(book, String(instruction || '').trim() || '继续写', { ...settings, signal });
-        return {
-          content: continueMessage(book, book.chapters.length - before),
-          kind: 'book',
-          extra: { bookId: book.id, chapter: book.chapters.length }
-        };
+      handler: async ({ value }) => {
+        updateOutline(book, value);
+        return { content: '已更新整书简介。', kind: 'text' };
+      }
+    },
+    {
+      group: 'edit',
+      name: 'refresh_chapter_meta',
+      description: '唤起后端对指定章节的一次主动维护：重算该章 summary/events 并更新全书概况（含清理已删除章节残留）。不修改正文；聊天 AI 不能直接改 summary，需通过本工具维护。',
+      parameters: {
+        type: 'object',
+        properties: { chapter: { type: 'string', description: '章节号或标题，如 "第二章"' } },
+        required: ['chapter']
+      },
+      handler: async ({ chapter }, context) => {
+        const requestText = String(chapter || '').trim() || context.user || '';
+        const matches = requestText ? searchChapters(book, requestText) : [];
+        if (matches.length === 0) return { content: '没有找到对应章节，请提供章节号或标题。', kind: 'text' };
+        if (matches.length > 1) {
+          const list = matches.slice(0, 5).map((item, order) => `${order + 1}. ${item.title}`).join('\n');
+          return { content: `找到多个相似章节：\n${list}\n请回复具体章节号。`, kind: 'text' };
+        }
+        const index = matches[0].index;
+        await maintainChapterMeta(book, { chapterIndex: index, mode: 'modify', signal });
+        return { content: `已重新维护第 ${index + 1} 章《${book.chapters[index].title}》的摘要、事件与全书概况。`, kind: 'text' };
       }
     },
     {

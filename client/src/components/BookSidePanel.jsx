@@ -213,14 +213,12 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter }) 
                 onClick={() => setChapterIndex(book.chapters.indexOf(item))}
               >
                 <span className="directory-label">{item.title}</span>
-                {book.chapters[book.chapters.length - 1]?.id === item.id && (
-                  <span
-                    className="directory-delete"
-                    onClick={(e) => { e.stopPropagation(); setDeleteChapterTarget(item); }}
-                  >
-                    删除
-                  </span>
-                )}
+                <span
+                  className="directory-delete"
+                  onClick={(e) => { e.stopPropagation(); setDeleteChapterTarget(item); }}
+                >
+                  删除
+                </span>
               </button>
             ))}
             {addingChapter ? (
@@ -307,7 +305,7 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter }) 
       <ConfirmModal
         open={Boolean(deleteChapterTarget)}
         title="删除章节"
-        message={`删除最后一章不会进入回收站，删除后全书概况结尾会自动更新；也可以在聊天中让 AI 批量删除末尾章节（不可恢复）。确定要删除《${deleteChapterTarget?.title || ''}》吗？`}
+        message={`删除《${deleteChapterTarget?.title || ''}》不会进入回收站且不可恢复；中间删除会造成剧情断层，概况与事件中的残留不会立即清理，需在后续改写衔接后自动修复，或让 AI 调用 refresh_chapter_meta 立即刷新。确定删除吗？`}
         confirmText="删除"
         onConfirm={confirmDeleteChapter}
         onCancel={() => setDeleteChapterTarget(null)}

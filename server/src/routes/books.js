@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import { readJson, writeJson, BOOKS_FILE } from '../lib/store.js';
 import { normalizeBook } from '../lib/bookUtils.js';
-import { ensureChapterTitle, isLastChapter } from '../lib/chapterUtils.js';
+import { ensureChapterTitle } from '../lib/chapterUtils.js';
 import { requireAuth } from '../middleware/auth.js';
-import { deleteLastChapters, regenerateChapterSummary, updateBook } from '../services/bookService.js';
-import { updateOverviewTail } from '../services/overviewService.js';
+import { deleteChapters, updateBook } from '../services/bookService.js';
+import { maintainChapterMeta } from '../services/maintenanceService.js';
 import { buildTimeline, extractRelations } from '../services/storyMetaService.js';
 
 const router = Router();
@@ -77,15 +77,19 @@ router.post('/:id/chapters/:chapterId/summary', async (req, res) => {
   const book = books.find((item) => item.id === req.params.id && item.userId === req.user.id && !item.deletedAt);
   if (!book) return res.status(404).json({ error: '书籍不存在' });
   try {
-    await regenerateChapterSummary(book, req.params.chapterId);
+    const index = book.chapters.findIndex((item) => item.id === req.params.chapterId);
+    if (index === -1) return res.status(404).json({ error: '章节不存在' });
+    await maintainChapterMeta(book, { chapterIndex: index, mode: 'modify' });
     const saved = updateBook(req.user.id, book.id, (latest) => {
       const chapter = latest.chapters.find((item) => item.id === req.params.chapterId);
       const stale = book.chapters.find((item) => item.id === req.params.chapterId);
       if (chapter && stale) {
         chapter.summary = stale.summary;
+        chapter.events = stale.events;
         chapter.updatedAt = stale.updatedAt;
       }
       latest.storySummary = book.storySummary;
+      latest.pendingDeletes = book.pendingDeletes;
       latest.updatedAt = new Date().toISOString();
     });
     return res.json({ book: saved });
@@ -127,22 +131,8 @@ router.delete('/:id/chapters/:chapterId', (req, res) => {
     if (!book || book.deletedAt) return res.status(404).json({ error: '书籍不存在' });
     const index = book.chapters.findIndex((item) => item.id === req.params.chapterId);
     if (index === -1) return res.status(404).json({ error: '章节不存在' });
-    if (!isLastChapter(book, req.params.chapterId)) return res.status(400).json({ error: '只支持删除末尾章节' });
-    book.chapters.splice(index, 1);
-    book.updatedAt = new Date().toISOString();
+    deleteChapters(book, { index });
     writeJson(BOOKS_FILE, books);
-    // 前端乐观删除已即时返回；概况结尾在后台自动差分更新（仅发旧概况 + 新末章，O(1)）
-    setImmediate(async () => {
-      try {
-        const latest = readJson(BOOKS_FILE, []).map(normalizeBook);
-        const target = latest.find((item) => item.id === book.id);
-        if (!target) return;
-        await updateOverviewTail(target);
-        writeJson(BOOKS_FILE, latest);
-      } catch (err) {
-        console.error('[storyOverview] 删除后概况结尾更新失败:', err.message);
-      }
-    });
     return res.json({ book });
   } catch (err) {
     return res.status(502).json({ error: err.message });
@@ -155,20 +145,9 @@ router.delete('/:id/chapters', async (req, res) => {
     const books = readJson(BOOKS_FILE, []).map(normalizeBook);
     const book = books.find((item) => item.id === req.params.id && item.userId === req.user.id);
     if (!book || book.deletedAt) return res.status(404).json({ error: '书籍不存在' });
-    // 批量删除末尾章节：与单章删除一致，删除后后台异步维护概况结尾（O(1)），请求秒回。
-    await deleteLastChapters(book, count);
+    // 批量删除末尾章节：删除不维护概况（残留由下次改写或 refresh_chapter_meta 清理），请求秒回。
+    await deleteChapters(book, { count });
     writeJson(BOOKS_FILE, books);
-    setImmediate(async () => {
-      try {
-        const latest = readJson(BOOKS_FILE, []).map(normalizeBook);
-        const target = latest.find((item) => item.id === book.id);
-        if (!target) return;
-        await updateOverviewTail(target, { lastIndex: target.chapters.length - 1 });
-        writeJson(BOOKS_FILE, latest);
-      } catch (err) {
-        console.error('[storyOverview] 批量删除概况结尾更新失败:', err.message);
-      }
-    });
     return res.json({ book });
   } catch (err) {
     return res.status(400).json({ error: err.message });

@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-- 当前版本：0.6.4（并列工作台 1/3、每书独立聊天草稿、拖拽防选中与协作规矩）
+- 当前版本：0.7.0（架构清晰化：构思/已生成/维护分文件，章节编排收敛为 edit_book mode，统一维护内核与 Review 开关）
 - 当前分支：Develop
 - 技术栈：React 18 + Vite 5，Express 4，Node.js 18+，JSON 本地持久化
 - 大模型：DeepSeek，模型默认 `deepseek-v4-flash`
@@ -72,7 +72,7 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 - 改写章节：输入修改意见，Agent 判断目标章节并重写。
 - 剧情问答：询问设定、角色或剧情，Agent 直接回答。
 - 续写、改写只自动维护章节摘要与全书概况；关系网需手动重新生成。
-- 全书概况采用“章节事件（`chapter.events` 内嵌，含事件与人物）+ 精简散文（`storySummary`）”结构，章节新增/改写后由后端自动差分更新；仅支持删除末尾章，删除后自动差分更新概况结尾（只发旧概况 + 新末章，O(1)）；`read_book` 可读全书概况（只读，供 AI 对比校验）。
+- 全书概况采用“章节事件（`chapter.events` 内嵌，含事件与人物）+ 精简散文（`storySummary`）”结构，章节新增/改写后由后端统一维护内核（`maintainChapterMeta`）自动更新；删除任意章不触发维护，残留由下次维护或 `refresh_chapter_meta` 清理；`read_book` 可读全书概况（只读，供 AI 对比校验）。
 - 聊天意图由 Agent 通过 function calling 决策：模型返回标准工具与参数，后端按 schema 硬校验后执行；工具协议为 ReAct 多步循环（默认 4 步），工具结果回填后模型可继续调用或直接回复，失败自动回传重试。
 - 通用读工具 `read_book` 覆盖书籍信息（书名/简介/章节数/进度/目标字数）、章节目录、指定章节内容与全书概况（`field: overview`）；正文节选默认 3000 字、上限 8000（`maxChars`）；摘要维护保持后端自动，关系网保持手动触发。
 
@@ -126,13 +126,15 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
   - `src/routes/books.js`：书籍列表、详情、章节保存。
   - `src/routes/chat.js`：草稿会话、消息推进、兼容旧接口。
   - `src/routes/settings.js`：主题与字号设置。
-  - `src/services/chatService.js`：聊天状态机、构思采集、摘要确认。
-  - `src/services/bookService.js`：书籍生命周期与写编排（新建、定稿、续写、改写、章节摘要编辑）。
-  - `src/services/overviewService.js`：概况/事件写内核（`syncChapterOverview` 差分维护、`updateOverviewTail` 删末章结尾更新、`applyChapterEvents`）。
+  - `src/services/chatService.js`：聊天状态机（draft/ready 消息推进与写回合并）。
+  - `src/services/draftService.js`：构思生成独立通道（一次性初始化整本书，≤5 章 + summary）。
+  - `src/services/draftTools.js`：构思阶段工具定义（confirm_draft）。
+  - `src/services/bookService.js`：已生成图书生命周期与章节编排（`createChapter` / `rewriteChapter` / `deleteChapters` / `updateOutline` / `reviewChapter`）。
+  - `src/services/maintenanceService.js`：统一维护内核（`maintainChapterMeta` 单章维护、`initializeBookMeta` 新书一次性初始化）。
   - `src/services/storyMetaService.js`：故事元数据（关系网增量/分块生成与清洗、章节事迹轴派生视图 `buildTimeline`）。
   - `src/services/deepseek.js`：DeepSeek API 调用与 JSON 解析。
   - `src/services/toolkit.js`：Agent 工具协议层（schema 校验、ReAct 多步循环调用与失败重试）。
-  - `src/services/tools.js`：已生成图书工具定义（按 read/edit/write/navigate 分组，供意图预筛加载）。
+  - `src/services/tools.js`：已生成图书工具定义（按 read/edit/navigate 分组，供意图预筛加载）。
   - `src/lib/chapterUtils.js`：章节定位、标题前缀、中文数字转换等通用工具函数。
   - `src/lib/store.js`：JSON 读写。
   - `src/lib/security.js`：bcrypt 密码哈希。
@@ -181,6 +183,7 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
     "coveredUpTo": 0,
     "mode": ""
   },
+  "pendingDeletes": [],
   "storySummary": "全书剧情摘要",
   "chat": [],
   "draft": { "concept": "", "summary": "" },
@@ -307,11 +310,11 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 
 ### 长小说与全书聚合操作注意事项
 
-- 旧“全量事件迁移/初始化”函数（`ensureChapterEvents`）已删除：旧 `book.timeline → chapter.events` 迁移改由 `normalizeBook` 确定性完成，新书首章事件走 `syncChapterOverview` 差分内核（O(首章数)）。未来若需对长书做全量事件补齐，必须先分块，属后续规划。
+- 旧“全量事件迁移/初始化”函数（`ensureChapterEvents`）已删除：旧 `book.timeline → chapter.events` 迁移改由 `normalizeBook` 确定性完成，新书首轮事件与概况走 `initializeBookMeta`（一次性，≤5 章）。未来若需对长书做全量事件补齐，必须先分块，属后续规划。
 - 关系网生成已改为“顺序分块增量”：`full` 置空后逐块重建、`incremental` 只处理 `coveredUpTo` 之后与覆盖范围内近期变更章节，每块受字符数（默认 3500）与章节数（默认 25）上限约束，长篇小说安全；`relations` 记录 `generatedAt` / `coveredUpTo` / `mode` 标记。
-- `syncChapterOverview` 已改为输入差分：只发“全书概况 + 变更章旧/新摘要 + 变更章自身旧事件”（O(变更数)），不再携带全书事件列表，长小说安全。
+- `maintainChapterMeta` 统一维护内核：输入 = 全书概况 + 变更章全文 + 前后章摘要 + 变更章现有 events + `pendingDeletes`（O(变更数)），输出 = summary + events + 更新后全书概况，一次关思考调用原子写入，不携带全书事件列表，长小说安全。
 - 日常续写、改写、问答、读章已走局部上下文（全书概况 + 目标章/附近章 + 关系网），不随章数膨胀，长篇小说在这些路径上没有障碍。
-- 删除章节已改为“仅末尾章 + 概况结尾差分（O(1)）”，不存在全量重建路径，无此问题。
+- 删除章节支持任意章（含中间章）：删除不调 AI、不触发维护，只记 `pendingDeletes`；概况残留由下一次改写触发的 `maintainChapterMeta` 自动清除，或 `refresh_chapter_meta` 立即刷新；插入/删除中间章自动重排标准前缀（`renumberChapterPrefixes`）。
 - 后续规划（当前未实现）：关系网交互升级（节点拖拽、筛选、搜索、详情）、时间线事件↔章节与人物↔关系网联动、事件时间字段（真实时间线）、大图性能优化。
 
 ## 启动方式
@@ -1093,3 +1096,17 @@ npm start
 - 版本号升级到 0.6.4（根/server/client 同步）；构建通过，本地提交未推送（按新规矩默认本地）。
 
 完成结果：每本书的聊天输入互不串扰，编辑中的内容在页面不关闭期间随切随回；并列拖拽不再出现蓝色文本选区；协作推送与 main 合并规则有据可依。
+
+### 2026-08-12 v0.7.0 架构清晰化：构思/已生成/维护分文件与章节编排统一
+
+更新内容：
+- 文件拆分：新增 `draftService.js` / `draftTools.js`（构思生成独立通道）；新增 `maintenanceService.js`（统一维护内核）；`overviewService.js` 删除；`bookService.js` 瘦身为已生成图书生命周期与章节编排；`maxTokensForWords` / `nextChapterId` / `clampOutput` 移入公共 lib。
+- `edit_book` 重写为 AI 侧薄壳：`mode: new | modify | delete`，参数精简（mode/chapter/title?/instruction?），正文由后端对应函数内部一次 AI 调用产出（开思考、预算按字数放大），工具循环保持小规模；删除 `continue_book`（旧 HTTP 兼容入口保留，内部逐章走 createChapter）；新增 `update_outline` / `refresh_chapter_meta` 小工具。
+- 章节编排：`createChapter`（锚点插入/末尾追加）、`rewriteChapter`、`deleteChapters`（任意单章 + 末尾批量共用）、`updateOutline`；插入/删除中间章自动重排标准前缀（`renumberChapterPrefixes`，跳过非标准标题），`batch_fix_chapter_prefixes` 保留作 AI 兜底。
+- 删除不调 AI、不维护概况，记 `book.pendingDeletes`（normalizeBook 补默认、mergeBookState 同步），由下一次 `maintainChapterMeta` 消费清理；工具描述与前端确认弹窗写明断层风险；详情页/编辑器删除按钮放开为任意章。
+- `maintainChapterMeta` 统一维护内核（关思考）：输入 = 全书概况 + 变更章全文 + 前后章摘要 + 变更章现有 events + pendingDeletes，输出 = summary + events + 更新后全书概况；触发点统一（create/rewrite 自动、refresh_chapter_meta 主动、手动编辑卸载 `POST /summary`）；`initializeBookMeta` 供新书一次性初始化。
+- Review：`settings.reviewAfterWrite`（默认关，按钮式开关同 Enter/Ctrl+Enter 风格）；`reviewChapter` 生成后通读（开思考），输出 {pass, issues, revised}，不通过且有修订时直接应用；create/rewrite 后按开关触发（多章逐章过），随后统一走维护。
+- `deepseek.js` 支持 `thinking: {type: enabled|disabled}` 与 `reasoning_effort`；真实调用验证 disabled 生效（约 1.3s，enabled 约 5.6s）。
+- 版本号升级到 0.7.0（根/server/client 同步）；单元测试 47/47，前端构建通过；本地提交未推送（按协作规矩默认本地）。
+
+完成结果：构思生成、已生成编辑、元数据维护三条线文件边界清晰；章节新建/改写/删除统一为 edit_book 三种模式；摘要/事件/概况维护收敛为单一内核；生成质量增加可选的审校环节。

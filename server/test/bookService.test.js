@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { deleteLastChapters, validateBatchDelete } from '../src/services/bookService.js';
+import { deleteChapters, validateBatchDelete } from '../src/services/bookService.js';
+import { renumberChapterPrefixes } from '../src/lib/chapterUtils.js';
 
 test('validateBatchDelete enforces count range and keeps at least one chapter', () => {
   assert.equal(validateBatchDelete(3, 10), '');
@@ -11,29 +12,61 @@ test('validateBatchDelete enforces count range and keeps at least one chapter', 
   assert.equal(validateBatchDelete(2.5, 10), '删除章节数需为 1-50 的整数');
 });
 
-test('deleteLastChapters splices trailing chapters and maintains overview tail', async () => {
-  const calls = [];
+test('deleteChapters removes trailing chapters and records pendingDeletes', async () => {
   const book = {
     id: 'b1',
     chapters: Array.from({ length: 5 }, (_, index) => ({ id: `c${index}`, title: `第${index + 1}章` })),
     updatedAt: 'old',
     storySummary: '旧概况'
   };
-  const result = await deleteLastChapters(book, 2, {
-    awaitTail: true,
-    tailUpdater: async (target, options) => { calls.push({ target, options }); }
-  });
+  const result = await deleteChapters(book, { count: 2 });
   assert.equal(result.chapters.length, 3);
   assert.deepEqual(result.chapters.map((chapter) => chapter.id), ['c0', 'c1', 'c2']);
   assert.equal(result.chapters[2].title, '第3章');
   assert.notEqual(result.updatedAt, 'old');
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0].target, book);
-  assert.equal(calls[0].options.lastIndex, 2);
+  assert.equal(result.pendingDeletes.length, 2);
+  assert.equal(result.pendingDeletes[0].index, 3);
+  assert.equal(result.pendingDeletes[0].title, '第4章');
+  assert.equal(result.pendingDeletes[1].index, 4);
 });
 
-test('deleteLastChapters rejects invalid count without mutating book', async () => {
+test('deleteChapters rejects invalid count without mutating book', async () => {
   const book = { chapters: [{ id: 'c0' }] };
-  await assert.rejects(() => deleteLastChapters(book, 1, { awaitTail: true }), /至少保留 1 章/);
+  await assert.rejects(() => deleteChapters(book, { count: 1 }), /至少保留 1 章/);
   assert.equal(book.chapters.length, 1);
+});
+
+test('deleteChapters removes middle chapter and renumbers standard prefixes', async () => {
+  const book = {
+    id: 'b1',
+    chapters: [
+      { id: 'c0', title: '第1章 开端' },
+      { id: 'c1', title: '第2章 冲突' },
+      { id: 'c2', title: '第3章 转折' },
+      { id: 'c3', title: '终章' }
+    ]
+  };
+  const result = await deleteChapters(book, { index: 1 });
+  assert.equal(result.chapters.length, 3);
+  assert.deepEqual(result.chapters.map((chapter) => chapter.id), ['c0', 'c2', 'c3']);
+  assert.equal(result.chapters[1].title, '第2章 转折');
+  assert.equal(result.chapters[2].title, '终章');
+  assert.equal(result.pendingDeletes.length, 1);
+  assert.equal(result.pendingDeletes[0].title, '第2章 冲突');
+});
+
+test('renumberChapterPrefixes only touches standard prefixed titles', () => {
+  const book = {
+    chapters: [
+      { id: 'c0', title: '第1章 开端' },
+      { id: 'c1', title: '第3章 转折' },
+      { id: 'c2', title: '终章' },
+      { id: 'c3', title: '第99章 后记' }
+    ]
+  };
+  const count = renumberChapterPrefixes(book, { fromIndex: 1 });
+  assert.equal(count, 2);
+  assert.equal(book.chapters[1].title, '第2章 转折');
+  assert.equal(book.chapters[2].title, '终章');
+  assert.equal(book.chapters[3].title, '第4章 后记');
 });

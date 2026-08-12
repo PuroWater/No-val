@@ -1,7 +1,7 @@
 【项目目标】
 在当前开发环境下（已安装 VSCode、Node.js），生成一个可直接运行的**小说创作平台 Web 应用**。项目不连接任何数据库，后端数据使用本地 JSON 文件持久化。前端为 React 单页应用（SPA），后端为 Express，调用 DeepSeek 大模型辅助创作。
 
-当前版本：0.7.0（开发中，feature/0.7-arch-cleanup）  
+当前版本：0.7.0  
 最近更新：2026-08-12 0.7.0 架构清晰化：构思/已生成/维护分文件，章节编排收敛与统一维护内核，新增 Review 开关
 
 【文档职责】
@@ -1207,4 +1207,13 @@ Novel Agent/
 - 前端：删除按钮放开任意章 + 谨慎确认文案；设置页新增 review 开关。
 
 完成内容：
-（开发完成后填写）
+- `deepseek.js` 支持 `thinking: {type: enabled|disabled}` 与 `reasoning_effort`：写正文/改写/审校开思考，维护调用关思考；真实调用验证 disabled 生效（约 1.3s，enabled 约 5.6s）。
+- 文件拆分：新增 `draftService.js`（构思生成独立通道：generateBookContent / createBookFromConcept / finalizeDraftBook）与 `draftTools.js`（confirm_draft）；新增 `maintenanceService.js`（maintainChapterMeta / initializeBookMeta 统一维护内核）；`overviewService.js` 删除；`bookService.js` 瘦身为已生成图书生命周期与章节编排；`maxTokensForWords` 移入 `lib/modelCall.js`、`nextChapterId` 移入 `lib/bookUtils.js`、`clampOutput` 移入 `lib/chapterUtils.js`。
+- `edit_book` 重写为 AI 侧薄壳：`mode: new | modify | delete`，参数精简为 mode/chapter/title?/instruction?，正文由后端对应函数内部一次 AI 调用产出（开思考、预算按字数放大），工具循环保持小规模；删除 `continue_book`（旧 HTTP 兼容入口保留，内部逐章走 createChapter）；新增 `update_outline` 与 `refresh_chapter_meta` 小工具。
+- 后端章节编排：`createChapter`（锚点插入/末尾追加）、`rewriteChapter`、`deleteChapters`（任意单章 + 末尾批量共用，删除不调 AI、不触发维护）、`updateOutline`。
+- 删除记录 `book.pendingDeletes`（normalizeBook 补默认 []，mergeBookState 同步）：删除后由下一次 `maintainChapterMeta` 消费清理；删除工具描述与前端确认弹窗写明断层风险与可调 refresh_chapter_meta 立即刷新。
+- `lib/chapterUtils.js` 新增 `renumberChapterPrefixes`（仅重排“第X章”标准前缀，跳过非标准标题），createChapter/deleteChapters 自动调用；`batch_fix_chapter_prefixes` 保留作 AI 兜底。
+- `maintainChapterMeta`：输入 = 全书概况 + 变更章全文 + 前后章摘要 + 变更章现有 events + pendingDeletes，输出 = summary + events + 更新后全书概况，一次关思考调用原子写入；触发点统一（create/rewrite 自动、refresh_chapter_meta 主动、手动编辑卸载 POST /summary 改走统一内核）；删除不再触发概览维护。
+- Review：`settings.reviewAfterWrite`（默认关，按钮式开关同 Enter/Ctrl+Enter 风格）；`reviewChapter` 通读生成章节输出 {pass, issues, revised}，不通过且有修订时直接应用；create/rewrite 后按开关触发（多章逐章过），随后统一走维护。
+- 前端：详情页/编辑器删除按钮放开为任意章，确认弹窗改为谨慎文案；设置页新增“生成后审校”开关。
+- 版本号统一 0.7.0（根/server/client）；单元测试 47/47，前端构建通过；本地提交未推送（按协作规矩默认本地）。

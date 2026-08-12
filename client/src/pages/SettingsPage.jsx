@@ -24,6 +24,7 @@ export default function SettingsPage() {
   const [chaptersPerOutput, setChaptersPerOutput] = useState(3);
   const [chapterWords, setChapterWords] = useState(2000);
   const [enterToSend, setEnterToSend] = useState(true);
+  const [reviewAfterWrite, setReviewAfterWrite] = useState(false);
   const [trash, setTrash] = useState([]);
   const [toasts, setToasts] = useState([]);
   const toastIdRef = useRef(0);
@@ -54,12 +55,13 @@ export default function SettingsPage() {
       setChaptersPerOutput(Number(data.settings.chaptersPerOutput) || 3);
       setChapterWords(Number(data.settings.chapterWords) || 2000);
       setEnterToSend(data.settings.enterToSend !== false);
+      setReviewAfterWrite(data.settings.reviewAfterWrite === true);
       applySettings(data.settings);
     });
     loadTrash();
   }, []);
 
-  async function save(nextTheme, nextSize, nextChapters, nextWords, nextEnter) {
+  async function save(nextTheme, nextSize, nextChapters, nextWords, nextEnter, nextReview) {
     try {
       const data = await api('/settings', {
         method: 'PUT',
@@ -68,7 +70,8 @@ export default function SettingsPage() {
           fontSize: nextSize,
           chaptersPerOutput: nextChapters,
           chapterWords: nextWords,
-          enterToSend: nextEnter
+          enterToSend: nextEnter,
+          reviewAfterWrite: nextReview
         })
       });
       applySettings(data.settings);
@@ -151,7 +154,7 @@ export default function SettingsPage() {
                 <span>背景风格</span>
                 <div className="option-row">
                   {THEMES.map((item) => (
-                    <button key={item.value} className={theme === item.value ? 'active' : ''} onClick={() => { setTheme(item.value); save(item.value, fontSize, chaptersPerOutput, chapterWords, enterToSend); }}>
+                    <button key={item.value} className={theme === item.value ? 'active' : ''} onClick={() => { setTheme(item.value); save(item.value, fontSize, chaptersPerOutput, chapterWords, enterToSend, reviewAfterWrite); }}>
                       {item.label}
                     </button>
                   ))}
@@ -161,7 +164,7 @@ export default function SettingsPage() {
                 <span>字号</span>
                 <div className="option-row">
                   {SIZES.map((item) => (
-                    <button key={item.value} className={fontSize === item.value ? 'active' : ''} onClick={() => { setFontSize(item.value); save(theme, item.value, chaptersPerOutput, chapterWords, enterToSend); }}>
+                    <button key={item.value} className={fontSize === item.value ? 'active' : ''} onClick={() => { setFontSize(item.value); save(theme, item.value, chaptersPerOutput, chapterWords, enterToSend, reviewAfterWrite); }}>
                       {item.label}
                     </button>
                   ))}
@@ -183,7 +186,7 @@ export default function SettingsPage() {
                   onBlur={() => {
                     const value = Math.min(5, Math.max(1, Math.round(Number(chaptersPerOutput) || 1)));
                     setChaptersPerOutput(value);
-                    save(theme, fontSize, value, chapterWords, enterToSend);
+                    save(theme, fontSize, value, chapterWords, enterToSend, reviewAfterWrite);
                   }}
                 />
               </div>
@@ -200,7 +203,7 @@ export default function SettingsPage() {
                   onBlur={() => {
                     const value = Math.min(10000, Math.max(1000, Math.round(Number(chapterWords) || 1000)));
                     setChapterWords(value);
-                    save(theme, fontSize, chaptersPerOutput, value, enterToSend);
+                    save(theme, fontSize, chaptersPerOutput, value, enterToSend, reviewAfterWrite);
                   }}
                 />
               </div>
@@ -209,17 +212,35 @@ export default function SettingsPage() {
                 <div className="option-row">
                   <button
                     className={enterToSend ? 'active' : ''}
-                    onClick={() => { setEnterToSend(true); save(theme, fontSize, chaptersPerOutput, chapterWords, true); }}
+                    onClick={() => { setEnterToSend(true); save(theme, fontSize, chaptersPerOutput, chapterWords, true, reviewAfterWrite); }}
                   >
                     Enter
                   </button>
                   <button
                     className={!enterToSend ? 'active' : ''}
-                    onClick={() => { setEnterToSend(false); save(theme, fontSize, chaptersPerOutput, chapterWords, false); }}
+                    onClick={() => { setEnterToSend(false); save(theme, fontSize, chaptersPerOutput, chapterWords, false, reviewAfterWrite); }}
                   >
                     Ctrl+Enter
                   </button>
                 </div>
+              </div>
+              <div className="settings-group">
+                <span>生成后审校</span>
+                <div className="option-row">
+                  <button
+                    className={!reviewAfterWrite ? 'active' : ''}
+                    onClick={() => { setReviewAfterWrite(false); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, false); }}
+                  >
+                    关闭
+                  </button>
+                  <button
+                    className={reviewAfterWrite ? 'active' : ''}
+                    onClick={() => { setReviewAfterWrite(true); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, true); }}
+                  >
+                    开启
+                  </button>
+                </div>
+                <p className="muted">生成或改写章节后 AI 会通读一遍，不通过时自动修订；会额外耗时与消耗 token，默认关闭。</p>
               </div>
             </>
           )}

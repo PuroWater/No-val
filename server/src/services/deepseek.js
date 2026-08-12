@@ -13,6 +13,8 @@ async function requestCompletion({
   user,
   temperature = 0.8,
   maxTokens = 4096,
+  thinkingType = 'enabled',
+  reasoningEffort,
   signal,
   timeoutMs = 120000
 }) {
@@ -28,6 +30,24 @@ async function requestCompletion({
     if (signal.aborted) controller.abort(signal.reason || new Error('请求已中断'));
     else signal.addEventListener('abort', onExternalAbort, { once: true });
   }
+  const body = {
+    model,
+    messages: [
+      { role: 'system', content: system },
+      { role: 'user', content: user }
+    ],
+    temperature,
+    max_tokens: maxTokens,
+    response_format: { type: 'json_object' }
+  };
+  if (thinkingType === 'disabled') {
+    body.thinking = { type: 'disabled' };
+  } else {
+    body.thinking = { type: 'enabled' };
+    if (reasoningEffort && ['low', 'high', 'max'].includes(reasoningEffort)) {
+      body.reasoning_effort = reasoningEffort;
+    }
+  }
   try {
     response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
@@ -35,16 +55,7 @@ async function requestCompletion({
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`
       },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: 'system', content: system },
-          { role: 'user', content: user }
-        ],
-        temperature,
-        max_tokens: maxTokens,
-        response_format: { type: 'json_object' }
-      }),
+      body: JSON.stringify(body),
       signal: controller.signal
     });
   } catch (err) {

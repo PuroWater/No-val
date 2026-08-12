@@ -1,9 +1,8 @@
 import { readJson, writeJson, BOOKS_FILE } from '../lib/store.js';
-import { newId, normalizeBook } from '../lib/bookUtils.js';
-import { ensureChapterTitle } from '../lib/chapterUtils.js';
-import { chatCompletion } from './deepseek.js';
-import { callModel } from '../lib/modelCall.js';
-import { syncChapterOverview, updateOverviewTail } from './overviewService.js';
+import { normalizeBook, nextChapterId } from '../lib/bookUtils.js';
+import { clampOutput, ensureChapterTitle, renumberChapterPrefixes } from '../lib/chapterUtils.js';
+import { callModel, maxTokensForWords } from '../lib/modelCall.js';
+import { maintainChapterMeta } from './maintenanceService.js';
 
 export const MAX_BATCH_DELETE = 50;
 
@@ -27,190 +26,98 @@ export function updateBook(userId, bookId, apply) {
   return book;
 }
 
-function clampOutput(value, min, max, fallback) {
-  const number = Number(value);
-  if (!Number.isFinite(number)) return fallback;
-  return Math.min(max, Math.max(min, Math.round(number)));
-}
-
-function maxTokensForWords(chapterWords) {
-  return Math.min(32768, Math.max(3000, Math.round(Number(chapterWords) * 2.2)));
-}
-
-function nextChapterId(book) {
-  return `c_${book.id}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-}
-
-function buildStorySummary(chapters) {
-  const summaries = chapters.map((chapter) => chapter.summary).filter(Boolean);
-  return summaries.length > 0 ? summaries.join('\n') : '';
-}
-
-export async function generateBookContent(concept, options = {}) {
-  const chaptersPerOutput = clampOutput(options.chaptersPerOutput, 1, 5, 3);
-  const chapterWords = clampOutput(options.chapterWords, 1000, 10000, 2000);
-  const targetWords = Number(options.targetWords) || 0;
-  const chapters = [];
-  let title = '';
-  let outline = '';
-  for (let index = 0; index < chaptersPerOutput; index += 1) {
-    const written = (index + 1) * chapterWords;
-    const ratioText = targetWords > 0
-      ? `本次已输出约 ${written} 字，占全书目标 ${targetWords} 字的 ${Math.round((written / targetWords) * 100)}%。请按此比例安排剧情发展，不要一口气写完整个故事。`
-      : '请按本次输出规模安排剧情发展。';
-    const result = await callModel(
-      () => ({
-        system: '你是小说创作助手。始终只返回 JSON，不要包含 Markdown。',
-        user: index === 0
-          ? `根据构思创作小说的第 1 章，本章约 ${chapterWords} 字。${ratioText}\n章节标题统一为“第X章 + 标题”格式（如“第一章 少年”）。\n返回 JSON：{"title":"书名","outline":"简介","chapter":{"title":"章节标题","content":"章节正文","summary":"本章 80-150 字剧情摘要"}}。构思：${concept}`
-          : `继续创作第 ${index + 1} 章，本章约 ${chapterWords} 字。${ratioText}\n章节标题统一为“第X章 + 标题”格式（如“第${index + 1}章 标题”）。\n书名：${title}\n简介：${outline}\n上一章摘要：${chapters[index - 1]?.summary || '暂无'}\n返回 JSON：{"chapter":{"title":"章节标题","content":"章节正文","summary":"本章 80-150 字剧情摘要"}}。`,
-        maxTokens: maxTokensForWords(chapterWords)
-      }),
-      (result) => result.chapter && result.chapter.content,
-      1,
-      options.signal
-    );
-    if (index === 0) {
-      title = String(result.title || '').trim();
-      outline = String(result.outline || '').trim();
-    }
-    chapters.push({
-      title: ensureChapterTitle(index, result.chapter.title),
-      content: String(result.chapter.content).trim(),
-      summary: String(result.chapter.summary || '').trim()
-    });
-  }
-  if (chapters.length === 0) throw new Error('模型未返回完整小说结构');
-  return {
-    title: title || '未命名小说',
-    outline,
-    chapters
-  };
-}
-
-export async function createBookFromConcept(userId, concept, settings = {}) {
-  const content = await generateBookContent(concept, settings);
-  const now = new Date().toISOString();
-  const book = normalizeBook({
-    id: newId('b'),
-    userId,
-    status: 'ready',
-    title: content.title,
-    outline: content.outline,
-    chapters: content.chapters.map((chapter, index) => ({
-      id: nextChapterId({ id: newId('b') }),
-      title: ensureChapterTitle(index, chapter.title),
-      content: String(chapter.content || '').trim(),
-      summary: String(chapter.summary || '').trim(),
-      createdAt: now,
-      updatedAt: now
-    })),
-    relations: { nodes: [], edges: [] },
-    chat: [],
-    draft: { concept, summary: concept },
-    targetWords: settings.targetWords || 0,
-    createdAt: now,
-    updatedAt: now
-  });
-  book.storySummary = buildStorySummary(book.chapters);
-  // 首章事件与概况走统一差分内核（O(首章数)，小输入），不再使用全量迁移函数
-  await syncChapterOverview(
-    book,
-    book.chapters.map((chapter, index) => ({ chapterIndex: index, oldSummary: '', newSummary: chapter.summary }))
-  ).catch((err) => console.error('[storyOverview] 新书概况初始化失败:', err.message));
-  const books = readJson(BOOKS_FILE, []).map(normalizeBook);
-  books.push(book);
-  writeJson(BOOKS_FILE, books);
-  return book;
-}
-
-export async function finalizeDraftBook(book, settings = {}) {
-  const content = await generateBookContent(book.draft.summary || book.draft.concept, {
-    ...settings,
-    targetWords: book.draft.targetWords || book.targetWords || 0
-  });
-  const now = new Date().toISOString();
-  book.title = content.title;
-  book.outline = content.outline;
-  book.chapters = content.chapters.map((chapter, index) => ({
-    id: nextChapterId(book),
-    title: ensureChapterTitle(index, chapter.title),
-    content: String(chapter.content || '').trim(),
-    summary: String(chapter.summary || '').trim(),
-    createdAt: now,
-    updatedAt: now
-  }));
-  book.storySummary = buildStorySummary(book.chapters);
-  await syncChapterOverview(
-    book,
-    book.chapters.map((chapter, index) => ({ chapterIndex: index, oldSummary: '', newSummary: chapter.summary }))
-  ).catch((err) => console.error('[storyOverview] 新书概况初始化失败:', err.message));
-  book.status = 'ready';
-  book.targetWords = book.draft.targetWords || book.targetWords || 0;
-  book.updatedAt = now;
-  return book;
-}
-
+// 兼容旧接口的续写入口：内部按输出规模逐章走 createChapter（写正文 → 自动维护），失败回滚。
 export async function continueBook(book, instruction, settings = {}) {
   const chaptersPerOutput = clampOutput(settings.chaptersPerOutput, 1, 5, 1);
-  const chapterWords = clampOutput(settings.chapterWords, 1000, 10000, 2000);
-  const targetWords = Number(book.targetWords) || 0;
-  const now = new Date().toISOString();
   const startCount = book.chapters.length;
-  const added = [];
-  let currentWords = book.chapters.reduce((sum, chapter) => sum + (chapter.content || '').length, 0);
   try {
-    for (let index = 0; index < chaptersPerOutput; index += 1) {
-      const last = book.chapters[book.chapters.length - 1];
-      const batchWords = (index + 1) * chapterWords;
-      const remaining = targetWords > 0 ? Math.max(0, targetWords - currentWords) : 0;
-      const ratioText = targetWords > 0
-        ? `本次续写约 ${batchWords} 字（含本次已生成章节），占全书目标 ${targetWords} 字的 ${Math.round((batchWords / targetWords) * 100)}%` +
-          (remaining > 0 ? `，约占剩余篇幅 ${Math.round((batchWords / remaining) * 100)}%` : '') +
-          '。请按此比例推进剧情，既不要仓促完结，也不要拖沓。'
-        : '请按本次输出规模稳步推进剧情。';
-      const context = [
-        `全书摘要：${book.storySummary || '暂无'}`,
-        last ? `最近章节摘要：${last.summary || `${last.title}\n${last.content.slice(0, 500)}`}` : '',
-        `现有关系网：${JSON.stringify(book.relations || { nodes: [], edges: [] })}`,
-        targetWords > 0 ? `全书目标约 ${targetWords} 字，当前已写约 ${currentWords} 字。` : ''
-      ].filter(Boolean).join('\n');
-      const result = await callModel(
-        () => ({
-          system: '你是小说续写助手。始终只返回 JSON，不要包含 Markdown。',
-          user: `根据全书摘要和关系网续写下一章（第 ${book.chapters.length + 1} 章），本章约 ${chapterWords} 字。${ratioText}\n章节标题统一为“第X章 + 标题”格式（如“第${book.chapters.length + 1}章 标题”）。\n返回 JSON：{"chapter":{"title":"章节标题","content":"章节正文","summary":"本章 80-150 字剧情摘要"}}。用户指令：${instruction}\n${context}`,
-          maxTokens: maxTokensForWords(chapterWords)
-        }),
-        (result) => result.chapter && result.chapter.content,
-        1,
-        settings.signal
-      );
-      const newChapter = {
-        id: nextChapterId(book),
-        title: ensureChapterTitle(book.chapters.length, result.chapter.title),
-        content: String(result.chapter.content).trim(),
-        summary: String(result.chapter.summary || '').trim(),
-        createdAt: now,
-        updatedAt: now
-      };
-      book.chapters.push(newChapter);
-      added.push(newChapter);
-      currentWords += newChapter.content.length;
+    for (let i = 0; i < chaptersPerOutput; i += 1) {
+      await createChapter(book, { instruction, settings, signal: settings.signal });
     }
   } catch (err) {
     book.chapters = book.chapters.slice(0, startCount);
     throw err;
   }
-  book.updatedAt = now;
-  await syncChapterOverview(book, added.map((chapter, i) => ({ chapterIndex: startCount + i, newSummary: chapter.summary })))
-    .catch((err) => console.error('[storyOverview] 续写概况更新失败:', err.message));
+  book.updatedAt = new Date().toISOString();
   return book;
 }
 
+// 生成后审校（可开关，settings.reviewAfterWrite）：通读刚生成的章节，判断是否通顺、是否符合指令与全书概况。
+// 开思考、预算按字数放大（可能返回修订后的完整章节）；不通过且含修订时直接应用，由外层统一触发维护。
+export async function reviewChapter(book, chapterIndex, { instruction = '', settings = {}, signal } = {}) {
+  const target = book.chapters[chapterIndex];
+  if (!target) throw new Error('章节不存在');
+  const chapterWords = clampOutput(settings.chapterWords, 1000, 10000, 2000);
+  const result = await callModel(
+    () => ({
+      system: '你是小说质量审校助手。通读刚生成的章节，判断是否通顺、是否符合用户指令与全书概况；若不通过，给出修订后的完整章节。只返回 JSON，不要包含 Markdown。',
+      user: `请审校以下章节（约 ${chapterWords} 字）：\n《${target.title}》\n${target.content}\n生成指令：${instruction || '无'}\n全书概况：${book.storySummary || '暂无'}\n\n若内容通顺且符合指令，返回 {"pass":true,"issues":""}；若需要修订，返回 {"pass":false,"issues":"问题要点","revised":{"title":"修订后标题","content":"修订后完整章节正文"}}。修订版必须保留情节主线且为完整章节。`,
+      maxTokens: maxTokensForWords(chapterWords),
+      thinkingType: 'enabled'
+    }),
+    (r) => r && typeof r.pass === 'boolean'
+  );
+  if (result.pass) return { pass: true, issues: '' };
+  const revised = result.revised && typeof result.revised.content === 'string' && result.revised.content.trim()
+    ? {
+        title: String(result.revised.title || target.title).trim(),
+        content: String(result.revised.content).trim()
+      }
+    : null;
+  if (revised) {
+    target.title = revised.title;
+    target.content = revised.content;
+  }
+  return { pass: false, issues: String(result.issues || ''), revised };
+}
+
+// 新建章节（AI 工具/续写兼容入口）：可追加末尾或插入锚点章后。
+// 内部一次写正文调用（开思考、大预算，只产 title/content），写后自动维护章节元数据并重排受影响前缀。
+export async function createChapter(book, { anchorIndex, title, instruction, settings = {}, signal } = {}) {
+  const chapterWords = clampOutput(settings.chapterWords, 1000, 10000, 2000);
+  const insertAt = Number.isInteger(anchorIndex) && anchorIndex >= 0 && anchorIndex < book.chapters.length
+    ? anchorIndex + 1
+    : book.chapters.length;
+  const prev = insertAt > 0 ? book.chapters[insertAt - 1] : null;
+  const next = insertAt < book.chapters.length ? book.chapters[insertAt] : null;
+  const context = [
+    `全书概况：${book.storySummary || '暂无'}`,
+    prev ? `上一章摘要：${prev.summary || `${prev.title}\n${prev.content.slice(0, 500)}`}` : '',
+    next ? `下一章摘要：${next.summary || `${next.title}\n${next.content.slice(0, 500)}`}` : '',
+    `现有关系网：${JSON.stringify(book.relations || { nodes: [], edges: [] })}`
+  ].filter(Boolean).join('\n');
+  const result = await callModel(
+    () => ({
+      system: '你是小说创作助手。始终只返回 JSON，不要包含 Markdown。',
+      user: `创作新章节（插入为第 ${insertAt + 1} 章），本章约 ${chapterWords} 字。\n章节标题统一为“第X章 + 标题”格式。\n返回 JSON：{"title":"章节标题","content":"章节正文"}。\n用户指令：${instruction || '继续创作'}\n${context}`,
+      maxTokens: maxTokensForWords(chapterWords),
+      thinkingType: 'enabled'
+    }),
+    (result) => result && typeof result.content === 'string' && result.content.trim().length > 0
+  );
+  const now = new Date().toISOString();
+  const chapter = {
+    id: nextChapterId(book),
+    title: ensureChapterTitle(insertAt, String(result.title || title || '').trim() || ''),
+    content: String(result.content).trim(),
+    summary: '',
+    events: [],
+    createdAt: now,
+    updatedAt: now
+  };
+  book.chapters.splice(insertAt, 0, chapter);
+  renumberChapterPrefixes(book, { fromIndex: insertAt + 1 });
+  if (settings.reviewAfterWrite) {
+    await reviewChapter(book, insertAt, { instruction, settings, signal });
+  }
+  await maintainChapterMeta(book, { chapterIndex: insertAt, mode: 'new', signal });
+  return { chapter, insertAt };
+}
+
+// 改写章节（AI 工具入口）：一次写正文调用（开思考、大预算，只产 title/content），写后自动维护章节元数据。
 export async function rewriteChapter(book, chapterIndex, instruction, settings = {}) {
   const target = book.chapters[chapterIndex];
   if (!target) throw new Error('章节不存在');
-  const oldSummary = target.summary || '';
   const chapterWords = clampOutput(settings.chapterWords, 1000, 10000, 2000);
   const prev = chapterIndex > 0 ? book.chapters[chapterIndex - 1] : null;
   const next = chapterIndex < book.chapters.length - 1 ? book.chapters[chapterIndex + 1] : null;
@@ -224,54 +131,49 @@ export async function rewriteChapter(book, chapterIndex, instruction, settings =
   const result = await callModel(
     () => ({
       system: '你是小说改写助手。始终只返回 JSON，不要包含 Markdown。',
-      user: `根据修改意见改写章节，本章约 ${chapterWords} 字。返回 JSON：{"title":"章节标题","content":"新内容","summary":"本章 80-150 字剧情摘要"}。原章节：\n${target.title}\n${target.content}\n修改意见：${instruction}\n全书摘要：${book.storySummary || '暂无'}\n附近章节语境：\n${context}`,
-      maxTokens: maxTokensForWords(chapterWords)
+      user: `根据修改意见改写章节，本章约 ${chapterWords} 字。返回 JSON：{"title":"章节标题","content":"新内容"}。\n原章节：\n${target.title}\n${target.content}\n修改意见：${instruction}\n全书概况：${book.storySummary || '暂无'}\n附近章节语境：\n${context}`,
+      maxTokens: maxTokensForWords(chapterWords),
+      thinkingType: 'enabled'
     }),
-    (result) => result.content,
-    1,
-    settings.signal
+    (result) => result && typeof result.content === 'string' && result.content.trim().length > 0
   );
   target.title = String(result.title || target.title).trim();
-  target.content = String(result.content || target.content).trim();
-  target.summary = String(result.summary || target.summary || '').trim();
-  target.updatedAt = new Date().toISOString();
-  book.updatedAt = target.updatedAt;
-  await syncChapterOverview(book, [{ chapterIndex, oldSummary, newSummary: target.summary }])
-    .catch((err) => console.error('[storyOverview] 改写概况更新失败:', err.message));
-  return book;
-}
-
-// 批量删除末尾 N 章（不可恢复）：仅做内存编排（校验 + splice）。
-// awaitTail=true 时以新末章维护概况结尾（AI 工具路径，写回由上层持久化）；
-// HTTP 路由自行调度磁盘级后台维护（与单章删除一致），不在此处调度。
-// tailUpdater 可注入以便单元测试，默认走真实概况结尾维护。
-export async function deleteLastChapters(book, count, { awaitTail = false, tailUpdater = updateOverviewTail } = {}) {
-  const error = validateBatchDelete(count, book.chapters.length);
-  if (error) throw new Error(error);
-  book.chapters.splice(book.chapters.length - count, count);
-  book.updatedAt = new Date().toISOString();
-  if (awaitTail) {
-    try {
-      await tailUpdater(book, { lastIndex: book.chapters.length - 1 });
-    } catch (err) {
-      console.error('[storyOverview] 批量删除概况结尾更新失败:', err.message);
-    }
+  target.content = String(result.content).trim();
+  if (settings.reviewAfterWrite) {
+    await reviewChapter(book, chapterIndex, { instruction, settings, signal: settings.signal });
   }
+  await maintainChapterMeta(book, { chapterIndex, mode: 'modify', signal: settings.signal });
   return book;
 }
 
-export async function regenerateChapterSummary(book, chapterId) {
-  const chapter = book.chapters.find((item) => item.id === chapterId);
-  if (!chapter) throw new Error('章节不存在');
-  const oldSummary = chapter.summary || '';
-  const result = await chatCompletion({
-    system: '你是小说章节摘要维护助手。只返回 JSON，不要包含 Markdown。',
-    user: `章节标题：${chapter.title}\n章节内容：${chapter.content}\n原有摘要：${oldSummary || '无'}\n\n请生成新的 80-150 字章节摘要，并对比原摘要给出最小化差异说明，返回 JSON：{"summary":"新摘要","diff":"与原摘要的关键差异"}`,
-    temperature: 0.4,
-    maxTokens: 4096
-  });
-  chapter.summary = String(result.summary || oldSummary || '').trim();
-  await syncChapterOverview(book, [{ chapterIndex: book.chapters.indexOf(chapter), oldSummary, newSummary: chapter.summary }])
-    .catch((err) => console.error('[storyOverview] 章节摘要概况更新失败:', err.message));
+// 删除章节（AI 工具/批量共用）：支持按 index 删除任意章，或按 count 删除末尾 N 章。
+// 删除不调 AI、不触发概览维护，只记 pendingDeletes，由下一次维护消费清理；中间删除自动重排受影响前缀。
+export async function deleteChapters(book, { index, count } = {}) {
+  const total = book.chapters.length;
+  const pending = Array.isArray(book.pendingDeletes) ? book.pendingDeletes : [];
+  const now = new Date().toISOString();
+  if (Number.isInteger(index)) {
+    if (index < 0 || index >= total) throw new Error('章节不存在');
+    if (total <= 1) throw new Error('至少保留 1 章，删除数量需小于当前章节总数');
+    const removed = book.chapters.splice(index, 1)[0];
+    pending.push({ index, title: removed?.title || '', deletedAt: now });
+    renumberChapterPrefixes(book, { fromIndex: index });
+  } else {
+    const error = validateBatchDelete(count, total);
+    if (error) throw new Error(error);
+    const removed = book.chapters.splice(total - count, count);
+    removed.forEach((chapter, offset) => {
+      pending.push({ index: total - count + offset, title: chapter?.title || '', deletedAt: now });
+    });
+  }
+  book.pendingDeletes = pending;
+  book.updatedAt = now;
+  return book;
+}
+
+// 整书简介编辑：纯写字段，不主动调用、不触发任何维护。
+export function updateOutline(book, outline) {
+  book.outline = String(outline || '').trim();
+  book.updatedAt = new Date().toISOString();
   return book;
 }

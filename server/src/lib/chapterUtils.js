@@ -13,6 +13,13 @@ export function fuzzyScore(title, query) {
   return Math.round((overlap / setQ.size) * 60);
 }
 
+// 输出规模收敛：非有限值回退 fallback，越界夹取到 [min, max]。
+export function clampOutput(value, min, max, fallback) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.min(max, Math.max(min, Math.round(number)));
+}
+
 export function chineseNumberToInt(text) {
   const digits = { 零: 0, 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 };
   const units = { 十: 10, 百: 100, 千: 1000 };
@@ -99,6 +106,27 @@ export function fixChapterPrefixes(book, format, changeLog = new Set()) {
       count += 1;
     }
   });
+  return count;
+}
+
+// 从受影响位置起重排标准前缀：仅处理符合“第X章”格式的章节（跳过非标准标题），
+// 用于插入/删除中间章后自动同步章节编号；fromIndex 之后的章节逐个校准。
+export function renumberChapterPrefixes(book, { fromIndex = 0 } = {}) {
+  const chapters = Array.isArray(book?.chapters) ? book.chapters : [];
+  let count = 0;
+  for (let index = Math.max(0, Number(fromIndex) || 0); index < chapters.length; index += 1) {
+    const chapter = chapters[index];
+    const original = String(chapter?.title || '').trim();
+    if (!original) continue;
+    const matched = original.match(/^第\s*([0-9零一二两三四五六七八九十百千]+)\s*章/);
+    if (!matched) continue;
+    const rest = original.slice(matched[0].length);
+    const nextTitle = `第${index + 1}章${rest}`.trim();
+    if (nextTitle !== original) {
+      chapter.title = nextTitle;
+      count += 1;
+    }
+  }
   return count;
 }
 

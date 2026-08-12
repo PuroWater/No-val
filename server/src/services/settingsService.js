@@ -14,6 +14,7 @@ export function getUserSettings(userId) {
     fontSize: current.fontSize || 'medium',
     chaptersPerOutput: clampInt(current.chaptersPerOutput, 1, 5, 3),
     chapterWords: clampInt(current.chapterWords, 1000, 10000, 2000),
-    enterToSend: current.enterToSend !== false
+    enterToSend: current.enterToSend !== false,
+    reviewAfterWrite: current.reviewAfterWrite === true
   };
 }

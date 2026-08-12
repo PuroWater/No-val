@@ -3,7 +3,8 @@ import { readJson, writeJson, BOOKS_FILE } from '../lib/store.js';
 import { normalizeBook } from '../lib/bookUtils.js';
 import { requireAuth } from '../middleware/auth.js';
 import { createDraft, handleMessage, interruptProcessing } from '../services/chatService.js';
-import { createBookFromConcept, continueBook } from '../services/bookService.js';
+import { createBookFromConcept } from '../services/draftService.js';
+import { continueBook } from '../services/bookService.js';
 import { getUserSettings } from '../services/settingsService.js';
 
 const router = Router();

@@ -1,8 +1,9 @@
 import { readJson, writeJson, BOOKS_FILE } from '../lib/store.js';
-import { newId, normalizeBook, parseTargetWords } from '../lib/bookUtils.js';
-import { finalizeDraftBook } from './bookService.js';
+import { newId, normalizeBook } from '../lib/bookUtils.js';
+import { finalizeDraftBook } from './draftService.js';
 import { prefilterDraftIntent, prefilterIntent, runToolDecision } from './toolkit.js';
 import { defineReadyTools, READY_TOOL_GROUPS } from './tools.js';
+import { defineDraftTools } from './draftTools.js';
 
 const activeJobs = new Map();
 
@@ -97,6 +98,7 @@ export function mergeBookState(latest, mutated, changedChapterIds = new Set(), d
   latest.storySummary = mutated.storySummary;
   latest.targetWords = mutated.targetWords;
   latest.draft = mutated.draft;
+  latest.pendingDeletes = mutated.pendingDeletes;
   latest.updatedAt = mutated.updatedAt;
   const mutatedChapters = new Map(mutated.chapters.map((chapter) => [chapter.id, chapter]));
   const seen = new Set();
@@ -245,28 +247,7 @@ async function handleDraftMessage(book, content, settings, signal) {
   }
   const decision = await runToolDecision({
     system: '你是小说构思整合 Agent。构思信息已齐全（或由用户决定），调用 confirm_draft 输出整合后的完整构思摘要；用户此前已确认过摘要时，根据最新修改意见重新整合。',
-    tools: [
-      {
-        name: 'confirm_draft',
-        description: '构思信息齐全时，输出整合后的完整构思摘要供用户确认。',
-        parameters: {
-          type: 'object',
-          properties: {
-            summary: { type: 'string', minLength: 5 },
-            targetWords: { type: 'string', description: '全书目标字数，如 100000 或 "10万"' }
-          },
-          required: ['summary']
-        },
-        handler: async ({ summary, targetWords }) => {
-          book.draft.summary = String(summary || '').trim();
-          book.draft.targetWords = parseTargetWords(targetWords);
-          return {
-            content: `构思已整合：\n${book.draft.summary}\n\n是否需要修改？回复“确认”开始生成，或直接提出修改意见。`,
-            kind: 'confirm'
-          };
-        }
-      }
-    ],
+    tools: defineDraftTools(book),
     user: conversation,
     signal
   });
@@ -305,13 +286,17 @@ async function handleReadyMessage(book, content, settings, signal, changeLog) {
         ...(output.chapterWords ? { chapterWords: output.chapterWords } : {})
       }
     : settings;
+  const scaleHint = output
+    ? `\n本次用户指定输出规模：${output.chapters ? `共 ${output.chapters} 章` : ''}${output.chapterWords ? `、每章约 ${output.chapterWords} 字` : ''}。若需多章，请逐章调用 edit_book(mode=new) 完成全部章节后再回复用户。`
+    : '';
   const tools = defineReadyTools(book, effectiveSettings, signal, changeLog).filter((tool) => allowed.has(tool.group));
   const decision = await runToolDecision({
     system: [
       '你是小说协作 Agent，根据用户消息选择一个工具调用。',
       '回答具体章节的内容、摘要或细节问题前，必须使用 read_book 工具读取章节，再根据返回内容作答。',
       `全书摘要：${book.storySummary || '暂无'}`,
-      `最近章节摘要：${last?.summary || last?.title || '暂无'}`
+      `最近章节摘要：${last?.summary || last?.title || '暂无'}`,
+      scaleHint
     ].join('\n'),
     tools,
     user: content,
