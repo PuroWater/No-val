@@ -1568,7 +1568,6 @@ button, input, textarea, select {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  margin: 0 12px 12px;
   padding: 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
