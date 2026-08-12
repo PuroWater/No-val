@@ -224,6 +224,7 @@ export function defineReadyTools(book, settings, signal, changeLog) {
             data: [
               `书名：${book.title}`,
               `简介：${book.outline || '无'}`,
+              book.draft?.summary ? `构思设定：${book.draft.summary}` : '',
               `章节数：${book.chapters.length}`,
               `当前字数：约 ${totalWords} 字`,
               book.targetWords > 0

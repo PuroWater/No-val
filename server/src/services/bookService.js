@@ -132,7 +132,7 @@ export async function createChapter(book, { anchorIndex, title, instruction, set
   const targetWords = Number(book.targetWords) || 0;
   const writtenWords = book.chapters.reduce((sum, chapter) => sum + (chapter.content || '').length, 0);
   const ratioText = targetWords > 0
-    ? `全书目标约 ${targetWords} 字，当前已写约 ${writtenWords} 字（约 ${Math.round((writtenWords / targetWords) * 100)}%）。请按剩余篇幅推进剧情：未接近全书尾声时不得提前大结局，也不要拖沓。`
+    ? `全书目标约 ${targetWords} 字，当前已写约 ${writtenWords} 字（约 ${Math.round((writtenWords / targetWords) * 100)}%）。${writtenWords >= targetWords ? '全书已达到目标字数：除非用户明确要求继续，本章应收束故事、作为完结收尾，不要再展开新主线。' : '请按剩余篇幅推进剧情：未接近全书尾声时不得提前大结局，也不要拖沓。'}`
     : '请稳步推进剧情，不要在单章内仓促完结大事件。';
   const context = [
     `全书概况：${book.storySummary || '暂无'}`,
