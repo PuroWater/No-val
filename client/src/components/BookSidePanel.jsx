@@ -20,6 +20,10 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
   const [newTitle, setNewTitle] = useState('');
   const [deleteChapterTarget, setDeleteChapterTarget] = useState(null);
   const [deleteChapterError, setDeleteChapterError] = useState('');
+  const [aiEditedToast, setAiEditedToast] = useState(false);
+  const prevBookRef = useRef(null);
+  const chapterIndexRef = useRef(0);
+  const aiToastTimerRef = useRef(null);
   const directoryRef = useRef(null);
   const addInputRef = useRef(null);
 
@@ -100,8 +104,32 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
   }
 
   useEffect(() => {
-    api(`/books/${bookId}`).then((data) => setBook(data.book)).catch((err) => setError(err.message));
+    let active = true;
+    api(`/books/${bookId}`)
+      .then((data) => {
+        if (!active) return;
+        const next = data.book;
+        setBook(next);
+        const prev = prevBookRef.current;
+        if (prev && prev !== next && Array.isArray(next.chapters)) {
+          const index = chapterIndexRef.current;
+          const prevChapter = prev.chapters?.[index];
+          const nextChapter = next.chapters?.[index];
+          if (prevChapter && nextChapter && (prevChapter.title !== nextChapter.title || prevChapter.content !== nextChapter.content)) {
+            setAiEditedToast(true);
+            clearTimeout(aiToastTimerRef.current);
+            aiToastTimerRef.current = setTimeout(() => setAiEditedToast(false), 3000);
+          }
+        }
+        prevBookRef.current = next;
+      })
+      .catch((err) => setError(err.message));
+    return () => { active = false; };
   }, [bookId, refreshSignal]);
+
+  useEffect(() => {
+    chapterIndexRef.current = chapterIndex;
+  }, [chapterIndex]);
 
   useEffect(() => {
     if (book && Number.isInteger(openChapter) && openChapter >= 1 && openChapter <= book.chapters.length) {
@@ -315,6 +343,11 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
         onConfirm={confirmDeleteChapter}
         onCancel={() => setDeleteChapterTarget(null)}
       />
+      {aiEditedToast && (
+        <div className="toast-layer">
+          <div className="saved-toast">本章已被 AI 修改，保存后将以你的最后状态覆盖 AI 的修改。</div>
+        </div>
+      )}
     </aside>
   );
 }
