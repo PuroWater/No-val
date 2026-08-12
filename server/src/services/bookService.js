@@ -79,6 +79,11 @@ export async function createChapter(book, { anchorIndex, title, instruction, set
     : book.chapters.length;
   const prev = insertAt > 0 ? book.chapters[insertAt - 1] : null;
   const next = insertAt < book.chapters.length ? book.chapters[insertAt] : null;
+  const targetWords = Number(book.targetWords) || 0;
+  const writtenWords = book.chapters.reduce((sum, chapter) => sum + (chapter.content || '').length, 0);
+  const ratioText = targetWords > 0
+    ? `全书目标约 ${targetWords} 字，当前已写约 ${writtenWords} 字（约 ${Math.round((writtenWords / targetWords) * 100)}%）。请按剩余篇幅推进剧情：未接近全书尾声时不得提前大结局，也不要拖沓。`
+    : '请稳步推进剧情，不要在单章内仓促完结大事件。';
   const context = [
     `全书概况：${book.storySummary || '暂无'}`,
     prev ? `上一章摘要：${prev.summary || `${prev.title}\n${prev.content.slice(0, 500)}`}` : '',
@@ -88,7 +93,7 @@ export async function createChapter(book, { anchorIndex, title, instruction, set
   const result = await callModel(
     () => ({
       system: '你是小说创作助手。始终只返回 JSON，不要包含 Markdown。',
-      user: `创作新章节（插入为第 ${insertAt + 1} 章），本章约 ${chapterWords} 字。\n章节标题统一为“第X章 + 标题”格式。\n返回 JSON：{"title":"章节标题","content":"章节正文"}。\n用户指令：${instruction || '继续创作'}\n${context}`,
+      user: `创作新章节（插入为第 ${insertAt + 1} 章），本章约 ${chapterWords} 字。${ratioText}\n章节标题统一为“第X章 + 标题”格式。\n返回 JSON：{"title":"章节标题","content":"章节正文"}。\n用户指令：${instruction || '继续创作'}\n${context}`,
       maxTokens: maxTokensForWords(chapterWords),
       thinkingType: 'enabled'
     }),

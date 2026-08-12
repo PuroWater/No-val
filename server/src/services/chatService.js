@@ -189,7 +189,7 @@ export async function handleMessage(userId, bookId, content, settings = {}) {
 
   const jobKey = `${userId}:${book.id}`;
   const controller = new AbortController();
-  const changeLog = { chapterIds: new Set(), deletedChapterIds: new Set() };
+  const changeLog = { chapterIds: new Set(), deletedChapterIds: new Set(), lastEditedChapter: null };
   activeJobs.set(jobKey, { controller, isNewDraft: created });
   try {
     if (book.status === 'draft') {
@@ -278,8 +278,8 @@ async function handleReadyMessage(book, content, settings, signal, changeLog) {
       }
     : settings;
   const scaleHint = output
-    ? `\n本次用户指定输出规模：${output.chapters ? `共 ${output.chapters} 章` : ''}${output.chapterWords ? `、每章约 ${output.chapterWords} 字` : ''}。若需多章，请逐章调用 edit_book(mode=new) 完成全部章节后再回复用户。`
-    : '';
+    ? `\n本次用户指定输出规模：${output.chapters ? `共 ${output.chapters} 章` : ''}${output.chapterWords ? `、每章约 ${output.chapterWords} 字` : ''}。必须严格按指定章数逐章调用 edit_book(mode=new)，全部完成后再回复用户。`
+    : `\n用户未指定输出规模，按默认设置执行：共 ${settings.chaptersPerOutput} 章、每章约 ${settings.chapterWords} 字；用户只要求一章时只写一章，全部完成后统一回复。`;
   const tools = defineReadyTools(book, effectiveSettings, signal, changeLog).filter((tool) => allowed.has(tool.group));
   const decision = await runToolDecision({
     system: [
@@ -301,5 +301,17 @@ async function handleReadyMessage(book, content, settings, signal, changeLog) {
     return;
   }
   const outcome = decision.outcome || {};
-  replaceProcessing(book, outcome.content || '好的，我记下了。', outcome.kind || 'text', outcome.extra || { bookId: book.id });
+  const hasChapterChange = changeLog.chapterIds.size > 0 || changeLog.deletedChapterIds.size > 0;
+  const bookExtra = {
+    bookId: book.id,
+    ...(changeLog.lastEditedChapter ? { chapter: changeLog.lastEditedChapter } : {})
+  };
+  // 本轮发生过章节新建/改写/删除时，最终回复自动升级为书籍卡片（并列查看/详情入口），
+  // 恢复“聊天中带书链接”体验；否则保持工具返回的原 kind。
+  replaceProcessing(
+    book,
+    outcome.content || '好的，我记下了。',
+    hasChapterChange ? 'book' : outcome.kind || 'text',
+    hasChapterChange ? bookExtra : outcome.extra || { bookId: book.id }
+  );
 }

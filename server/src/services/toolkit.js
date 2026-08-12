@@ -1,4 +1,5 @@
 import { chatCompletion } from './deepseek.js';
+import { chineseNumberToInt } from '../lib/chapterUtils.js';
 
 export const OUTPUT_LIMITS = { maxChapters: 5, minChapterWords: 1000, maxChapterWords: 10000 };
 export const OVER_LIMIT_REPLY = '当前输出超过限定：单次最多 5 章、每章 1000-10000 字，请调整后重试。';
@@ -32,7 +33,12 @@ export function detectReadyToolIntent(user) {
   // 输出规模解析前先剔除“第X章”章节引用，避免把“第 99 章”误判为输出规模
   const withoutChapterRefs = text.replace(/第\s*([0-9零一二两三四五六七八九十百千]+)\s*章/g, ' ');
   const chapters = withoutChapterRefs.match(/(\d+)\s*章/);
-  if (chapters) output.chapters = Number(chapters[1]);
+  if (chapters) {
+    output.chapters = Number(chapters[1]);
+  } else {
+    const chinese = withoutChapterRefs.match(/([零一二两三四五六七八九十百千]+)\s*章/);
+    if (chinese) output.chapters = chineseNumberToInt(chinese[1]);
+  }
   const words = withoutChapterRefs.match(/每章\s*([\d,]+)\s*字/);
   if (words) output.chapterWords = Number(words[1].replace(/,/g, ''));
   const normalized = normalizeOutputScale(output);
