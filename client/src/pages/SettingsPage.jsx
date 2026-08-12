@@ -67,7 +67,7 @@ export default function SettingsPage() {
     loadTrash();
   }, []);
 
-  async function save(nextTheme, nextSize, nextChapters, nextWords, nextEnter, nextThinking, nextOrientation, nextReview) {
+  async function save(nextTheme, nextSize, nextChapters, nextWords, nextEnter, nextOrientation, nextThinking, nextReview) {
     try {
       const data = await api('/settings', {
         method: 'PUT',
@@ -77,8 +77,8 @@ export default function SettingsPage() {
           chaptersPerOutput: nextChapters,
           chapterWords: nextWords,
           enterToSend: nextEnter,
-          thinkingForWriting: nextThinking,
           timelineOrientation: nextOrientation,
+          thinkingForWriting: nextThinking,
           reviewAfterWrite: nextReview
         })
       });
@@ -162,7 +162,7 @@ export default function SettingsPage() {
                 <span>背景风格</span>
                 <div className="option-row">
                   {THEMES.map((item) => (
-                    <button key={item.value} className={theme === item.value ? 'active' : ''} onClick={() => { setTheme(item.value); save(item.value, fontSize, chaptersPerOutput, chapterWords, enterToSend, thinkingForWriting, timelineOrientation, reviewAfterWrite); }}>
+                    <button key={item.value} className={theme === item.value ? 'active' : ''} onClick={() => { setTheme(item.value); save(item.value, fontSize, chaptersPerOutput, chapterWords, enterToSend, timelineOrientation, thinkingForWriting, reviewAfterWrite); }}>
                       {item.label}
                     </button>
                   ))}
@@ -172,7 +172,7 @@ export default function SettingsPage() {
                 <span>字号</span>
                 <div className="option-row">
                   {SIZES.map((item) => (
-                    <button key={item.value} className={fontSize === item.value ? 'active' : ''} onClick={() => { setFontSize(item.value); save(theme, item.value, chaptersPerOutput, chapterWords, enterToSend, thinkingForWriting, timelineOrientation, reviewAfterWrite); }}>
+                    <button key={item.value} className={fontSize === item.value ? 'active' : ''} onClick={() => { setFontSize(item.value); save(theme, item.value, chaptersPerOutput, chapterWords, enterToSend, timelineOrientation, thinkingForWriting, reviewAfterWrite); }}>
                       {item.label}
                     </button>
                   ))}
@@ -194,7 +194,7 @@ export default function SettingsPage() {
                   onBlur={() => {
                     const value = Math.min(5, Math.max(1, Math.round(Number(chaptersPerOutput) || 1)));
                     setChaptersPerOutput(value);
-                    save(theme, fontSize, value, chapterWords, enterToSend, thinkingForWriting, timelineOrientation, reviewAfterWrite);
+                    save(theme, fontSize, value, chapterWords, enterToSend, timelineOrientation, thinkingForWriting, reviewAfterWrite);
                   }}
                 />
               </div>
@@ -211,7 +211,7 @@ export default function SettingsPage() {
                   onBlur={() => {
                     const value = Math.min(10000, Math.max(1000, Math.round(Number(chapterWords) || 1000)));
                     setChapterWords(value);
-                    save(theme, fontSize, chaptersPerOutput, value, enterToSend, thinkingForWriting, timelineOrientation, reviewAfterWrite);
+                    save(theme, fontSize, chaptersPerOutput, value, enterToSend, timelineOrientation, thinkingForWriting, reviewAfterWrite);
                   }}
                 />
               </div>
@@ -220,13 +220,13 @@ export default function SettingsPage() {
                 <div className="option-row">
                   <button
                     className={enterToSend ? 'active' : ''}
-                    onClick={() => { setEnterToSend(true); save(theme, fontSize, chaptersPerOutput, chapterWords, true, thinkingForWriting, timelineOrientation, reviewAfterWrite); }}
+                    onClick={() => { setEnterToSend(true); save(theme, fontSize, chaptersPerOutput, chapterWords, true, timelineOrientation, thinkingForWriting, reviewAfterWrite); }}
                   >
                     Enter
                   </button>
                   <button
                     className={!enterToSend ? 'active' : ''}
-                    onClick={() => { setEnterToSend(false); save(theme, fontSize, chaptersPerOutput, chapterWords, false, thinkingForWriting, timelineOrientation, reviewAfterWrite); }}
+                    onClick={() => { setEnterToSend(false); save(theme, fontSize, chaptersPerOutput, chapterWords, false, timelineOrientation, thinkingForWriting, reviewAfterWrite); }}
                   >
                     Ctrl+Enter
                   </button>
@@ -237,13 +237,13 @@ export default function SettingsPage() {
                 <div className="option-row">
                   <button
                     className={!thinkingForWriting ? 'active' : ''}
-                    onClick={() => { setThinkingForWriting(false); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, false, timelineOrientation, reviewAfterWrite); }}
+                    onClick={() => { setThinkingForWriting(false); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, timelineOrientation, false, reviewAfterWrite); }}
                   >
                     关闭
                   </button>
                   <button
                     className={thinkingForWriting ? 'active' : ''}
-                    onClick={() => { setThinkingForWriting(true); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, true, timelineOrientation, reviewAfterWrite); }}
+                    onClick={() => { setThinkingForWriting(true); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, timelineOrientation, true, reviewAfterWrite); }}
                     onMouseEnter={(event) => setThinkingTip({ x: event.clientX, y: event.clientY })}
                     onMouseMove={(event) => setThinkingTip({ x: event.clientX, y: event.clientY })}
                     onMouseLeave={() => setThinkingTip(null)}
@@ -268,13 +268,13 @@ export default function SettingsPage() {
                 <div className="option-row">
                   <button
                     className={timelineOrientation === 'vertical' ? 'active' : ''}
-                    onClick={() => { setTimelineOrientation('vertical'); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, thinkingForWriting, 'vertical', reviewAfterWrite); }}
+                    onClick={() => { setTimelineOrientation('vertical'); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, 'vertical', thinkingForWriting, reviewAfterWrite); }}
                   >
                     纵向
                   </button>
                   <button
                     className={timelineOrientation === 'horizontal' ? 'active' : ''}
-                    onClick={() => { setTimelineOrientation('horizontal'); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, thinkingForWriting, 'horizontal', reviewAfterWrite); }}
+                    onClick={() => { setTimelineOrientation('horizontal'); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, 'horizontal', thinkingForWriting, reviewAfterWrite); }}
                   >
                     横向
                   </button>
@@ -285,13 +285,13 @@ export default function SettingsPage() {
                 <div className="option-row">
                   <button
                     className={!reviewAfterWrite ? 'active' : ''}
-                    onClick={() => { setReviewAfterWrite(false); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, thinkingForWriting, timelineOrientation, false); }}
+                    onClick={() => { setReviewAfterWrite(false); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, timelineOrientation, thinkingForWriting, false); }}
                   >
                     关闭
                   </button>
                   <button
                     className={reviewAfterWrite ? 'active' : ''}
-                    onClick={() => { setReviewAfterWrite(true); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, thinkingForWriting, timelineOrientation, true); }}
+                    onClick={() => { setReviewAfterWrite(true); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, timelineOrientation, thinkingForWriting, true); }}
                     onMouseEnter={(event) => setReviewTip({ x: event.clientX, y: event.clientY })}
                     onMouseMove={(event) => setReviewTip({ x: event.clientX, y: event.clientY })}
                     onMouseLeave={() => setReviewTip(null)}
