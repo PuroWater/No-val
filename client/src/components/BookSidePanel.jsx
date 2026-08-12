@@ -4,7 +4,7 @@ import ChapterEditor from './ChapterEditor.jsx';
 import RelationGraph from './RelationGraph.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
 
-export default function BookSidePanel({ bookId, onClose, onBack, openChapter }) {
+export default function BookSidePanel({ bookId, onClose, onBack, openChapter, refreshSignal }) {
   const [book, setBook] = useState(null);
   const [tab, setTab] = useState('content');
   const [chapterIndex, setChapterIndex] = useState(0);
@@ -101,7 +101,7 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter }) 
 
   useEffect(() => {
     api(`/books/${bookId}`).then((data) => setBook(data.book)).catch((err) => setError(err.message));
-  }, [bookId]);
+  }, [bookId, refreshSignal]);
 
   useEffect(() => {
     if (book && Number.isInteger(openChapter) && openChapter >= 1 && openChapter <= book.chapters.length) {

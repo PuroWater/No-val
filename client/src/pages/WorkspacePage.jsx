@@ -12,6 +12,7 @@ function clamp(value, min, max) {
 }
 
 export default function WorkspacePage() {
+  const [sideRefresh, setSideRefresh] = useState(0);
   const [books, setBooks] = useState([]);
   const [selectedBookId, setSelectedBookId] = useState(() => localStorage.getItem(STORAGE_KEY) || '');
   const [sideBookId, setSideBookId] = useState('');
@@ -76,6 +77,10 @@ export default function WorkspacePage() {
     setLeftWidth(Math.max(260, Math.floor(width / 2)));
     setSideChapter(Math.max(1, Number(chapter) || 1));
     setSideBookId(bookId);
+  }
+
+  function notifyBookChanged() {
+    setSideRefresh((value) => value + 1);
   }
 
   function startResize(event) {
@@ -192,7 +197,7 @@ export default function WorkspacePage() {
             >
               {sideBookId ? (
                 <>
-                  <BookSidePanel bookId={sideBookId} openChapter={sideChapter} onClose={toggleSide} />
+                  <BookSidePanel bookId={sideBookId} openChapter={sideChapter} refreshSignal={sideRefresh} onClose={toggleSide} />
                   <div className="split-divider" onPointerDown={startResize} />
                   <ChatPanel
                     key={selectedBookId}
@@ -200,6 +205,7 @@ export default function WorkspacePage() {
                     sideOpen={Boolean(sideBookId)}
                     onToggleSide={toggleSide}
                     onOpenBook={toggleSideFor}
+                    onBookChanged={notifyBookChanged}
                   />
                 </>
               ) : (
@@ -209,6 +215,7 @@ export default function WorkspacePage() {
                   sideOpen={false}
                   onToggleSide={toggleSide}
                   onOpenBook={toggleSideFor}
+                  onBookChanged={notifyBookChanged}
                 />
               )}
             </div>

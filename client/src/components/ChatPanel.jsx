@@ -54,7 +54,7 @@ function getDateRanges(book) {
     });
 }
 
-export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOpen, onToggleSide }) {
+export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOpen, onToggleSide, onBookChanged }) {
   const isNew = !bookId;
   const { open } = useStack();
   const [greeting] = useState(() => SUGGESTIONS[Math.floor(Math.random() * SUGGESTIONS.length)]);
@@ -164,6 +164,7 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
         body: JSON.stringify(body)
       });
       setBook(data.book);
+      onBookChanged?.();
       if (isNew && onSessionCreated) onSessionCreated(data.book);
     } catch (err) {
       setError(err.message);
