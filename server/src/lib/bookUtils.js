@@ -61,7 +61,16 @@ export function normalizeBook(book) {
     summary: '',
     events: [],
     ...chapter,
-    events: Array.isArray(chapter.events) ? chapter.events : []
+    events: Array.isArray(chapter.events)
+      ? chapter.events.map((item) => ({
+          time: '',
+          context: [],
+          foreshadow: null,
+          foreshadowFor: '',
+          ...item,
+          context: Array.isArray(item?.context) ? item.context.map(String).slice(0, 3) : []
+        }))
+      : []
   }));
   if (!Array.isArray(book.chat)) book.chat = [];
   if (Array.isArray(book.timeline)) {

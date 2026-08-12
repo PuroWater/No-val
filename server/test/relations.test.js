@@ -63,18 +63,27 @@ test('changedChaptersSince returns edited chapters after generatedAt', () => {
   assert.equal(changedChaptersSince(book, null).length, 0);
 });
 
-test('buildTimeline derives chapter events in order', () => {
+test('buildTimeline groups by context and keeps plain chapters in 其他', () => {
   const book = {
     chapters: [
-      { id: 'c1', title: '第一章', events: [{ id: 't1', event: '事件A', characters: ['甲'] }] },
-      { id: 'c2', title: '第二章', events: [] }
+      { id: 'c1', title: '第一章', events: [{ event: '进入秘境', context: ['秘境探险'] }] },
+      { id: 'c2', title: '第二章', events: [{ event: '在藏宝室获得古宝', context: ['秘境探险', '藏宝室'] }] },
+      { id: 'c3', title: '第三章', events: [{ event: '回到都市' }] }
     ]
   };
   const timeline = buildTimeline(book);
-  assert.equal(timeline.length, 2);
-  assert.equal(timeline[0].chapterIndex, 0);
-  assert.equal(timeline[0].chapterTitle, '第一章');
-  assert.equal(timeline[0].events[0].event, '事件A');
-  assert.deepEqual(timeline[1].events, []);
-  assert.equal(buildTimeline({}).length, 0);
+  assert.equal(timeline.groups.length, 2);
+  const secret = timeline.groups.find((g) => g.label === '秘境探险');
+  assert.equal(secret.chapterStart, 0);
+  assert.equal(secret.chapterEnd, 1);
+  // 第一章只有一层 context → 组级 chapters（未细分）；第二章进入命名场景
+  assert.equal(secret.chapters.length, 1);
+  assert.equal(secret.chapters[0].chapterIndex, 0);
+  assert.equal(secret.scenes.length, 1);
+  assert.equal(secret.scenes[0].label, '藏宝室');
+  assert.equal(secret.scenes[0].chapters[0].chapterIndex, 1);
+  const other = timeline.groups.find((g) => g.label === '其他');
+  assert.equal(other.chapters.length, 1);
+  assert.equal(other.chapters[0].chapterIndex, 2);
+  assert.equal(buildTimeline({}).groups.length, 0);
 });

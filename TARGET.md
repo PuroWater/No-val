@@ -1,8 +1,8 @@
 【项目目标】
 在当前开发环境下（已安装 VSCode、Node.js），生成一个可直接运行的**小说创作平台 Web 应用**。项目不连接任何数据库，后端数据使用本地 JSON 文件持久化。前端为 React 单页应用（SPA），后端为 Express，调用 DeepSeek 大模型辅助创作。
 
-当前版本：0.7.3  
-最近更新：2026-08-12 0.7.3 存储重构：books/drafts 分目录、每书一文件、软删归档标记
+当前版本：0.7.4  
+最近更新：2026-08-12 0.7.4 事件结构升级与分层时间线（重大事件→场景→章节，纵向/横向可调）
 
 【文档职责】
 - `TARGET.md`：每次更新的目标文件。每次更新前先修改本文档，按“日期 + 版本”划分，写明待更新说明、待更新功能；开发完成后记录实际完成内容。
@@ -1283,3 +1283,24 @@ Novel Agent/
 - `store.js` 新增 `readBookById` / `listBooks({ archived })` / `saveBook` / `deleteBookFile`，删除整表 `BOOKS_FILE`；`bootstrap` 启动自动迁移旧 `books.json`（拆分 + 删除旧文件与 .bak），真实 12 本迁移零差异。
 - 全部调用点改为书级单文件读写：列表/回收站/详情/关系网/摘要维护/删除/恢复/彻底删除/编辑保存/聊天消息/定稿。
 - 单元测试 54/54；API 冒烟：books 5 / trash 7 与迁移前一致，创建→软删归档→恢复→彻底删除文件级流程全部通过；版本号统一 0.7.3（根/server/client）；本地提交未推送（按协作规矩）。
+
+### 2026-08-12 v0.7.4 事件结构升级与分层时间线
+
+待更新说明：
+- `chapter.events` 只有 `{id, event, characters}`，无法表达事件的时间点、背景场景与伏笔关系；时间线只能按章平铺，无法“粗中有细”。
+- 事件需要承载：文中时间点（time）、背景路径（context，最多 3 层）、伏笔（foreshadow 铺设/回收）；维护时以章节正文为主产出事件，附近章 events 仅用于延续背景与识别伏笔。
+
+待更新功能：
+- event 新字段：`time`（文中时间点，如“第 90 天”）、`context`（背景路径数组，从大到小最多 3 层，如 `["秘境探险", "藏宝室"]`）、`foreshadow`（`setup` / `pay` / null）、`foreshadowFor`（伏笔指向）；`normalizeBook` 补默认，旧事件零迁移。
+- `maintainChapterMeta` 升级：事件必须能在本章正文/summary 中找到依据；前后章 events 仅用于延续 context 与伏笔回收；大事件跨多章时 prompt 引导按阶段/地点细化 context（如“秘境探险→藏宝室→决战之地”），避免整段只有一个粗背景。
+- `read_book`：`field: chapter` 默认带出该章 events（含新字段）；新增 `field: timeline` 返回全书分层时间线。
+- `buildTimeline` 改分层输出：`groups`（重大事件 = context[0]）→ `scenes`（context[1]）→ `chapters` → `events`；无背景章节归入“其他”组；context 一层时直接落到章节。
+- 前端时间线标签重写：纵向主轴默认、可切换横向；重大事件段落悬浮显示章节范围，点击向右（纵向主轴）/向下（横向主轴）弹出场景列；场景列选项同尺寸、悬浮显示“场景名：第 X-Y 章”，点击向下（纵向）/向右（横向）列出章节；章节选项同尺寸、悬浮显示该章事件详情；点击章节跳转内容页定位该章，切回时间线时展开层级与滚动位置保持不丢。
+
+完成内容：
+- event 新字段落地：`time`（文中时间点）、`context`（背景路径数组，最多 3 层）、`foreshadow`（setup/pay/null）+ `foreshadowFor`；`normalizeBook` 幂等补默认，旧事件零迁移。
+- `maintainChapterMeta` 升级：输入增加前后章 events（O(常数)），事件必须来自本章正文、不得凭空编造；context 延续前后章并随阶段/地点细化（真实调用验证：产出 `["秘境探险","藏宝室"]` 两级背景与 setup/pay 伏笔）。
+- `read_book`：`field: chapter` 默认带出该章 events（含新字段）；新增 `field: timeline` 返回全书分层时间线供 AI 跨章对比。
+- `buildTimeline` 分层输出：`groups`（context[0] 重大事件）→ `scenes`（context[1]）→ `chapters` → `events`；context 一层直接落到章节；无背景事件归“其他”组按章平铺；章内按 time 数字排序。
+- 前端时间线标签重写（TimelineView）：纵向主轴默认、可切换横向；重大事件悬浮显示章节范围，点击向右（纵向）/向下（横向）弹出场景列；场景选项同尺寸、悬浮显示“场景名：第 X-Y 章”，点击向下（纵向）/向右（横向）列出章节；章节选项同尺寸、悬浮显示该章事件详情；点击章节跳转内容页定位该章；切回时间线展开层级与滚动位置保持不丢。
+- 版本号统一 0.7.4（根/server/client）；单元测试 54/54，前端构建通过；真实维护调用验证新字段产出；本地提交未推送（按协作规矩）。

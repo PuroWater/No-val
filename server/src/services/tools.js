@@ -1,6 +1,7 @@
 import { searchChapters, fixChapterPrefixes, replaceTextInBook, chineseNumberToInt } from '../lib/chapterUtils.js';
 import { createChapter, deleteChapters, rewriteChapter, updateOutline } from './bookService.js';
 import { maintainChapterMeta } from './maintenanceService.js';
+import { buildTimeline } from './storyMetaService.js';
 
 export const READY_TOOL_GROUPS = [
   { name: 'read', summary: '查询书籍信息、章节目录或指定章节内容', tools: ['read_book'] },
@@ -193,11 +194,11 @@ export function defineReadyTools(book, settings, signal, changeLog) {
     {
       group: 'read',
       name: 'read_book',
-      description: '查询书籍信息、全书概况或章节内容。field 为 info（书名/简介/章节数/进度/目标字数）、chapters（章节目录）、chapter（指定章节内容）、overview（当前全书概况）；查询具体章节时必须先调用本工具读取后再回答，不要凭摘要猜测；正文过长时用 maxChars 控制节选长度。',
+      description: '查询书籍信息、全书概况、章节内容或分层时间线。field 为 info（书名/简介/章节数/进度/目标字数）、chapters（章节目录）、chapter（指定章节内容与事件）、overview（当前全书概况）、timeline（全书分层时间线：重大事件→场景→章节）；查询具体章节时必须先调用本工具读取后再回答，不要凭摘要猜测；正文过长时用 maxChars 控制节选长度。',
       parameters: {
         type: 'object',
         properties: {
-          field: { type: 'string', description: 'info | chapters | chapter | overview' },
+          field: { type: 'string', description: 'info | chapters | chapter | overview | timeline' },
           target: { type: 'string', description: '章节号或标题，field=chapter 时必填' },
           scope: { type: 'string', description: 'summary 或 content，field=chapter 时生效' },
           maxChars: { type: 'integer', minimum: 100, maximum: 8000, description: '正文节选最大字数，默认 3000、上限 8000（仅 field=chapter 且 scope=content 时生效）' }
@@ -233,6 +234,22 @@ export function defineReadyTools(book, settings, signal, changeLog) {
           const list = titles.length > 200 ? `${titles.slice(0, 200).join('\n')}\n…（共 ${titles.length} 章）` : titles.join('\n');
           return { followUp: true, data: `章节目录：\n${list || '暂无章节'}` };
         }
+        if (field === 'timeline') {
+          const timeline = buildTimeline(book);
+          const text = (timeline.groups || [])
+            .map((group) => {
+              const range = `第 ${group.chapterStart + 1}-${group.chapterEnd + 1} 章`;
+              const scenes = group.scenes.length > 0
+                ? group.scenes.map((scene) => `  - ${scene.label}（第 ${scene.chapterStart + 1}-${scene.chapterEnd + 1} 章）：${scene.chapters.map((c) => `第${c.chapterIndex + 1}章`).join('、')}`).join('\n')
+                : '';
+              const chapters = group.chapters.length > 0
+                ? `  - 章节：${group.chapters.map((c) => `第${c.chapterIndex + 1}章`).join('、')}`
+                : '';
+              return `- ${group.label}（${range}）\n${scenes || chapters}`;
+            })
+            .join('\n');
+          return { followUp: true, data: `全书分层时间线：\n${text || '暂无事件'}` };
+        }
         const matches = searchChapters(book, String(target || '').trim() || context.user || '');
         if (matches.length === 0) {
           const chapterMatch = String(target || '').trim().match(/第\s*([0-9零一二两三四五六七八九十百千]+)\s*章/);
@@ -257,7 +274,14 @@ export function defineReadyTools(book, settings, signal, changeLog) {
         const data = [
           `第 ${index + 1} 章《${chapter.title}》`,
           `摘要：${chapter.summary || '无'}`,
-          excerpt ? `正文节选（${excerpt.length} 字）：\n${excerpt}` : ''
+          excerpt ? `正文节选（${excerpt.length} 字）：\n${excerpt}` : '',
+          Array.isArray(chapter.events) && chapter.events.length > 0
+            ? `事件：\n${chapter.events.map((item, eventIndex) => {
+                const ctx = Array.isArray(item.context) && item.context.length > 0 ? `（${item.context.join('/')}）` : '';
+                const fw = item.foreshadow ? `[伏笔：${item.foreshadow === 'setup' ? '铺设' : '回收'}]` : '';
+                return `${eventIndex + 1}. ${item.event}${ctx}${fw}${item.time ? `（${item.time}）` : ''}`;
+              }).join('\n')}`
+            : ''
         ].filter(Boolean).join('\n');
         return { followUp: true, data };
       }

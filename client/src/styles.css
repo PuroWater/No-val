@@ -1554,3 +1554,150 @@ button, input, textarea, select {
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------- 0.7.4 分层时间线 ---------- */
+
+.timeline-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.timeline-toolbar {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  flex-shrink: 0;
+}
+
+.timeline-toolbar button {
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.timeline-toolbar button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+.timeline-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px 12px;
+}
+
+.timeline-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.timeline-horizontal {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.timeline-group-block {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.timeline-vertical .timeline-group-block {
+  flex-direction: row;
+}
+
+.timeline-horizontal .timeline-group-block {
+  flex-direction: column;
+}
+
+.timeline-node {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 120px;
+  max-width: 220px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.timeline-node.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+.timeline-node-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timeline-node-range {
+  margin-left: auto;
+  font-size: 12px;
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+.timeline-scene-column {
+  display: flex;
+  gap: 8px;
+}
+
+.timeline-vertical .timeline-scene-column {
+  flex-direction: column;
+}
+
+.timeline-horizontal .timeline-scene-column {
+  flex-direction: row;
+}
+
+.timeline-scene-block {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.timeline-vertical .timeline-scene-block {
+  flex-direction: column;
+}
+
+.timeline-horizontal .timeline-scene-block {
+  flex-direction: row;
+}
+
+.timeline-chapter-column {
+  display: flex;
+  gap: 6px;
+}
+
+.timeline-vertical .timeline-chapter-column {
+  flex-direction: column;
+}
+
+.timeline-horizontal .timeline-chapter-column {
+  flex-direction: row;
+}
+
+.timeline-tooltip-detail {
+  margin: 4px 0 0;
+  white-space: pre-wrap;
+  font-size: 12px;
+  line-height: 1.5;
+}

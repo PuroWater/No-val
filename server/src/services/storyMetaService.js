@@ -128,13 +128,118 @@ export async function extractRelations(book, { mode } = {}) {
   return relations;
 }
 
-// 章节事迹轴：按章节序输出各章 chapter.events（派生视图，零 AI 成本）。
-// 时间事迹轴（按事件时间字段聚合）为后续扩展，不改变本视图结构。
+function sortEventsByTime(events) {
+  return [...events].sort((a, b) => {
+    const na = Number(String(a.time || '').match(/(\d+)/)?.[1] || 0);
+    const nb = Number(String(b.time || '').match(/(\d+)/)?.[1] || 0);
+    return na - nb;
+  });
+}
+
+// 分层时间线（派生视图，零 AI 成本）：重大事件（context[0]）→ 场景（context[1]）→ 章节 → 事件。
+// 无背景事件归入“其他”组按章平铺；context 只有一层时组直接落到章节列。
 export function buildTimeline(book) {
-  return (book.chapters || []).map((chapter, index) => ({
-    chapterIndex: index,
-    chapterId: chapter.id || '',
-    chapterTitle: chapter.title || `第${index + 1}章`,
-    events: Array.isArray(chapter.events) ? chapter.events : []
-  }));
+  const chapters = book.chapters || [];
+  const groupMap = new Map();
+  const otherChapters = [];
+
+  chapters.forEach((chapter, index) => {
+    const chapterTitle = chapter.title || `第${index + 1}章`;
+    const events = Array.isArray(chapter.events) ? chapter.events : [];
+    const plain = [];
+    for (const event of events) {
+      const context = Array.isArray(event.context) && event.context.length > 0 ? event.context : [];
+      if (context.length === 0) {
+        plain.push(event);
+        continue;
+      }
+      const groupLabel = context[0];
+      const sceneLabel = context.length > 1 ? context[1] : '';
+      if (!groupMap.has(groupLabel)) {
+        groupMap.set(groupLabel, { label: groupLabel, sceneMap: new Map() });
+      }
+      const group = groupMap.get(groupLabel);
+      const sceneKey = sceneLabel || '__root__';
+      if (!group.sceneMap.has(sceneKey)) {
+        group.sceneMap.set(sceneKey, { label: sceneLabel, chapterMap: new Map() });
+      }
+      const scene = group.sceneMap.get(sceneKey);
+      if (!scene.chapterMap.has(index)) {
+        scene.chapterMap.set(index, {
+          chapterIndex: index,
+          chapterId: chapter.id || '',
+          chapterTitle,
+          events: []
+        });
+      }
+      scene.chapterMap.get(index).events.push(event);
+    }
+    if (plain.length > 0) {
+      otherChapters.push({
+        chapterIndex: index,
+        chapterId: chapter.id || '',
+        chapterTitle,
+        events: plain
+      });
+    }
+  });
+
+  const groups = [...groupMap.values()]
+    .map((group) => {
+      const rootScene = group.sceneMap.get('__root__');
+      const hasScenes = group.sceneMap.size > 1 || !rootScene;
+      const rootChapters = rootScene
+        ? [...rootScene.chapterMap.values()].map((item) => ({
+            ...item,
+            events: sortEventsByTime(item.events)
+          }))
+        : [];
+      const sceneList = hasScenes
+        ? [...group.sceneMap.entries()]
+            .filter(([key]) => key !== '__root__')
+            .map(([, scene]) => {
+              const indexes = [...scene.chapterMap.keys()];
+              return {
+                label: scene.label,
+                chapterStart: Math.min(...indexes),
+                chapterEnd: Math.max(...indexes),
+                chapters: [...scene.chapterMap.values()].map((item) => ({
+                  ...item,
+                  events: sortEventsByTime(item.events)
+                }))
+              };
+            })
+            .sort((a, b) => a.chapterStart - b.chapterStart)
+        : [];
+      const allIndexes = hasScenes
+        ? [...sceneList.flatMap((scene) => scene.chapters.map((item) => item.chapterIndex)), ...rootChapters.map((item) => item.chapterIndex)]
+        : [...rootScene.chapterMap.keys()];
+      return {
+        label: group.label,
+        chapterStart: Math.min(...allIndexes),
+        chapterEnd: Math.max(...allIndexes),
+        scenes: sceneList,
+        chapters: hasScenes ? rootChapters : [...rootScene.chapterMap.values()].map((item) => ({
+          ...item,
+          events: sortEventsByTime(item.events)
+        }))
+      };
+    })
+    .sort((a, b) => a.chapterStart - b.chapterStart);
+
+  const result = { groups };
+  if (otherChapters.length > 0) {
+    const indexes = otherChapters.map((item) => item.chapterIndex);
+    result.groups.push({
+      label: '其他',
+      chapterStart: Math.min(...indexes),
+      chapterEnd: Math.max(...indexes),
+      scenes: [],
+      chapters: otherChapters.map((item) => ({
+        ...item,
+        events: sortEventsByTime(item.events)
+      }))
+    });
+  }
+  return result;
 }

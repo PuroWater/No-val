@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import ChapterEditor from './ChapterEditor.jsx';
 import RelationGraph from './RelationGraph.jsx';
+import TimelineView from './TimelineView.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
 
 export default function BookSidePanel({ bookId, onClose, onBack, openChapter, refreshSignal }) {
@@ -15,7 +16,10 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
   const [timeline, setTimeline] = useState(null);
   const [timelineLoading, setTimelineLoading] = useState(false);
   const [timelineError, setTimelineError] = useState('');
-  const [timelineOpen, setTimelineOpen] = useState(() => new Set());
+  const [orientation, setOrientation] = useState('vertical');
+  const [expandedGroup, setExpandedGroup] = useState(null);
+  const [expandedScene, setExpandedScene] = useState(null);
+  const [timelineScroll, setTimelineScroll] = useState(0);
   const [addingChapter, setAddingChapter] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [deleteChapterTarget, setDeleteChapterTarget] = useState(null);
@@ -144,7 +148,6 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
     api(`/books/${bookId}/timeline`)
       .then((data) => {
         setTimeline(data.timeline);
-        setTimelineOpen(new Set(data.timeline.map((item) => item.chapterIndex)));
       })
       .catch((err) => setTimelineError(err.message))
       .finally(() => setTimelineLoading(false));
@@ -169,15 +172,6 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
     } finally {
       setRelationsLoading(false);
     }
-  }
-
-  function toggleTimelineChapter(index) {
-    setTimelineOpen((prev) => {
-      const next = new Set(prev);
-      if (next.has(index)) next.delete(index);
-      else next.add(index);
-      return next;
-    });
   }
 
   if (error) return <aside className="book-side-panel"><p className="form-error">{error}</p></aside>;
@@ -294,44 +288,21 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
           {timelineLoading && <p className="muted">正在加载时间线…</p>}
           {timelineError && <p className="form-error">{timelineError}</p>}
           {!timelineLoading && timeline && (
-            timeline.length === 0 ? (
-              <p className="muted">这本书还在构思中，生成章节后这里会按章节展示事件。</p>
-            ) : (
-              <ol className="timeline-list">
-                {timeline.map((item) => {
-                  const open = timelineOpen.has(item.chapterIndex);
-                  const title = item.chapterTitle || `第${item.chapterIndex + 1}章`;
-                  return (
-                    <li key={item.chapterId || item.chapterIndex} className="timeline-chapter">
-                      <button className="timeline-chapter-head" onClick={() => toggleTimelineChapter(item.chapterIndex)}>
-                        <span className="timeline-chapter-title">{title}</span>
-                        <span className="timeline-chapter-count">{item.events.length} 个事件</span>
-                      </button>
-                      {open && (
-                        <div className="timeline-events">
-                          {item.events.length === 0 ? (
-                            <p className="muted timeline-empty">本章暂无事件</p>
-                          ) : (
-                            item.events.map((event, eventIndex) => (
-                              <article key={event.id || `${item.chapterIndex}-${eventIndex}`} className="timeline-event">
-                                <p className="timeline-event-text">{event.event}</p>
-                                {Array.isArray(event.characters) && event.characters.length > 0 && (
-                                  <p className="timeline-event-characters">
-                                    {event.characters.map((character, characterIndex) => (
-                                      <span key={characterIndex} className="timeline-character">{character}</span>
-                                    ))}
-                                  </p>
-                                )}
-                              </article>
-                            ))
-                          )}
-                        </div>
-                      )}
-                    </li>
-                  );
-                })}
-              </ol>
-            )
+            <TimelineView
+              timeline={timeline}
+              orientation={orientation}
+              onToggleOrientation={setOrientation}
+              expandedGroup={expandedGroup}
+              expandedScene={expandedScene}
+              onToggleGroup={(label) => setExpandedGroup((prev) => (prev === label ? null : label))}
+              onToggleScene={(label) => setExpandedScene((prev) => (prev === label ? null : label))}
+              onOpenChapter={(index) => {
+                setTab('content');
+                setChapterIndex(index);
+              }}
+              scrollTop={timelineScroll}
+              onScroll={setTimelineScroll}
+            />
           )}
         </div>
       )}
