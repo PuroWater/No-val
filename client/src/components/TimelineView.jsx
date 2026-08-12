@@ -4,12 +4,11 @@ function rangeText(start, end) {
   return `第 ${start + 1}-${end + 1} 章`;
 }
 
-// 事件浮窗只显示简略事件文本（50 字内），不贴 context/伏笔等字段
+// 事件浮窗显示事件文本（AI 生成时已受 50 字约束），不贴 context/伏笔等字段
 function eventsBrief(events) {
   return (events || []).map((item, index) => {
     const text = String(item.event || '').trim();
-    const brief = text.length > 50 ? `${text.slice(0, 50)}…` : text;
-    return `${index + 1}. ${brief}`;
+    return `${index + 1}. ${text}`;
   }).join('\n');
 }
 
