@@ -25,9 +25,12 @@ export function defineReadyTools(book, settings, signal, changeLog) {
       handler: async ({ format }) => {
         const fmt = format === 'chinese' ? 'chinese' : 'arabic';
         const count = fixChapterPrefixes(book, fmt, changeLog.chapterIds);
-        return count > 0
-          ? { content: `已统一处理 ${count} 个章节标题前缀（${fmt === 'chinese' ? '汉字' : '阿拉伯数字'}标号）。`, kind: 'text' }
-          : { content: '章节标题前缀已是目标格式，无需修改。', kind: 'text' };
+        return {
+          followUp: true,
+          data: count > 0
+            ? `已统一处理 ${count} 个章节标题前缀（${fmt === 'chinese' ? '汉字' : '阿拉伯数字'}标号）。`
+            : '章节标题前缀已是目标格式，无需修改。'
+        };
       }
     },
     {
@@ -44,9 +47,12 @@ export function defineReadyTools(book, settings, signal, changeLog) {
       },
       handler: async ({ from, to }) => {
         const count = replaceTextInBook(book, from, to, changeLog.chapterIds);
-        return count > 0
-          ? { content: `已批量替换 ${count} 处（${from} → ${to ?? ''}）。`, kind: 'text' }
-          : { content: `未找到可替换的“${from}”。`, kind: 'text' };
+        return {
+          followUp: true,
+          data: count > 0
+            ? `已批量替换 ${count} 处（${from} → ${to ?? ''}）。`
+            : `未找到可替换的“${from}”。`
+        };
       }
     },
     {
@@ -65,8 +71,8 @@ export function defineReadyTools(book, settings, signal, changeLog) {
         deleted.forEach((chapter) => changeLog.deletedChapterIds.add(chapter.id));
         await deleteChapters(book, { count });
         return {
-          content: `已删除末尾 ${count} 章（不可恢复），当前共 ${book.chapters.length} 章。删除造成的概况残留会在后续改写任意章时自动修复，也可让我调用 refresh_chapter_meta 立即刷新。`,
-          kind: 'text'
+          followUp: true,
+          data: `已删除末尾 ${count} 章（不可恢复），当前共 ${book.chapters.length} 章。删除造成的概况残留会在后续改写任意章时自动修复，也可调用 refresh_chapter_meta 立即刷新。`
         };
       }
     },
@@ -88,7 +94,7 @@ export function defineReadyTools(book, settings, signal, changeLog) {
       handler: async ({ mode = 'modify', chapter, position, title, instruction }) => {
         if (mode === 'delete') {
           if (!Number.isInteger(chapter) || chapter < 1 || chapter > book.chapters.length) {
-            return { content: '请先调用 read_book(field=chapters) 获取章节目录，删除时 chapter 传数字序号（从 1 开始）。', kind: 'text' };
+            return { followUp: true, data: '请先调用 read_book(field=chapters) 获取章节目录，删除时 chapter 传数字序号（从 1 开始）。' };
           }
           const index = chapter - 1;
           const removedTitle = book.chapters[index].title;
@@ -96,18 +102,18 @@ export function defineReadyTools(book, settings, signal, changeLog) {
           const { affectedIds = [] } = await deleteChapters(book, { index });
           affectedIds.forEach((id) => changeLog.chapterIds.add(id));
           return {
-            content: `已删除第 ${index + 1} 章《${removedTitle}》（不可恢复）。删除造成的剧情断层与概况残留会在后续改写任意章时自动修复，也可让我调用 refresh_chapter_meta 立即刷新。`,
-            kind: 'text'
+            followUp: true,
+            data: `已删除第 ${index + 1} 章《${removedTitle}》（不可恢复）。删除造成的剧情断层与概况残留会在后续改写任意章时自动修复，也可调用 refresh_chapter_meta 立即刷新。`
           };
         }
         if (mode === 'new') {
           if (changeLog.maxNewChapters > 0 && (changeLog.writtenCount || 0) >= changeLog.maxNewChapters) {
-            return { content: '已按指定规模完成章节生成，请直接总结回复用户。', kind: 'text' };
+            return { followUp: true, data: '已按指定规模完成章节生成，请总结本次操作结果并调用 open_book_widget 展示书籍卡片。' };
           }
           let anchorIndex;
           if (Number.isInteger(chapter)) {
             if (chapter < 1 || chapter > book.chapters.length) {
-              return { content: '锚点章节序号超出范围，请先调用 read_book(field=chapters) 确认目录。', kind: 'text' };
+              return { followUp: true, data: '锚点章节序号超出范围，请先调用 read_book(field=chapters) 确认目录。' };
             }
             anchorIndex = chapter - 1;
           }
@@ -119,16 +125,15 @@ export function defineReadyTools(book, settings, signal, changeLog) {
           return { followUp: true, data: `已新建第 ${book.chapters.indexOf(created) + 1} 章《${created.title}》，可打开并列窗口查看。` };
         }
         if (!Number.isInteger(chapter) || chapter < 1 || chapter > book.chapters.length) {
-          return { content: '请先调用 read_book(field=chapters) 获取章节目录，改写时 chapter 传数字序号（从 1 开始）。', kind: 'text' };
+          return { followUp: true, data: '请先调用 read_book(field=chapters) 获取章节目录，改写时 chapter 传数字序号（从 1 开始）。' };
         }
         const index = chapter - 1;
         const rewrittenId = book.chapters[index].id;
         await rewriteChapter(book, index, String(instruction || '').trim() || '请按用户意图润色重写本章', { ...settings, signal });
         changeLog.chapterIds.add(rewrittenId);
         return {
-          content: `已修改第 ${index + 1} 章《${book.chapters[index]?.title || '本章'}》，可打开并列窗口查看。`,
-          kind: 'book',
-          extra: { bookId: book.id, chapter: index + 1 }
+          followUp: true,
+          data: `已修改第 ${index + 1} 章《${book.chapters[index]?.title || '本章'}》。`
         };
       }
     },
@@ -143,7 +148,7 @@ export function defineReadyTools(book, settings, signal, changeLog) {
       },
       handler: async ({ value }) => {
         updateOutline(book, value);
-        return { content: '已更新整书简介。', kind: 'text' };
+        return { followUp: true, data: `已更新整书简介：${String(value).trim().slice(0, 60)}${String(value).trim().length > 60 ? '…' : ''}` };
       }
     },
     {
@@ -158,13 +163,13 @@ export function defineReadyTools(book, settings, signal, changeLog) {
       handler: async ({ value }) => {
         const target = Number(value);
         if (!Number.isInteger(target) || target < 0) {
-          return { content: '目标字数必须是大于等于 0 的阿拉伯数字。', kind: 'text' };
+          return { followUp: true, data: '目标字数必须是大于等于 0 的阿拉伯数字。' };
         }
         book.targetWords = target;
         book.updatedAt = new Date().toISOString();
         return {
-          content: target > 0 ? `全书目标字数已更新为约 ${target} 字。` : '已取消全书目标字数限制。',
-          kind: 'text'
+          followUp: true,
+          data: target > 0 ? `全书目标字数已更新为约 ${target} 字。` : '已取消全书目标字数限制。'
         };
       }
     },
@@ -185,7 +190,7 @@ export function defineReadyTools(book, settings, signal, changeLog) {
         const s = Number(start);
         const e = Number(end);
         if (!Number.isInteger(s) || !Number.isInteger(e) || s < 1 || e < s || e > book.chapters.length) {
-          return { content: `章节范围无效：本书共 ${book.chapters.length} 章，start/end 需为 1-${book.chapters.length} 的阿拉伯数字且 end ≥ start。`, kind: 'text' };
+          return { followUp: true, data: `章节范围无效：本书共 ${book.chapters.length} 章，start/end 需为 1-${book.chapters.length} 的阿拉伯数字且 end ≥ start。` };
         }
         const ctx = Array.isArray(context)
           ? context.map(String).map((item) => item.trim()).filter(Boolean).slice(0, 3)
@@ -200,8 +205,8 @@ export function defineReadyTools(book, settings, signal, changeLog) {
         }
         book.updatedAt = now;
         return {
-          content: `已将第 ${s}-${e} 章的事件背景统一为${ctx.length > 0 ? `：${ctx.join('/')}` : '空（清除背景）'}，时间线已同步。`,
-          kind: 'text'
+          followUp: true,
+          data: `已将第 ${s}-${e} 章的事件背景统一为${ctx.length > 0 ? `：${ctx.join('/')}` : '空（清除背景）'}，时间线已同步。`
         };
       }
     },
@@ -216,11 +221,14 @@ export function defineReadyTools(book, settings, signal, changeLog) {
       },
       handler: async ({ chapter }) => {
         if (!Number.isInteger(chapter) || chapter < 1 || chapter > book.chapters.length) {
-          return { content: '请先调用 read_book(field=chapters) 获取章节目录，chapter 传数字序号（从 1 开始）。', kind: 'text' };
+          return { followUp: true, data: '请先调用 read_book(field=chapters) 获取章节目录，chapter 传数字序号（从 1 开始）。' };
         }
         const index = chapter - 1;
         await maintainChapterMeta(book, { chapterIndex: index, mode: 'modify', signal });
-        return { content: `已重新维护第 ${index + 1} 章《${book.chapters[index].title}》的摘要、事件与全书概况。`, kind: 'text' };
+        return {
+          followUp: true,
+          data: `已重新维护第 ${index + 1} 章《${book.chapters[index].title}》的摘要、事件与全书概况。`
+        };
       }
     },
     {
@@ -320,7 +328,7 @@ export function defineReadyTools(book, settings, signal, changeLog) {
           const from = Number(rangeMatch[1]);
           const to = Number(rangeMatch[2]);
           if (from < 1 || to > book.chapters.length || from > to) {
-            return { content: `章节范围无效：本书共 ${book.chapters.length} 章，请确认范围（如 "5-15"）。`, kind: 'text' };
+            return { followUp: true, data: `章节范围无效：本书共 ${book.chapters.length} 章，请确认范围（如 "5-15"）。` };
           }
           const chapters = book.chapters.slice(from - 1, to);
           const lines = chapters.map((item, offset) => {
@@ -334,9 +342,9 @@ export function defineReadyTools(book, settings, signal, changeLog) {
         const num = Number(targetText);
         if (!/^\d+$/.test(targetText) || !Number.isInteger(num) || num < 1 || num > book.chapters.length) {
           if (/^\d+$/.test(targetText) && Number(targetText) > book.chapters.length) {
-            return { content: `本书目前只有 ${book.chapters.length} 章，没有第 ${Number(targetText)} 章。`, kind: 'text' };
+            return { followUp: true, data: `本书目前只有 ${book.chapters.length} 章，没有第 ${Number(targetText)} 章。` };
           }
-          return { content: 'target 请填阿拉伯数字序号（如 "10"）或范围（如 "5-15"）。', kind: 'text' };
+          return { followUp: true, data: 'target 请填阿拉伯数字序号（如 "10"）或范围（如 "5-15"）。' };
         }
         const index = num - 1;
         const chapter = book.chapters[index];
@@ -368,9 +376,9 @@ export function defineReadyTools(book, settings, signal, changeLog) {
         required: []
       },
       handler: async ({ chapter }) => ({
-        content: '请在下方书籍中打开并列查看或详情浏览章节，然后回复章节号或章节名（支持模糊匹配）。',
-        kind: 'book',
-        extra: { bookId: book.id, chapter: Number(chapter) || 1 }
+        followUp: true,
+        data: `书籍卡片已定位到第 ${Number(chapter) || 1} 章。`,
+        card: { bookId: book.id, chapter: Number(chapter) || 1 }
       })
     }
   ];

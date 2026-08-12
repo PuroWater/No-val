@@ -25,22 +25,6 @@ export function updateBook(userId, bookId, apply) {
   return book;
 }
 
-// 兼容旧接口的续写入口：内部按输出规模逐章走 createChapter（写正文 → 自动维护），失败回滚。
-export async function continueBook(book, instruction, settings = {}) {
-  const chaptersPerOutput = clampOutput(settings.chaptersPerOutput, 1, 5, 1);
-  const startCount = book.chapters.length;
-  try {
-    for (let i = 0; i < chaptersPerOutput; i += 1) {
-      await createChapter(book, { instruction, settings, signal: settings.signal });
-    }
-  } catch (err) {
-    book.chapters = book.chapters.slice(0, startCount);
-    throw err;
-  }
-  book.updatedAt = new Date().toISOString();
-  return book;
-}
-
 // 生成后审校（可开关，settings.reviewAfterWrite）：通读刚生成的章节，判断是否通顺、是否符合指令与全书概况。
 // 开思考、预算按字数放大（可能返回修订后的完整章节）；不通过且含修订时直接应用，由外层统一触发维护。
 export async function reviewChapter(book, chapterIndex, { instruction = '', settings = {}, signal } = {}) {

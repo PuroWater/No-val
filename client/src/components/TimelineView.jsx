@@ -28,6 +28,7 @@ export default function TimelineView({
   onViewChange
 }) {
   const canvasRef = useRef(null);
+  const contentRef = useRef(null);
   const dragRef = useRef(null);
   const [hover, setHover] = useState(null);
   const [groupAnchor, setGroupAnchor] = useState(null);
@@ -102,11 +103,18 @@ export default function TimelineView({
 
   // 场景与章节合并为单个浮窗：场景标题可点击展开/收起该场景章节（就地展开，不另弹浮窗）
   function renderFloat() {
-    if (!expandedGroupData || !groupAnchor || !canvasRef.current) return null;
+    if (!expandedGroupData || !groupAnchor || !contentRef.current) return null;
     const nodeRect = groupAnchor.el.getBoundingClientRect();
-    const canvasRect = canvasRef.current.getBoundingClientRect();
-    const left = nodeRect.left - canvasRect.left + (vertical ? nodeRect.width + 8 : 0);
-    const top = nodeRect.top - canvasRect.top + (vertical ? 0 : nodeRect.height + 8);
+    const contentRect = contentRef.current.getBoundingClientRect();
+    const scale = view.scale || 1;
+    // 浮窗在 .timeline-content（被 transform: translate + scale 的层）内部绝对定位，
+    // 屏幕坐标先换算回内容坐标，浮窗尺寸/字号随画布一起缩放。
+    const contentX = (nodeRect.left - contentRect.left) / scale;
+    const contentY = (nodeRect.top - contentRect.top) / scale;
+    const nodeW = nodeRect.width / scale;
+    const nodeH = nodeRect.height / scale;
+    const left = contentX + (vertical ? nodeW + 8 : 0);
+    const top = contentY + (vertical ? 0 : nodeH + 8);
     const groupDirection = vertical ? 'row' : 'column';
     const chapterDirection = vertical ? 'column' : 'row';
     const scenes = expandedGroupData.scenes.length > 0
@@ -162,6 +170,7 @@ export default function TimelineView({
         style={{ touchAction: 'none' }}
       >
         <div
+          ref={contentRef}
           className={`timeline-content timeline-${orientation}`}
           style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})`, transformOrigin: '0 0' }}
         >
@@ -182,8 +191,8 @@ export default function TimelineView({
               </button>
             </div>
           ))}
+          {renderFloat()}
         </div>
-        {renderFloat()}
       </div>
       {hover && (
         <div

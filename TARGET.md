@@ -1,8 +1,8 @@
 【项目目标】
 在当前开发环境下（已安装 VSCode、Node.js），生成一个可直接运行的**小说创作平台 Web 应用**。项目不连接任何数据库，后端数据使用本地 JSON 文件持久化。前端为 React 单页应用（SPA），后端为 Express，调用 DeepSeek 大模型辅助创作。
 
-当前版本：0.7.11  
-最近更新：2026-08-12 0.7.11 主动修改事件背景工具（update_events_context）
+当前版本：0.7.12  
+最近更新：2026-08-13 0.7.12 Agent 回复与进度重构（卡片信号化、数字解析强规则、时间线刷新）
 
 【文档职责】
 - `TARGET.md`：每次更新的目标文件。每次更新前先修改本文档，按“日期 + 版本”划分，写明待更新说明、待更新功能；开发完成后记录实际完成内容。
@@ -1421,3 +1421,27 @@ Novel Agent/
 - update_events_context 工具落地（范围校验、context 清洗、写回 changeLog、清除背景）；真实验证改 2-3 章背景、第 1 章不受影响、非法范围拒绝；时间线随刷新同步。
 - 时间线分组修复：无背景“其他”组此前未参与 chapterStart 排序而排末尾，现统一按起始章排序（其他→家族→北境）；浮窗移入画布内部（absolute 相对 canvas），不再飘到画布外；内容默认水平居中（flex）。
 - 版本号统一 0.7.11（根/server/client）；本地提交未推送（按协作规矩）。
+
+### 2026-08-13 v0.7.12 Agent 回复与进度重构
+
+待更新说明：
+- 进度轮询只在 book 已含 processing 消息时启动，同页新发送永远看不到进度；普通问答的输入框等待文案缺失。
+- open_book_widget 返回非 followUp 的硬文案，模型一调用循环即结束，用户看到“请在下方书籍中打开并列查看…”而不是生成总结；0.7.10 的“必须调用 + navigate 永远可用”属于补丁式约束，且 edit_book 的 modify/delete 分支提前结束循环，该约束实际不生效。
+- “再写一章”不在确定性解析强规则里、“每章约 5000 字”的字数解析不到；解析漏掉时落入默认输出规模并提示“逐章调用 edit_book”，导致“再写一章”被批量写成 4 章（仙路逆鳞实测）。
+- 时间线浮窗在未缩放的 canvas 层，缩放不同步；手动编辑→POST /summary 改 events 后时间线不刷新，且无手动刷新入口。
+- 旧接口 /chat/continue、/chat/create-book 前端已不使用且绕过写队列；新书首轮生成（无 bookId）无法轮询进度。
+
+待更新功能：
+- 进度：同页发送即开始轮询；输入框统一显示“请等待回复完成或中断”，顶部进度条仅对进度操作（progress.total>0）显示；新书首轮改两阶段（/chat/sessions → /chat/message）让新草稿也能轮询。
+- 卡片协议：runToolDecision 支持 outcome.card 信号合并进最终回复（kind=book + extra），open_book_widget 改为 followUp 纯展示信号并删除硬文案；全部 ready 工具改为 followUp，最终回复由模型自己总结；工具参数/越界错误也走 followUp 让模型转述。
+- 数字解析：detectReadyToolIntent 增加“再写/继续写/写 + N章”识别；每章字数支持“约/大概/左右/写”限定词；chatService 区分“纯追加批量续写（后端循环）/ 带锚点新建插入（ReAct + maxNewChapters 兜底）/ 改写删除（不消费章数）”，修复“改写三章”被当新建、“插入丢失锚点”问题。
+- 时间线：新增“刷新时间线”按钮（样式位置仿关系网）；拉取依赖增加 book.updatedAt 与手动 tick；浮窗移入被缩放的 .timeline-content 层内部并按内容坐标定位，随画布缩放。
+- 清理：删除 /chat/continue、/chat/create-book 及 continueBook、createBookFromConcept 死代码；前端 intToChinese 补全 100+ 章节前缀。
+
+完成内容：
+- 进度与等待文案落地：发送即轮询（不依赖 processing 消息出现）、输入框统一等待提示、顶部进度条仅进度操作显示；新书首条消息先 /chat/sessions 再 /chat/message，草稿可轮询进度；“构思：xxx”命名兼容两阶段。
+- 卡片协议落地：open_book_widget 返回 followUp + card，runToolDecision 把卡片合并进模型最终回复（kind=book + extra），所有 ready 工具改为 followUp（含参数/越界错误的提示），最终文案由模型产出，不再复述工具内置文案；提示词改为“调用后总结，不要复述工具文案”。
+- 数字解析落地：detectReadyToolIntent 识别“再写/继续写/写 + N章”，每章字数支持约/大概/左右/写限定词（实测“续写3章，每章约5000字”解析出 chapters=3、chapterWords=5000）；chatService 按“纯追加批量（后端循环）/ 锚点新建插入（AI 传参 + maxNewChapters 兜底）/ 改写删除（不消费章数）”分类，修复反复生成与插入丢锚点；scaleHint 不再教模型“逐章调用”。
+- 时间线：新增“刷新时间线”按钮；拉取依赖增加 book.updatedAt 与手动 tick；浮窗移入 .timeline-content 内部按内容坐标定位，随画布缩放（不做最小字号，用户可自行放大）。
+- 清理：删除 /chat/continue、/chat/create-book 及 continueBook、createBookFromConcept；前端 intToChinese 补全百位/千位。
+- 单元测试 52/52（新增“再写一章”等解析用例与 card 合并用例）；前端构建通过；版本号统一 0.7.12（根/server/client）；本地提交未推送（按协作规矩）。

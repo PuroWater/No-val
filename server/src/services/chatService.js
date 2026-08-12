@@ -183,8 +183,10 @@ export async function handleMessage(userId, bookId, content, settings = {}) {
   if (!book || book.userId !== userId) throw new Error('书籍或创作会话不存在');
   if (hasPending(book)) throw new Error('上一轮仍在处理中，请稍候');
 
+  // 两阶段新书：前端先 /sessions 建空草稿再发首条消息，此时 chat 为空，仍按“首轮构思”命名
+  const isFirstDraftMessage = created || (book.status === 'draft' && (book.chat || []).length === 0);
   appendMessage(book, 'user', content, 'text');
-  if (created) {
+  if (isFirstDraftMessage) {
     const brief = content.slice(0, 18);
     book.title = `构思：${brief}${content.length > 18 ? '…' : ''}`;
   }
@@ -278,24 +280,33 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
     return;
   }
   const { groups, output } = prefilter;
-  // navigate（open_book_widget）始终可用：章节改动后必须展示书籍卡片
+  // navigate（open_book_widget）始终可用：展示类工具只发卡片信号，最终回复由模型产出
   const allowed = new Set([...(groups.length > 0 ? groups : READY_TOOL_GROUPS.map((group) => group.name)), 'navigate']);
+  const rawNewCount = Number.isInteger(output?.chapters) ? output.chapters : 0;
+  const chapterRefInText = /第\s*[0-9零一二两三四五六七八九十百千]+\s*章/.test(content);
+  // 只有“明确要求新建/续写/插入”的指令才把章数当作新建规模；改写/删除等不消费该数字，
+  // 避免“改写三章”被误判为新建 3 章（此前“再写一章”按默认规模反复生成的根因之一）。
+  const newIntentRef = /续写|再写|继续写|新建|添加|插入|(?<![改重])写/.test(content);
+  const userNewCount = rawNewCount > 0 && newIntentRef ? rawNewCount : 0;
+  // 纯追加（无“第X章”锚点）的续写/新建走后端循环，次数不交给 AI 自律；
+  // 带锚点/插入/新建的请求走 ReAct，由 AI 传 chapter/position，maxNewChapters 兜底防超量。
+  const batchNew = userNewCount > 0 && !chapterRefInText && /续写|再写|继续写|(?<![改重])写/.test(content);
   const effectiveSettings = output
     ? {
         ...settings,
-        ...(output.chapters ? { chaptersPerOutput: output.chapters } : {}),
+        ...(userNewCount > 0 ? { chaptersPerOutput: userNewCount } : {}),
         ...(output.chapterWords ? { chapterWords: output.chapterWords } : {})
       }
     : settings;
-  const totalChapters = output?.chapters || settings.chaptersPerOutput || 0;
+  const totalChapters = userNewCount || settings.chaptersPerOutput || 0;
   job.progress.total = totalChapters;
-  job.progress.text = totalChapters > 0 ? `开始生成（共 ${totalChapters} 章）…` : '正在处理…';
+  job.progress.text = userNewCount > 0 ? `开始生成（共 ${userNewCount} 章）…` : '正在处理…';
   changeLog.maxNewChapters = totalChapters;
-  const scaleHint = output
-    ? `\n本次用户指定输出规模：${output.chapters ? `共 ${output.chapters} 章` : ''}${output.chapterWords ? `、每章约 ${output.chapterWords} 字` : ''}。必须严格按指定章数逐章调用 edit_book(mode=new)，全部完成后再回复用户。`
-    : `\n用户未指定输出规模，按默认设置执行：共 ${settings.chaptersPerOutput} 章、每章约 ${settings.chapterWords} 字；用户只要求一章时只写一章，全部完成后统一回复。`;
-  // 批量续写/新建：初筛 count 直接由后端循环执行，次数不交给 AI 自律（scaleHint 仅作 AI 总结时参考）
-  const batchNew = Boolean(output?.chapters && /续写|新建|插入|添加/.test(content));
+  const scaleHint = batchNew
+    ? `\n本次用户指定续写/新建共 ${rawNewCount} 章，后端将按该数量批量生成；生成完成后请总结本次结果并调用 open_book_widget 展示书籍卡片。`
+    : userNewCount > 0
+      ? `\n本次用户要求处理共 ${rawNewCount} 章：新建/插入请逐章调用 edit_book(mode=new) 并传对 chapter/position（最多 ${rawNewCount} 章，后端已拦截超量）；完成后请总结并调用 open_book_widget 展示书籍卡片。`
+      : `\n用户未明确指定新建章节数：默认一次新建 ${settings.chaptersPerOutput} 章、每章约 ${settings.chapterWords} 字；仅当用户要求续写/新建时才新建章节，改写/删除/插入等操作请使用对应工具，不要擅自新建章节。`;
   if (batchNew) {
     for (let i = 0; i < totalChapters; i += 1) {
       await createChapter(book, {
@@ -313,8 +324,8 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
       system: [
         '你是小说协作 Agent，根据用户消息选择一个工具调用。',
         `本次已按用户指定规模批量生成 ${totalChapters} 章，生成已完成，不要再调用 edit_book(mode=new) 等编辑工具。`,
-        '章节新建/改写/删除完成后，必须调用 open_book_widget 展示书籍卡片并定位到操作章节（chapter 传数字序号）。',
-        '请总结本次续写结果，并调用 open_book_widget 展示书籍卡片。',
+        '章节新建/改写/删除等操作完成后，必须调用 open_book_widget 展示书籍卡片并定位到操作章节（chapter 传数字序号）。',
+        '请总结本次续写结果，并调用 open_book_widget 展示书籍卡片；最终回复请用自己的话总结，不要复述工具内置文案。',
         `全书摘要：${book.storySummary || '暂无'}`
       ].join('\n'),
       tools,
@@ -337,7 +348,7 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
       '回答具体章节的内容、摘要或细节问题前，必须使用 read_book 工具读取章节，再根据返回内容作答。',
       '用户以数字指代章节（如“第十章”“第5到15章”）时，直接按数字/范围读取（read_book 的 target 传纯阿拉伯数字 "10" 或从小到大范围 "5-15"，不得 "15-5"），不必先读目录；仅当用户以标题指代且不确定序号时才先 read_book(field=chapters) 查目录；编辑类工具的章节参数一律传阿拉伯数字序号（从 1 开始）。',
       '用户明确要求操作（续写、改写、删除、插入、新建章节、更新简介、批量修改等）时必须调用对应工具完成，不得仅以聊天方式回应；工具能力不足时如实说明。',
-      '章节新建/改写/删除等操作完成后，必须调用 open_book_widget 展示书籍卡片并定位到操作章节（chapter 传数字序号）；open_book_widget 是展示书籍卡片的工具，章节改动后必须使用。',
+      '章节新建/改写/删除/事件背景修改等操作完成后，必须调用 open_book_widget 展示书籍卡片并定位到相关章节（chapter 传数字序号）；调用后请用自己的话总结本次操作结果作为最终回复，不要复述工具内置文案。',
       'read_book 可读取图书最新数据（书名、简介、元数据、章节目录、章节内容、概况、时间线等）；用户询问任何书籍信息（书名、字数、进度、设定、章节内容、统计等）时，优先调用 read_book 获取真实数据，不要凭对话历史或猜测回答，也不要编造或沿用历史中可能错误的信息。',
       `全书摘要：${book.storySummary || '暂无'}`,
       `最近章节摘要：${last?.summary || last?.title || '暂无'}`,

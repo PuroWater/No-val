@@ -1,9 +1,6 @@
 import { Router } from 'express';
-import { readBookById, saveBook } from '../lib/store.js';
 import { requireAuth } from '../middleware/auth.js';
 import { createDraft, handleMessage, interruptProcessing, getJobProgress } from '../services/chatService.js';
-import { createBookFromConcept } from '../services/draftService.js';
-import { continueBook } from '../services/bookService.js';
 import { getUserSettings } from '../services/settingsService.js';
 import { enqueueBookWrite } from '../lib/writeQueue.js';
 
@@ -45,37 +42,6 @@ router.post('/abort', (req, res) => {
 router.get('/progress', (req, res) => {
   const bookId = String(req.query.bookId || '').trim();
   res.json({ progress: getJobProgress(req.user.id, bookId) });
-});
-
-router.post('/create-book', async (req, res) => {
-  const concept = String(req.body?.concept || '').trim();
-  if (!concept) return res.status(400).json({ error: '请输入小说构思' });
-  try {
-    const settings = getUserSettings(req.user.id);
-    const book = await createBookFromConcept(req.user.id, concept, settings);
-    return res.status(201).json({ book });
-  } catch (err) {
-    return res.status(502).json({ error: err.message });
-  }
-});
-
-router.post('/continue', async (req, res) => {
-  const { bookId, instruction } = req.body || {};
-  if (!bookId || !String(instruction || '').trim()) {
-    return res.status(400).json({ error: '请选择书籍并输入续写指令' });
-  }
-  try {
-    const settings = getUserSettings(req.user.id);
-    const book = readBookById(bookId);
-    if (!book || book.userId !== req.user.id || book.deletedAt) {
-      return res.status(404).json({ error: '书籍不存在' });
-    }
-    await continueBook(book, String(instruction).trim(), settings);
-    saveBook(book);
-    return res.json({ book });
-  } catch (err) {
-    return res.status(502).json({ error: err.message });
-  }
 });
 
 export default router;

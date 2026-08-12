@@ -16,6 +16,7 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
   const [timeline, setTimeline] = useState(null);
   const [timelineLoading, setTimelineLoading] = useState(false);
   const [timelineError, setTimelineError] = useState('');
+  const [timelineTick, setTimelineTick] = useState(0);
   const [orientation, setOrientation] = useState('vertical');
   const [expandedGroup, setExpandedGroup] = useState(null);
   const [expandedScene, setExpandedScene] = useState(null);
@@ -43,7 +44,14 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
       const ones = n % 10;
       return `${digits[tens]}十${ones ? digits[ones] : ''}`;
     }
-    return `${digits[Math.floor(n / 100)]}百`;
+    if (n < 1000) {
+      const hundreds = Math.floor(n / 100);
+      const rest = n % 100;
+      return `${digits[hundreds]}百${rest ? (rest < 10 ? `零${digits[rest]}` : intToChinese(rest)) : ''}`;
+    }
+    const thousands = Math.floor(n / 1000);
+    const rest = n % 1000;
+    return `${digits[thousands]}千${rest ? (rest < 100 ? `零${intToChinese(rest)}` : intToChinese(rest)) : ''}`;
   }
 
   function nextChapterPrefix(bookRef) {
@@ -164,7 +172,9 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
       })
       .catch((err) => setTimelineError(err.message))
       .finally(() => setTimelineLoading(false));
-  }, [tab, bookId, book?.chapters?.length, refreshSignal]);
+    // book.updatedAt 覆盖手动编辑→POST /summary 改 events 但不改章数的陈旧场景；
+    // timelineTick 供“刷新时间线”按钮手动重新拉取（派生视图，零 AI 成本）。
+  }, [tab, bookId, book?.chapters?.length, book?.updatedAt, refreshSignal, timelineTick]);
 
   useEffect(() => {
     if (!book) return undefined;
@@ -321,6 +331,9 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
               view={timelineView}
               onViewChange={setTimelineView}
             />
+          )}
+          {!timelineLoading && (
+            <button className="primary" onClick={() => setTimelineTick((value) => value + 1)}>刷新时间线</button>
           )}
         </div>
       )}

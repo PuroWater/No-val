@@ -1560,7 +1560,7 @@ button, input, textarea, select {
 .timeline-view {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  flex: 1;
   min-height: 0;
 }
 
@@ -1593,6 +1593,7 @@ button, input, textarea, select {
 }
 
 .timeline-content {
+  position: relative;
   width: max-content;
   min-height: 100%;
   padding: 12px;

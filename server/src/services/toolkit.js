@@ -26,9 +26,12 @@ export function detectReadyToolIntent(user) {
   const text = String(user || '').trim();
   if (!text) return null;
   const chapterRef = /第\s*([0-9零一二两三四五六七八九十百千]+)\s*章/.test(text);
+  // “再写/继续写/写 + N章”等不带“第X章”的新建表述也要确定性识别为操作，
+  // 避免被预筛当闲聊吞掉或落入默认输出规模（“再写一章”按默认 3-4 章生成的根因）。
+  const writeCountRef = /(?:再写|继续写|(?<![改重])写)\s*([0-9零一二两三四五六七八九十百千]+)\s*章/.test(text);
   const strongAction = /(续写|改写|重写|删除|删掉|删去|插入|新建|添加|批量|替换|重排|简介|摘要|重新生成|字数|进度|多少字|统计|多少章|书名|名字|叫什么)/.test(text);
   const chapterAction = chapterRef && /(写|改|删|插|看|查|读|修|换|建|讲|内容|目录|摘要)/.test(text);
-  if (!strongAction && !chapterAction) return null;
+  if (!strongAction && !chapterAction && !writeCountRef) return null;
   const output = {};
   // 输出规模解析前先剔除“第X章”章节引用，避免把“第 99 章”误判为输出规模
   const withoutChapterRefs = text.replace(/第\s*([0-9零一二两三四五六七八九十百千]+)\s*章/g, ' ');
@@ -39,11 +42,12 @@ export function detectReadyToolIntent(user) {
     const chinese = withoutChapterRefs.match(/([零一二两三四五六七八九十百千]+)\s*章/);
     if (chinese) output.chapters = chineseNumberToInt(chinese[1]);
   }
-  const words = withoutChapterRefs.match(/每章\s*([\d,]+)\s*字/);
+  // 字数表述支持“每章约 5000 字 / 每章 5000 字左右 / 每章写 5000 字”等常见说法
+  const words = withoutChapterRefs.match(/每章\s*(?:约|大概|差不多|左右|写)?\s*([\d,]+)\s*字/);
   if (words) {
     output.chapterWords = Number(words[1].replace(/,/g, ''));
   } else {
-    const cnWords = withoutChapterRefs.match(/每章\s*([零一二两三四五六七八九十百千]+)\s*字/);
+    const cnWords = withoutChapterRefs.match(/每章\s*(?:约|大概|差不多|左右|写)?\s*([零一二两三四五六七八九十百千]+)\s*字/);
     if (cnWords) output.chapterWords = chineseNumberToInt(cnWords[1]);
   }
   const normalized = normalizeOutputScale(output);
@@ -172,6 +176,10 @@ export async function runToolDecision({
   maxTokens = 4096,
   maxSteps = 30
 }) {
+  // 卡片信号：工具 outcome 可声明 card（如 open_book_widget 展示书籍卡片），
+  // 循环结束时若模型给出最终回复，卡片随最终消息一起返回（kind=book + extra），
+  // 工具只负责“展示信号”，最终回复文案永远由模型自己产出。
+  let card = null;
   const toolText = toolList
     .map((tool) => `- ${tool.name}：${tool.description}\n  参数：${JSON.stringify(tool.parameters)}`)
     .join('\n');
@@ -202,7 +210,10 @@ export async function runToolDecision({
       const toolName = String(result?.tool || '');
       const reply = String(result?.reply || '').trim();
       if (!toolName && reply) {
-        return { tool: '', outcome: { content: reply, kind: 'text' } };
+        const finalOutcome = card
+          ? { content: reply, kind: 'book', extra: card }
+          : { content: reply, kind: 'text' };
+        return { tool: '', outcome: finalOutcome };
       }
       if (!toolName && !reply) {
         return { tool: '', outcome: null };
@@ -219,6 +230,7 @@ export async function runToolDecision({
       }
       try {
         const outcome = await tool.handler(result.arguments, { user, signal });
+        if (outcome && outcome.card) card = outcome.card;
         onStep?.(toolName, outcome, result.arguments);
         if (outcome && outcome.followUp) {
           history.push(`工具 ${toolName} 返回：\n${String(outcome.data || '')}`);

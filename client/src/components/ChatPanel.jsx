@@ -63,6 +63,8 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState(null);
   const [error, setError] = useState('');
+  // 两阶段新书：首条消息先 /chat/sessions 拿 book.id，处理期间用它轮询进度
+  const [activeBookId, setActiveBookId] = useState('');
   const messagesRef = useRef(null);
   const [selectedDate, setSelectedDate] = useState('__today__');
   const [dateOpen, setDateOpen] = useState(false);
@@ -96,20 +98,26 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
     }
   }, [bookId]);
 
+  const effectiveBookId = bookId || activeBookId;
   const hasProcessing = Boolean(book?.chat?.some((message) => message.kind === 'processing'));
+  const waiting = sending || hasProcessing;
 
   useEffect(() => {
-    if (!bookId || !hasProcessing) return undefined;
-    const timer = setInterval(() => {
-      api(`/books/${bookId}`)
+    // 发送即开始轮询（不等 book 里出现 processing 消息），响应返回后停止；
+    // 普通问答也走同一条轮询，但 progress.total 为 0 时前端只显示统一等待文案。
+    if (!effectiveBookId || !waiting) return undefined;
+    const poll = () => {
+      api(`/books/${effectiveBookId}`)
         .then((data) => setBook(data.book))
         .catch(() => {});
-      api(`/chat/progress?bookId=${bookId}`)
+      api(`/chat/progress?bookId=${effectiveBookId}`)
         .then((data) => { if (data.progress) setProgress(data.progress); })
         .catch(() => {});
-    }, 2000);
+    };
+    poll();
+    const timer = setInterval(poll, 2000);
     return () => clearInterval(timer);
-  }, [bookId, hasProcessing]);
+  }, [effectiveBookId, waiting]);
 
   useEffect(() => {
     const el = messagesRef.current;
@@ -163,7 +171,13 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
     };
     setBook((prev) => (prev ? { ...prev, chat: [...(prev.chat || []), optimistic, typing] } : prev));
     try {
-      const body = isNew ? { content } : { bookId, content };
+      let targetBookId = bookId;
+      if (isNew && !activeBookId) {
+        const session = await api('/chat/sessions', { method: 'POST' });
+        setActiveBookId(session.book.id);
+        targetBookId = session.book.id;
+      }
+      const body = { bookId: targetBookId, content };
       const data = await api('/chat/message', {
         method: 'POST',
         body: JSON.stringify(body)
@@ -197,9 +211,10 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
   async function abortSend() {
     setSending(true);
     try {
+      const targetId = bookId || activeBookId;
       await api('/chat/abort', {
         method: 'POST',
-        body: JSON.stringify(bookId ? { bookId } : {})
+        body: JSON.stringify(targetId ? { bookId: targetId } : {})
       });
     } catch (err) {
       setError(err.message);
@@ -330,7 +345,7 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
           </div>
         )}
       </div>
-      {hasProcessing && progress && (
+      {hasProcessing && progress && progress.total > 0 && (
         <div className="chat-progress">
           <span className="chat-progress-text">{progress.text || '处理中…'}</span>
           {progress.total > 0 && (
@@ -387,10 +402,8 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
         })}
       </div>
       <div className="chat-input">
-        {hasProcessing && progress && (
-          <div className="chat-progress-inline">
-            当前进度 {Math.min(progress.done || 0, progress.total || 1)}/{progress.total || 1}，请等待生成
-          </div>
+        {waiting && (
+          <div className="chat-progress-inline">请等待回复完成或中断</div>
         )}
         <textarea
           value={input}

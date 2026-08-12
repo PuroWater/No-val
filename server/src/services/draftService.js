@@ -1,8 +1,7 @@
 // 构思生成服务：与已生成图书编辑分离的独立通道。
 // 负责构思定稿后一次性初始化整本书（≤5 章 + summary + 首轮 events/概况），
 // 不进入已生成工具体系（edit_book 等只面向 status=ready 的图书）。
-import { saveBook } from '../lib/store.js';
-import { newId, normalizeBook, nextChapterId } from '../lib/bookUtils.js';
+import { nextChapterId } from '../lib/bookUtils.js';
 import { ensureChapterTitle, clampOutput } from '../lib/chapterUtils.js';
 import { callModel, maxTokensForWords } from '../lib/modelCall.js';
 import { initializeBookMeta } from './maintenanceService.js';
@@ -55,38 +54,6 @@ export async function generateBookContent(concept, options = {}) {
     outline,
     chapters
   };
-}
-
-export async function createBookFromConcept(userId, concept, settings = {}) {
-  const content = await generateBookContent(concept, settings);
-  const now = new Date().toISOString();
-  const book = normalizeBook({
-    id: newId('b'),
-    userId,
-    status: 'ready',
-    title: content.title,
-    outline: content.outline,
-    chapters: content.chapters.map((chapter, index) => ({
-      id: nextChapterId({ id: newId('b') }),
-      title: ensureChapterTitle(index, chapter.title),
-      content: String(chapter.content || '').trim(),
-      summary: String(chapter.summary || '').trim(),
-      createdAt: now,
-      updatedAt: now
-    })),
-    relations: { nodes: [], edges: [] },
-    chat: [],
-    draft: { concept, summary: concept },
-    targetWords: settings.targetWords || 0,
-    createdAt: now,
-    updatedAt: now
-  });
-  book.storySummary = buildStorySummary(book.chapters);
-  // 首轮 events 与概况走一次性初始化内核（构思生成独立通道专用）
-  await initializeBookMeta(book, settings.signal)
-    .catch((err) => console.error('[maintenance] 新书概况初始化失败:', err.message));
-  saveBook(book);
-  return book;
 }
 
 // 构思确认后定稿：一次性初始化整本书（≤5 章 + summary + 首轮 events/概况）。
