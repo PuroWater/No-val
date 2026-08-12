@@ -226,15 +226,7 @@ export default function SettingsPage() {
                 </div>
               </div>
               <div className="settings-group">
-                <span
-                  className="settings-label-tip"
-                  onMouseEnter={(event) => setReviewTip({ x: event.clientX, y: event.clientY })}
-                  onMouseMove={(event) => setReviewTip({ x: event.clientX, y: event.clientY })}
-                  onMouseLeave={() => setReviewTip(null)}
-                >
-                  <span className="settings-label-text">生成后审校</span>
-                  <span className="tip-icon">?</span>
-                </span>
+                <span>生成后审校</span>
                 <div className="option-row">
                   <button
                     className={!reviewAfterWrite ? 'active' : ''}
@@ -245,21 +237,24 @@ export default function SettingsPage() {
                   <button
                     className={reviewAfterWrite ? 'active' : ''}
                     onClick={() => { setReviewAfterWrite(true); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, true); }}
+                    onMouseEnter={(event) => setReviewTip({ x: event.clientX, y: event.clientY })}
+                    onMouseMove={(event) => setReviewTip({ x: event.clientX, y: event.clientY })}
+                    onMouseLeave={() => setReviewTip(null)}
                   >
                     开启
                   </button>
+                  {reviewTip && (
+                    <div
+                      className="chat-date-tooltip"
+                      style={{
+                        left: Math.min(reviewTip.x + 14, window.innerWidth - 270),
+                        top: Math.min(reviewTip.y + 16, window.innerHeight - 90)
+                      }}
+                    >
+                      生成或改写章节后 AI 会通读一遍，不通过时自动修订；会额外耗时与消耗 token，默认关闭。
+                    </div>
+                  )}
                 </div>
-                {reviewTip && (
-                  <div
-                    className="chat-date-tooltip"
-                    style={{
-                      left: Math.min(reviewTip.x + 14, window.innerWidth - 270),
-                      top: Math.min(reviewTip.y + 16, window.innerHeight - 90)
-                    }}
-                  >
-                    生成或改写章节后 AI 会通读一遍，不通过时自动修订；会额外耗时与消耗 token，默认关闭。
-                  </div>
-                )}
               </div>
             </>
           )}

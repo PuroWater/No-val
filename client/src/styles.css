@@ -897,34 +897,6 @@ button, input, textarea, select {
   gap: 8px;
 }
 
-.settings-label-tip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  width: fit-content;
-  cursor: help;
-}
-
-.settings-label-text {
-  line-height: 16px;
-}
-
-.tip-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text);
-  font-size: 11px;
-  line-height: 1;
-  user-select: none;
-}
-
 .option-row button {
   padding: 8px 14px;
   border: 1px solid var(--border);
