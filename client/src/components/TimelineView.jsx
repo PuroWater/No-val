@@ -183,8 +183,8 @@ export default function TimelineView({
             </div>
           ))}
         </div>
+        {renderFloat()}
       </div>
-      {renderFloat()}
       {hover && (
         <div
           className="chat-date-tooltip timeline-tooltip"

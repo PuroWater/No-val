@@ -241,5 +241,7 @@ export function buildTimeline(book) {
       }))
     });
   }
+  // 其他组（无背景章节）与 context 组统一按起始章排序，保证按章节序展示
+  result.groups.sort((a, b) => a.chapterStart - b.chapterStart);
   return result;
 }

@@ -4,6 +4,7 @@ import { finalizeDraftBook } from './draftService.js';
 import { prefilterDraftIntent, prefilterIntent, runToolDecision } from './toolkit.js';
 import { defineReadyTools, READY_TOOL_GROUPS } from './tools.js';
 import { defineDraftTools } from './draftTools.js';
+import { createChapter } from './bookService.js';
 
 const activeJobs = new Map();
 
@@ -293,6 +294,42 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
   const scaleHint = output
     ? `\n本次用户指定输出规模：${output.chapters ? `共 ${output.chapters} 章` : ''}${output.chapterWords ? `、每章约 ${output.chapterWords} 字` : ''}。必须严格按指定章数逐章调用 edit_book(mode=new)，全部完成后再回复用户。`
     : `\n用户未指定输出规模，按默认设置执行：共 ${settings.chaptersPerOutput} 章、每章约 ${settings.chapterWords} 字；用户只要求一章时只写一章，全部完成后统一回复。`;
+  // 批量续写/新建：初筛 count 直接由后端循环执行，次数不交给 AI 自律（scaleHint 仅作 AI 总结时参考）
+  const batchNew = Boolean(output?.chapters && /续写|新建|插入|添加/.test(content));
+  if (batchNew) {
+    for (let i = 0; i < totalChapters; i += 1) {
+      await createChapter(book, {
+        instruction: content,
+        settings: { ...effectiveSettings, chaptersPerOutput: 1 },
+        signal
+      });
+      changeLog.writtenCount = i + 1;
+      job.progress = { total: totalChapters, done: i + 1, text: `正在生成第 ${i + 1}/${totalChapters} 章…` };
+    }
+    // 批量完成后只给“读 + 展示 + 轻量编辑”工具，不提供 edit_book 等章节编辑工具，防止 AI 再调
+    const tools = defineReadyTools(book, effectiveSettings, signal, changeLog)
+      .filter((tool) => tool.group === 'read' || tool.group === 'navigate' || ['update_outline', 'update_book_target'].includes(tool.name));
+    const decision = await runToolDecision({
+      system: [
+        '你是小说协作 Agent，根据用户消息选择一个工具调用。',
+        `本次已按用户指定规模批量生成 ${totalChapters} 章，生成已完成，不要再调用 edit_book(mode=new) 等编辑工具。`,
+        '章节新建/改写/删除完成后，必须调用 open_book_widget 展示书籍卡片并定位到操作章节（chapter 传数字序号）。',
+        '请总结本次续写结果，并调用 open_book_widget 展示书籍卡片。',
+        `全书摘要：${book.storySummary || '暂无'}`
+      ].join('\n'),
+      tools,
+      user: content,
+      context: buildTodayHistory(book),
+      signal,
+      onStep: (toolName, outcome, args) => {
+        const mode = String(args?.mode || '');
+        if (mode === 'new') job.progress = { total: totalChapters, done: changeLog.writtenCount, text: '批量生成已完成，正在整理回复…' };
+      }
+    });
+    const outcome = decision.outcome || {};
+    replaceProcessing(book, outcome.content || `已按指定规模生成 ${totalChapters} 章。`, outcome.kind || 'text', outcome.extra || { bookId: book.id });
+    return;
+  }
   const tools = defineReadyTools(book, effectiveSettings, signal, changeLog).filter((tool) => allowed.has(tool.group));
   const decision = await runToolDecision({
     system: [

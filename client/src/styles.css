@@ -1594,7 +1594,6 @@ button, input, textarea, select {
 
 .timeline-content {
   width: max-content;
-  min-width: 100%;
   min-height: 100%;
   padding: 12px;
   align-items: flex-start;

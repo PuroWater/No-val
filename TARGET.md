@@ -1419,4 +1419,5 @@ Novel Agent/
 
 完成内容：
 - update_events_context 工具落地（范围校验、context 清洗、写回 changeLog、清除背景）；真实验证改 2-3 章背景、第 1 章不受影响、非法范围拒绝；时间线随刷新同步。
+- 时间线分组修复：无背景“其他”组此前未参与 chapterStart 排序而排末尾，现统一按起始章排序（其他→家族→北境）；浮窗移入画布内部（absolute 相对 canvas），不再飘到画布外；内容默认水平居中（flex）。
 - 版本号统一 0.7.11（根/server/client）；本地提交未推送（按协作规矩）。
