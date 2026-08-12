@@ -80,12 +80,18 @@ async function ensureChapterLength(book, chapterIndex, targetWords, settings = {
   let content = String(chapter.content || '');
   for (let round = 0; round < 2 && content.length < target; round += 1) {
     const remaining = Math.max(500, Math.round(Number(targetWords)) - content.length);
-    const tail = content.slice(-1500);
     try {
       const result = await callModel(
         () => ({
           system: '你是小说续写助手。只返回 JSON，不要包含 Markdown。',
-          user: `当前章节《${chapter.title}》已写约 ${content.length} 字，目标约 ${targetWords} 字。请直接衔接上文结尾继续书写约 ${remaining} 字的情节，不要重复已有内容，不要提前收尾。\n章节结尾（衔接用）：\n${tail}\n返回 JSON：{"content":"续写正文"}。`,
+          user: [
+            `全书概况：${book.storySummary || '暂无'}`,
+            `章节标题：《${chapter.title}》`,
+            `本章已写约 ${content.length} 字，目标约 ${targetWords} 字，请直接衔接章节结尾继续书写约 ${remaining} 字的情节。`,
+            '要求：保持人物、设定与情节连贯，不要重复已有内容，不要提前收尾。',
+            `本章已写全文（衔接与上下文依据）：\n${content}`,
+            '返回 JSON：{"content":"续写正文"}。'
+          ].join('\n'),
           maxTokens: maxTokensForWords(remaining),
           thinkingType: settings.thinkingForWriting ? 'enabled' : 'disabled'
         }),
