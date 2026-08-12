@@ -1,11 +1,12 @@
 import { searchChapters, fixChapterPrefixes, replaceTextInBook, chineseNumberToInt } from '../lib/chapterUtils.js';
+import { parseTargetWords } from '../lib/bookUtils.js';
 import { createChapter, deleteChapters, rewriteChapter, updateOutline } from './bookService.js';
 import { maintainChapterMeta } from './maintenanceService.js';
 import { buildTimeline } from './storyMetaService.js';
 
 export const READY_TOOL_GROUPS = [
   { name: 'read', summary: '查询书籍信息、章节目录或指定章节内容', tools: ['read_book'] },
-  { name: 'edit', summary: '新建/改写/删除章节、编辑整书简介，或批量修复章节标题前缀、批量替换文本、批量删除末尾章节、主动维护章节元数据', tools: ['edit_book', 'batch_fix_chapter_prefixes', 'batch_replace_text', 'batch_delete_last_chapters', 'update_outline', 'refresh_chapter_meta'] },
+  { name: 'edit', summary: '新建/改写/删除章节、编辑整书简介与目标字数，或批量修复章节标题前缀、批量替换文本、批量删除末尾章节、主动维护章节元数据', tools: ['edit_book', 'batch_fix_chapter_prefixes', 'batch_replace_text', 'batch_delete_last_chapters', 'update_outline', 'update_book_target', 'refresh_chapter_meta'] },
   { name: 'navigate', summary: '打开并列查看/详情，展示书籍卡片', tools: ['open_book_widget'] }
 ];
 
@@ -174,6 +175,25 @@ export function defineReadyTools(book, settings, signal, changeLog) {
     },
     {
       group: 'edit',
+      name: 'update_book_target',
+      description: '根据用户意图调整全书目标总字数（如“改成20万字”“目标15万”）。value 为新的目标字数（数字或“N万字/N千字”文本）；传 0 或“不设限”表示取消目标。不会影响已有章节内容。',
+      parameters: {
+        type: 'object',
+        properties: { value: { type: 'string', minLength: 1, description: '新的全书目标字数，如 200000 或 "20万字"；0 或 "不设限" 表示取消' } },
+        required: ['value']
+      },
+      handler: async ({ value }) => {
+        const target = parseTargetWords(value);
+        book.targetWords = target;
+        book.updatedAt = new Date().toISOString();
+        return {
+          content: target > 0 ? `全书目标字数已更新为约 ${target} 字。` : '已取消全书目标字数限制。',
+          kind: 'text'
+        };
+      }
+    },
+    {
+      group: 'edit',
       name: 'refresh_chapter_meta',
       description: '唤起后端对指定章节的一次主动维护：重算该章 summary/events 并更新全书概况（含清理已删除章节残留）。不修改正文；聊天 AI 不能直接改 summary，需通过本工具维护。',
       parameters: {
@@ -197,11 +217,11 @@ export function defineReadyTools(book, settings, signal, changeLog) {
     {
       group: 'read',
       name: 'read_book',
-      description: '查询书籍信息、全书概况、章节内容或分层时间线。field 为 info（书名/简介/章节数/进度/目标字数）、chapters（章节目录）、chapter（指定章节内容与事件）、overview（当前全书概况）、timeline（全书分层时间线：重大事件→场景→章节）；查询具体章节时必须先调用本工具读取后再回答，不要凭摘要猜测；正文过长时用 maxChars 控制节选长度。',
+      description: '查询书籍信息（只读，可读除“全部章节全文”与“关系网全量数据”外的所有书籍字段）。field 为 info（书名/简介/章节数/进度/目标字数/构思设定）、meta（完整书籍元数据：状态/目标字数/构思设定与概念/草稿输出规模/关系网概要/时间等）、overview（当前全书概况）、chapters（章节目录）、chapter（指定章节的标题/摘要/事件/正文节选）、timeline（全书分层时间线：重大事件→场景→章节）；回答书籍信息前必须先调用本工具读取，不要凭摘要或对话历史猜测；正文过长时用 maxChars 控制节选长度。',
       parameters: {
         type: 'object',
         properties: {
-          field: { type: 'string', description: 'info | chapters | chapter | overview | timeline' },
+          field: { type: 'string', description: 'info | meta | overview | chapters | chapter | timeline' },
           target: { type: 'string', description: '章节号或标题，field=chapter 时必填' },
           scope: { type: 'string', description: 'summary 或 content，field=chapter 时生效' },
           maxChars: { type: 'integer', minimum: 100, maximum: 8000, description: '正文节选最大字数，默认 3000、上限 8000（仅 field=chapter 且 scope=content 时生效）' }
@@ -230,6 +250,29 @@ export function defineReadyTools(book, settings, signal, changeLog) {
               book.targetWords > 0
                 ? `全书目标：约 ${book.targetWords} 字（已完成 ${Math.round((totalWords / book.targetWords) * 100)}%）`
                 : ''
+            ].filter(Boolean).join('\n')
+          };
+        }
+        if (field === 'meta') {
+          const totalWords = book.chapters.reduce((sum, chapter) => sum + (chapter.content || '').length, 0);
+          const relations = book.relations || {};
+          return {
+            followUp: true,
+            data: [
+              `书名：${book.title}`,
+              `简介：${book.outline || '无'}`,
+              `状态：${book.status === 'ready' ? '已生成' : '构思中'}`,
+              `章节数：${book.chapters.length}`,
+              `当前字数：约 ${totalWords} 字`,
+              `目标字数：${book.targetWords > 0 ? `约 ${book.targetWords} 字` : '未设置'}`,
+              `构思设定：${book.draft?.summary || '无'}`,
+              `构思概念：${book.draft?.concept || '无'}`,
+              book.draft?.chaptersPerOutput
+                ? `草稿输出规模：${book.draft.chaptersPerOutput} 章 × ${book.draft.chapterWords || '?'} 字`
+                : '',
+              `关系网概要：${(relations.nodes || []).length} 个节点、${(relations.edges || []).length} 条边（${relations.generatedAt ? `生成于 ${new Date(relations.generatedAt).toLocaleString('zh-CN')}、覆盖 ${relations.coveredUpTo || 0} 章` : '尚未生成'}）`,
+              `创建时间：${book.createdAt ? new Date(book.createdAt).toLocaleString('zh-CN') : '未知'}`,
+              `最近更新：${book.updatedAt ? new Date(book.updatedAt).toLocaleString('zh-CN') : '未知'}`
             ].filter(Boolean).join('\n')
           };
         }
