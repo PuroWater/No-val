@@ -1,4 +1,4 @@
-import { ensureChapterTitle, searchChapters, fixChapterPrefixes, replaceTextInBook } from '../lib/chapterUtils.js';
+import { searchChapters, fixChapterPrefixes, replaceTextInBook, chineseNumberToInt } from '../lib/chapterUtils.js';
 import { createChapter, deleteChapters, rewriteChapter, updateOutline } from './bookService.js';
 import { maintainChapterMeta } from './maintenanceService.js';
 
@@ -97,7 +97,8 @@ export function defineReadyTools(book, settings, signal, changeLog) {
           const index = matches[0].index;
           const removedTitle = book.chapters[index].title;
           changeLog.deletedChapterIds.add(book.chapters[index].id);
-          await deleteChapters(book, { index });
+          const { affectedIds = [] } = await deleteChapters(book, { index });
+          affectedIds.forEach((id) => changeLog.chapterIds.add(id));
           return {
             content: `已删除第 ${index + 1} 章《${removedTitle}》（不可恢复）。删除造成的剧情断层与概况残留会在后续改写任意章时自动修复，也可让我调用 refresh_chapter_meta 立即刷新。`,
             kind: 'text'
@@ -121,8 +122,9 @@ export function defineReadyTools(book, settings, signal, changeLog) {
             }
             anchorIndex = anchorMatches[0].index;
           }
-          const { chapter: created } = await createChapter(book, { anchorIndex, title, instruction, settings, signal });
+          const { chapter: created, affectedIds = [] } = await createChapter(book, { anchorIndex, title, instruction, settings, signal });
           changeLog.chapterIds.add(created.id);
+          affectedIds.forEach((id) => changeLog.chapterIds.add(id));
           return { followUp: true, data: `已新建第 ${book.chapters.indexOf(created) + 1} 章《${created.title}》，可打开并列窗口查看。` };
         }
         const requestText = String(chapter || '').trim() || context.user || '';
@@ -233,6 +235,14 @@ export function defineReadyTools(book, settings, signal, changeLog) {
         }
         const matches = searchChapters(book, String(target || '').trim() || context.user || '');
         if (matches.length === 0) {
+          const chapterMatch = String(target || '').trim().match(/第\s*([0-9零一二两三四五六七八九十百千]+)\s*章/);
+          if (chapterMatch) {
+            const raw = chapterMatch[1];
+            const number = /^\d+$/.test(raw) ? Number(raw) : chineseNumberToInt(raw);
+            if (number > 0 && book.chapters.length > 0 && number > book.chapters.length) {
+              return { content: `本书目前只有 ${book.chapters.length} 章，没有第 ${number} 章。请确认章节号后再试。`, kind: 'text' };
+            }
+          }
           return { content: '没有找到对应章节，请确认章节号或标题。', kind: 'text' };
         }
         if (matches.length > 1) {

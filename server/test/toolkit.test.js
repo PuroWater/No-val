@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  detectReadyToolIntent,
   normalizeOutputScale,
   OVER_LIMIT_REPLY,
   prefilterDraftIntent,
@@ -10,6 +11,20 @@ import {
   runToolDecision,
   prefilterIntent
 } from '../src/services/toolkit.js';
+
+test('detectReadyToolIntent forces tool for explicit chapter actions', () => {
+  const rewrite = detectReadyToolIntent('把第二章改写得更有悬念');
+  assert.ok(rewrite && Array.isArray(rewrite.groups));
+  assert.deepEqual(rewrite.groups, ['read', 'edit', 'navigate']);
+  const over = detectReadyToolIntent('续写 10 章，每章 2000 字');
+  assert.equal(over.over, true);
+  const scaled = detectReadyToolIntent('续写 3 章，每章 2000 字');
+  assert.deepEqual(scaled.output, { chapters: 3, chapterWords: 2000 });
+  const missingChapter = detectReadyToolIntent('第 99 章讲了什么');
+  assert.ok(missingChapter && missingChapter.groups);
+  assert.equal(detectReadyToolIntent('今天天气怎么样'), null);
+  assert.equal(detectReadyToolIntent('我很喜欢这本书的设定'), null);
+});
 
 const echoTool = {
   name: 'echo',
@@ -184,7 +199,7 @@ test('prefilterIntent returns only valid group names', async () => {
   const asked = [];
   const decision = await prefilterIntent({
     groups,
-    user: '把第二章标题改一下',
+    user: '这本书里有哪些重要人物',
     history: '用户：你好\n助手：你好！',
     ask: async (options) => {
       asked.push(options);

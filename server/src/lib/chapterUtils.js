@@ -86,6 +86,10 @@ export function searchChapters(book, text) {
     const index = chapterNumber - 1;
     return [{ index, title: book.chapters[index].title, score: 100 }];
   }
+  if (chapterNumber > 0) {
+    // 章节号超出当前章节数：不模糊匹配，交由调用方给出明确引导（如“本书目前只有 N 章”）
+    return [];
+  }
   return book.chapters
     .map((chapter, index) => ({ index, title: chapter.title, score: fuzzyScore(chapter.title, value) }))
     .filter((item) => item.score >= 40)
@@ -111,7 +115,8 @@ export function fixChapterPrefixes(book, format, changeLog = new Set()) {
 
 // 从受影响位置起重排标准前缀：仅处理符合“第X章”格式的章节（跳过非标准标题），
 // 用于插入/删除中间章后自动同步章节编号；fromIndex 之后的章节逐个校准。
-export function renumberChapterPrefixes(book, { fromIndex = 0 } = {}) {
+// collect 传入 Set 时收集被改动章节 id，供上层 changeLog 写回（避免重排结果丢失）。
+export function renumberChapterPrefixes(book, { fromIndex = 0, collect } = {}) {
   const chapters = Array.isArray(book?.chapters) ? book.chapters : [];
   let count = 0;
   for (let index = Math.max(0, Number(fromIndex) || 0); index < chapters.length; index += 1) {
@@ -124,6 +129,7 @@ export function renumberChapterPrefixes(book, { fromIndex = 0 } = {}) {
     const nextTitle = `第${index + 1}章${rest}`.trim();
     if (nextTitle !== original) {
       chapter.title = nextTitle;
+      if (collect && typeof collect.add === 'function') collect.add(chapter.id);
       count += 1;
     }
   }

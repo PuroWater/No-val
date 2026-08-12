@@ -105,13 +105,25 @@ export async function createChapter(book, { anchorIndex, title, instruction, set
     createdAt: now,
     updatedAt: now
   };
+  const affectedIds = new Set();
   book.chapters.splice(insertAt, 0, chapter);
-  renumberChapterPrefixes(book, { fromIndex: insertAt + 1 });
+  // 新章自身（AI 可能返回“第一章/第N章”等任意前缀）+ 其后章节统一按当前位置重排，
+  // collect 收集受影响章节 id 供上层 changeLog 写回，避免重排结果在写回时丢失。
+  renumberChapterPrefixes(book, { fromIndex: insertAt, collect: affectedIds });
   if (settings.reviewAfterWrite) {
-    await reviewChapter(book, insertAt, { instruction, settings, signal });
+    try {
+      await reviewChapter(book, insertAt, { instruction, settings, signal });
+    } catch (err) {
+      console.error('[review] 审校失败，按通过降级:', err.message);
+    }
   }
-  await maintainChapterMeta(book, { chapterIndex: insertAt, mode: 'new', signal });
-  return { chapter, insertAt };
+  try {
+    await maintainChapterMeta(book, { chapterIndex: insertAt, mode: 'new', signal });
+  } catch (err) {
+    console.error('[maintenance] 新章元数据维护失败（保留旧值）:', err.message);
+  }
+  affectedIds.add(chapter.id);
+  return { chapter, insertAt, affectedIds: [...affectedIds] };
 }
 
 // 改写章节（AI 工具入口）：一次写正文调用（开思考、大预算，只产 title/content），写后自动维护章节元数据。
@@ -140,9 +152,17 @@ export async function rewriteChapter(book, chapterIndex, instruction, settings =
   target.title = String(result.title || target.title).trim();
   target.content = String(result.content).trim();
   if (settings.reviewAfterWrite) {
-    await reviewChapter(book, chapterIndex, { instruction, settings, signal: settings.signal });
+    try {
+      await reviewChapter(book, chapterIndex, { instruction, settings, signal: settings.signal });
+    } catch (err) {
+      console.error('[review] 审校失败，按通过降级:', err.message);
+    }
   }
-  await maintainChapterMeta(book, { chapterIndex, mode: 'modify', signal: settings.signal });
+  try {
+    await maintainChapterMeta(book, { chapterIndex, mode: 'modify', signal: settings.signal });
+  } catch (err) {
+    console.error('[maintenance] 改写元数据维护失败（保留旧值）:', err.message);
+  }
   return book;
 }
 
@@ -151,13 +171,14 @@ export async function rewriteChapter(book, chapterIndex, instruction, settings =
 export async function deleteChapters(book, { index, count } = {}) {
   const total = book.chapters.length;
   const pending = Array.isArray(book.pendingDeletes) ? book.pendingDeletes : [];
+  const affectedIds = new Set();
   const now = new Date().toISOString();
   if (Number.isInteger(index)) {
     if (index < 0 || index >= total) throw new Error('章节不存在');
     if (total <= 1) throw new Error('至少保留 1 章，删除数量需小于当前章节总数');
     const removed = book.chapters.splice(index, 1)[0];
     pending.push({ index, title: removed?.title || '', deletedAt: now });
-    renumberChapterPrefixes(book, { fromIndex: index });
+    renumberChapterPrefixes(book, { fromIndex: index, collect: affectedIds });
   } else {
     const error = validateBatchDelete(count, total);
     if (error) throw new Error(error);
@@ -168,7 +189,7 @@ export async function deleteChapters(book, { index, count } = {}) {
   }
   book.pendingDeletes = pending;
   book.updatedAt = now;
-  return book;
+  return { book, affectedIds: [...affectedIds] };
 }
 
 // 整书简介编辑：纯写字段，不主动调用、不触发任何维护。

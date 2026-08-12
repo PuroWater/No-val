@@ -33,7 +33,15 @@ export async function maintainChapterMeta(book, { chapterIndex, mode = 'modify',
   if (!chapter) throw new Error('章节不存在');
   const prev = index > 0 ? book.chapters[index - 1] : null;
   const next = index < book.chapters.length - 1 ? book.chapters[index + 1] : null;
-  const content = String(chapter.content || '');
+  const content = String(chapter.content || '').trim();
+  if (!content) {
+    // 空章不产出无意义摘要/事件：直接落“该章暂无内容”，不走 AI；pendingDeletes 保留待有内容章维护时清理。
+    chapter.summary = '该章暂无内容';
+    chapter.events = [];
+    chapter.updatedAt = new Date().toISOString();
+    book.updatedAt = chapter.updatedAt;
+    return book;
+  }
   const existingEvents = Array.isArray(chapter.events) && chapter.events.length > 0
     ? `该章现有事件：${chapter.events.map((item) => item.event).join('；')}\n`
     : '';

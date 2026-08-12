@@ -294,6 +294,7 @@ async function handleReadyMessage(book, content, settings, signal, changeLog) {
     system: [
       '你是小说协作 Agent，根据用户消息选择一个工具调用。',
       '回答具体章节的内容、摘要或细节问题前，必须使用 read_book 工具读取章节，再根据返回内容作答。',
+      '用户明确要求操作（续写、改写、删除、插入、新建章节、更新简介、批量修改等）时必须调用对应工具完成，不得仅以聊天方式回应；工具能力不足时如实说明。',
       `全书摘要：${book.storySummary || '暂无'}`,
       `最近章节摘要：${last?.summary || last?.title || '暂无'}`,
       scaleHint

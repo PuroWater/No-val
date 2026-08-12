@@ -94,6 +94,8 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter }) 
       setChapterIndex(0);
     } catch (err) {
       setDeleteChapterError(err.message);
+      // 删除失败回滚：重新拉取最新书籍状态，避免乐观移除后界面与后端不一致
+      api(`/books/${book.id}`).then((data) => setBook(data.book)).catch(() => {});
     }
   }
 
@@ -213,14 +215,17 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter }) 
                 onClick={() => setChapterIndex(book.chapters.indexOf(item))}
               >
                 <span className="directory-label">{item.title}</span>
-                <span
-                  className="directory-delete"
-                  onClick={(e) => { e.stopPropagation(); setDeleteChapterTarget(item); }}
-                >
-                  删除
-                </span>
+                {book.chapters.length > 1 && (
+                  <span
+                    className="directory-delete"
+                    onClick={(e) => { e.stopPropagation(); setDeleteChapterTarget(item); }}
+                  >
+                    删除
+                  </span>
+                )}
               </button>
             ))}
+            {book.chapters.length <= 1 && <p className="muted">仅剩 1 章不可删除，删除整书请到「我的」页面。</p>}
             {addingChapter ? (
               <input
                 ref={addInputRef}
