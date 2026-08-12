@@ -1608,6 +1608,7 @@ button, input, textarea, select {
 }
 
 .timeline-group-block {
+  position: relative;
   display: flex;
   align-items: flex-start;
   gap: 10px;
@@ -1656,19 +1657,32 @@ button, input, textarea, select {
 }
 
 .timeline-scene-column {
+  position: absolute;
+  z-index: 20;
   display: flex;
   gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+  align-items: flex-start;
 }
 
 .timeline-vertical .timeline-scene-column {
-  flex-direction: column;
-}
-
-.timeline-horizontal .timeline-scene-column {
+  left: 100%;
+  top: 0;
   flex-direction: row;
 }
 
+.timeline-horizontal .timeline-scene-column {
+  top: 100%;
+  left: 0;
+  flex-direction: column;
+}
+
 .timeline-scene-block {
+  position: relative;
   display: flex;
   gap: 6px;
   align-items: flex-start;
@@ -1683,15 +1697,26 @@ button, input, textarea, select {
 }
 
 .timeline-chapter-column {
+  position: absolute;
+  z-index: 21;
   display: flex;
   gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
 }
 
 .timeline-vertical .timeline-chapter-column {
+  top: 100%;
+  left: 0;
   flex-direction: column;
 }
 
 .timeline-horizontal .timeline-chapter-column {
+  left: 100%;
+  top: 0;
   flex-direction: row;
 }
 
