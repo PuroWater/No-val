@@ -1,8 +1,8 @@
 【项目目标】
 在当前开发环境下（已安装 VSCode、Node.js），生成一个可直接运行的**小说创作平台 Web 应用**。项目不连接任何数据库，后端数据使用本地 JSON 文件持久化。前端为 React 单页应用（SPA），后端为 Express，调用 DeepSeek 大模型辅助创作。
 
-当前版本：0.7.2（开发中）  
-最近更新：2026-08-12 0.7.2 书级写队列：慢写串行 + 快写旁路，消除写操作竞态
+当前版本：0.7.3  
+最近更新：2026-08-12 0.7.3 存储重构：books/drafts 分目录、每书一文件、软删归档标记
 
 【文档职责】
 - `TARGET.md`：每次更新的目标文件。每次更新前先修改本文档，按“日期 + 版本”划分，写明待更新说明、待更新功能；开发完成后记录实际完成内容。
@@ -1264,3 +1264,22 @@ Novel Agent/
 - 快写旁路：用户手动编辑保存 `PUT /books/:id/chapters/:chapterId`、手动新建空章、回收站操作不排队，写回前重读磁盘最新并只写自己的字段，手动保存不被 AI 长任务卡住。
 - SUMMARY 新增“并发与写操作约定”规则（慢写必须走队列、快写旁路、同书串行/异书并行、失败不阻塞、内存态单进程），后续新增写入口必须遵守。
 - 单元测试 54/54（新增 writeQueue 串行执行、失败不阻塞后续、不同书并行 3 例）；版本号统一 0.7.2（根/server/client）；本地提交未推送（按协作规矩）。
+
+### 2026-08-12 v0.7.3 存储重构：books/drafts 分目录、每书一文件、软删归档标记
+
+待更新说明：
+- 存储为单文件 `data/books.json`（所有已生成图书与构思混合在一个数组），并发写、备份与隔离粒度粗；应改为“已生成图书 / 构思”分目录、每本书单独一个 JSON 文件。
+- 软删（回收站）需要文件级归档标记，彻底删除即删除文件；旧整表文件迁移完成后可删除。
+
+待更新功能：
+- 目录结构：`data/books/`（status=ready，每本 `<bookId>.json`）与 `data/drafts/`（status=draft）；软删归档为 `<bookId>.archived.json`（原地改名）。
+- `lib/store.js` 新增书级 API：`readBookById` / `listBooks({ archived })` / `saveBook`（自动处理归档/恢复与 drafts ↔ books 定稿移动）/ `deleteBookFile`；移除整表 `BOOKS_FILE`。
+- `lib/bootstrap.js` 启动迁移：检测旧 `books.json` → 按 status 拆分写入新目录（软删书落 `.archived.json`）→ 删除旧文件与 `.bak`。
+- 全部读写调用点改造：routes/books、routes/chat、chatService（createDraft / handleMessage / writeMergedBook / interruptProcessing）、bookService.updateBook、draftService.createBookFromConcept。
+- 测试与真实数据迁移验证（12 本书拆分、字段零差异；创建/软删归档/恢复/彻底删除文件级流程通过）。
+
+完成内容：
+- 目录结构落地：`data/books/` 与 `data/drafts/`，每书一文件，软删改名 `<bookId>.archived.json`；`saveBook` 统一处理归档/恢复与定稿移动（drafts → books）。
+- `store.js` 新增 `readBookById` / `listBooks({ archived })` / `saveBook` / `deleteBookFile`，删除整表 `BOOKS_FILE`；`bootstrap` 启动自动迁移旧 `books.json`（拆分 + 删除旧文件与 .bak），真实 12 本迁移零差异。
+- 全部调用点改为书级单文件读写：列表/回收站/详情/关系网/摘要维护/删除/恢复/彻底删除/编辑保存/聊天消息/定稿。
+- 单元测试 54/54；API 冒烟：books 5 / trash 7 与迁移前一致，创建→软删归档→恢复→彻底删除文件级流程全部通过；版本号统一 0.7.3（根/server/client）；本地提交未推送（按协作规矩）。

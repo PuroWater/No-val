@@ -1,6 +1,5 @@
 import { Router } from 'express';
-import { readJson, writeJson, BOOKS_FILE } from '../lib/store.js';
-import { normalizeBook } from '../lib/bookUtils.js';
+import { readBookById, saveBook } from '../lib/store.js';
 import { requireAuth } from '../middleware/auth.js';
 import { createDraft, handleMessage, interruptProcessing } from '../services/chatService.js';
 import { createBookFromConcept } from '../services/draftService.js';
@@ -62,11 +61,12 @@ router.post('/continue', async (req, res) => {
   }
   try {
     const settings = getUserSettings(req.user.id);
-    const books = readJson(BOOKS_FILE, []).map(normalizeBook);
-    const book = books.find((item) => item.id === bookId && item.userId === req.user.id);
-    if (!book) return res.status(404).json({ error: '书籍不存在' });
+    const book = readBookById(bookId);
+    if (!book || book.userId !== req.user.id || book.deletedAt) {
+      return res.status(404).json({ error: '书籍不存在' });
+    }
     await continueBook(book, String(instruction).trim(), settings);
-    writeJson(BOOKS_FILE, books);
+    saveBook(book);
     return res.json({ book });
   } catch (err) {
     return res.status(502).json({ error: err.message });

@@ -1,4 +1,4 @@
-import { readJson, writeJson, BOOKS_FILE } from '../lib/store.js';
+import { readBookById, listBooks, saveBook } from '../lib/store.js';
 import { newId, normalizeBook } from '../lib/bookUtils.js';
 import { finalizeDraftBook } from './draftService.js';
 import { prefilterDraftIntent, prefilterIntent, runToolDecision } from './toolkit.js';
@@ -84,10 +84,8 @@ function buildDraft(userId) {
 }
 
 export function createDraft(userId) {
-  const books = readJson(BOOKS_FILE, []).map(normalizeBook);
   const book = buildDraft(userId);
-  books.push(book);
-  writeJson(BOOKS_FILE, books);
+  saveBook(book);
   return book;
 }
 
@@ -130,14 +128,13 @@ export function mergeBookState(latest, mutated, changedChapterIds = new Set(), d
 }
 
 function writeMergedBook(userId, mutated, changedChapterIds = new Set(), deletedChapterIds = new Set()) {
-  const books = readJson(BOOKS_FILE, []).map(normalizeBook);
-  const latest = books.find((item) => item.id === mutated.id && item.userId === userId);
-  if (latest) {
+  const latest = readBookById(mutated.id);
+  if (latest && latest.userId === userId) {
     mergeBookState(latest, mutated, changedChapterIds, deletedChapterIds);
+    saveBook(latest);
   } else {
-    books.push(mutated);
+    saveBook(mutated);
   }
-  writeJson(BOOKS_FILE, books);
 }
 
 export function interruptProcessing(userId, bookId = '') {
@@ -153,11 +150,10 @@ export function interruptProcessing(userId, bookId = '') {
     targets.add(jobBookId);
   }
   if (targets.size === 0) return { interrupted: false };
-  const books = readJson(BOOKS_FILE, []).map(normalizeBook);
   let changed = false;
-  for (const book of books) {
-    if (book.userId !== userId) continue;
-    if (!targets.has(book.id)) continue;
+  for (const book of listBooks()) {
+    if (book.userId !== userId || !targets.has(book.id)) continue;
+    let touched = false;
     for (let i = book.chat.length - 1; i >= 0; i -= 1) {
       const message = book.chat[i];
       if (message.kind === 'processing') {
@@ -165,25 +161,20 @@ export function interruptProcessing(userId, bookId = '') {
         message.kind = 'text';
         message.createdAt = new Date().toISOString();
         book.updatedAt = message.createdAt;
-        changed = true;
+        touched = true;
         break;
       }
     }
+    if (touched) { saveBook(book); changed = true; }
   }
-  if (changed) writeJson(BOOKS_FILE, books);
-  return { interrupted: true };
+  return { interrupted: changed };
 }
 
 export async function handleMessage(userId, bookId, content, settings = {}) {
-  const books = readJson(BOOKS_FILE, []).map(normalizeBook);
-  let book = books.find((item) => item.id === bookId && item.userId === userId);
+  let book = bookId ? readBookById(bookId) : null;
   let created = false;
-  if (!book && !bookId) {
-    book = buildDraft(userId);
-    books.push(book);
-    created = true;
-  }
-  if (!book) throw new Error('书籍或创作会话不存在');
+  if (!book && !bookId) { book = buildDraft(userId); created = true; }
+  if (!book || book.userId !== userId) throw new Error('书籍或创作会话不存在');
   if (hasPending(book)) throw new Error('上一轮仍在处理中，请稍候');
 
   appendMessage(book, 'user', content, 'text');
@@ -191,10 +182,10 @@ export async function handleMessage(userId, bookId, content, settings = {}) {
     const brief = content.slice(0, 18);
     book.title = `构思：${brief}${content.length > 18 ? '…' : ''}`;
   }
-  writeJson(BOOKS_FILE, books);
+  saveBook(book);
 
   appendMessage(book, 'agent', '正在处理，请稍候…', 'processing');
-  writeJson(BOOKS_FILE, books);
+  saveBook(book);
 
   const jobKey = `${userId}:${book.id}`;
   const controller = new AbortController();

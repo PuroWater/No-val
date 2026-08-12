@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-- 当前版本：0.7.2（书级写队列：慢写串行 + 快写旁路，消除写操作竞态）
+- 当前版本：0.7.3（存储重构：books/drafts 分目录、每书一文件、软删归档标记）
 - 当前分支：Develop
 - 技术栈：React 18 + Vite 5，Express 4，Node.js 18+，JSON 本地持久化
 - 大模型：DeepSeek，模型默认 `deepseek-v4-flash`
@@ -136,7 +136,7 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
   - `src/services/toolkit.js`：Agent 工具协议层（schema 校验、ReAct 多步循环调用与失败重试）。
   - `src/services/tools.js`：已生成图书工具定义（按 read/edit/navigate 分组，供意图预筛加载）。
   - `src/lib/chapterUtils.js`：章节定位、标题前缀、中文数字转换等通用工具函数。
-  - `src/lib/store.js`：JSON 读写。
+  - `src/lib/store.js`：JSON 读写（users/settings 单文件；书籍按 `data/books/` 与 `data/drafts/` 分目录、每书一文件，软删归档 `.archived.json`）。
   - `src/lib/security.js`：bcrypt 密码哈希。
   - `src/lib/token.js`：JWT 签发与校验。
   - `src/lib/bookUtils.js`：书籍数据规范化与 ID 生成。
@@ -155,7 +155,7 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 }
 ```
 
-`data/books.json`：
+`data/books/` 与 `data/drafts/`（0.7.3 起：每本一个 JSON 文件，已生成图书在 `books/`、构思在 `drafts/`，软删归档为 `<bookId>.archived.json`）：
 
 ```json
 {
@@ -265,7 +265,7 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 ### 数据与接口约定
 
 - `data/users.json` 只存放用户账号数据，密码只允许存 bcrypt 哈希。
-- `data/books.json` 是书籍与聊天记录的唯一数据源，所有字段必须兼容 `normalizeBook`。
+- `data/books/` 与 `data/drafts/` 是书籍与聊天记录的唯一数据源（每书一文件），所有字段必须兼容 `normalizeBook`；软删书落 `.archived.json`，彻底删除即删文件。
 - `data/settings.json` 存放用户偏好，`theme` 与 `fontSize` 取值由后端白名单校验。
 - 新增 API 必须遵循 `/api` 前缀和统一错误格式 `{ "error": "中文说明" }`。
 - 除注册、登录外，所有接口必须校验 JWT。
@@ -297,7 +297,7 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 ### 运行与运维注意事项
 
 - 本应用定位为单机本地工具：`JWT_SECRET` 缺省为 `dev-secret`、CORS 全开放、无接口限流，仅限本机使用；对外开放前必须配置强随机 `JWT_SECRET`、收紧 CORS 并增加限流。
-- 数据持久化采用临时文件写入后替换的原子写，写入前自动保留上一版本到 `data/*.json.bak`；`data/books.json` 是唯一数据源，建议定期整体备份 `data/` 目录。
+- 数据持久化采用临时文件写入后替换的原子写，写入前自动保留上一版本到 `data/*.json.bak`；书籍数据按 `data/books/` 与 `data/drafts/` 分目录存储，建议定期整体备份 `data/` 目录。
 - 章节并发安全：聊天结果写回前会重新读取并合并最新数据，改写章节按 AI 改写结果覆盖、其余章节保留并发编辑，避免旧快照覆盖用户编辑。
 - AI 调用统一 120 秒超时，处理中可点击发送按钮位置的“■”中断输出；中断后该轮消息标记为“输出已中断”，可继续发送。
 - 生成与续写改为逐章多次调用并自动重试一次，避免单次超长输出被截断；经 API 实测 `deepseek-v4-flash` 可接受远大于 8192 的 `max_tokens`，**仅写书工具**（生成/续写/改写）使用大上限 32768（约覆盖 10000 字/章 + 推理余量），元数据/工具调用保持 4096；设置字数范围为 1000-10000。
@@ -1150,3 +1150,15 @@ npm start
 - 版本号升级到 0.7.2（根/server/client 同步）；单元测试 54/54（新增 writeQueue 3 例）；本地提交未推送（按协作规矩）。
 
 完成结果：同书的聊天、摘要维护、关系网、删除按序执行、后到者读最新盘；手动保存旁路不排队；写操作竞态从根上消除，且规则入文档约束后续开发。
+
+### 2026-08-12 v0.7.3 存储重构：books/drafts 分目录、每书一文件、软删归档标记
+
+更新内容：
+- 存储目录：`data/books/`（status=ready）与 `data/drafts/`（status=draft），每本一个 `<bookId>.json`；软删归档为 `<bookId>.archived.json`，彻底删除即删文件。
+- `lib/store.js` 新增书级 API：`readBookById` / `listBooks({ archived })` / `saveBook`（自动处理归档/恢复与 drafts ↔ books 定稿移动）/ `deleteBookFile`；移除整表 `BOOKS_FILE`。
+- `lib/bootstrap.js` 启动迁移：旧 `books.json` 按 status 拆分到新目录（软删书落 `.archived.json`），迁移成功后删除旧文件与 `.bak`。
+- 全部读写调用点改造：routes/books、routes/chat、chatService（createDraft / handleMessage / writeMergedBook / interruptProcessing）、bookService.updateBook、draftService.createBookFromConcept。
+- 真实数据迁移验证：12 本书拆分（books 5 活动 + 2 归档 / drafts 5 归档），字段零差异；API 冒烟 books 5 / trash 7 与迁移前一致；创建→软删归档→恢复→彻底删除文件级流程全部通过。
+- 版本号升级到 0.7.3（根/server/client 同步）；单元测试 54/54；本地提交未推送（按协作规矩）。
+
+完成结果：书籍数据按书分文件、按状态分目录存储，软删有文件名归档标记，彻底删除即删文件；旧整表数据一次性迁移完成并删除，后续读写全部走书级单文件 API。

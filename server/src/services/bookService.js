@@ -1,5 +1,5 @@
-import { readJson, writeJson, BOOKS_FILE } from '../lib/store.js';
-import { normalizeBook, nextChapterId } from '../lib/bookUtils.js';
+import { readBookById, saveBook } from '../lib/store.js';
+import { nextChapterId } from '../lib/bookUtils.js';
 import { clampOutput, ensureChapterTitle, renumberChapterPrefixes } from '../lib/chapterUtils.js';
 import { callModel, maxTokensForWords } from '../lib/modelCall.js';
 import { maintainChapterMeta } from './maintenanceService.js';
@@ -18,11 +18,10 @@ export function validateBatchDelete(count, chapterCount) {
 }
 
 export function updateBook(userId, bookId, apply) {
-  const books = readJson(BOOKS_FILE, []).map(normalizeBook);
-  const book = books.find((item) => item.id === bookId && item.userId === userId);
-  if (!book) throw new Error('书籍不存在');
+  const book = readBookById(bookId);
+  if (!book || book.userId !== userId) throw new Error('书籍不存在');
   apply(book);
-  writeJson(BOOKS_FILE, books);
+  saveBook(book);
   return book;
 }
 
