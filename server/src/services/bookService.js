@@ -77,6 +77,11 @@ async function ensureChapterLength(book, chapterIndex, targetWords, settings = {
   if (!chapter) return;
   const target = Math.round(Number(targetWords) * 0.85);
   if (!Number.isFinite(target) || target <= 0) return;
+  // 有下一章时把其开头作为衔接参考（与 rewriteChapter 逻辑一致），无则不传
+  const next = chapterIndex < book.chapters.length - 1 ? book.chapters[chapterIndex + 1] : null;
+  const nextText = next
+    ? `下一章开头（衔接参考，补写内容应自然过渡到此处，不要重复）：\n${String(next.content || '').slice(0, 400)}`
+    : '';
   let content = String(chapter.content || '');
   for (let round = 0; round < 2 && content.length < target; round += 1) {
     const remaining = Math.max(500, Math.round(Number(targetWords)) - content.length);
@@ -88,16 +93,24 @@ async function ensureChapterLength(book, chapterIndex, targetWords, settings = {
             `全书概况：${book.storySummary || '暂无'}`,
             `章节标题：《${chapter.title}》`,
             `本章已写约 ${content.length} 字，目标约 ${targetWords} 字，请直接衔接章节结尾继续书写约 ${remaining} 字的情节。`,
-            '要求：保持人物、设定与情节连贯，不要重复已有内容，不要提前收尾。',
+            `要求：保持人物、设定与情节连贯，不要重复已有内容，不要提前收尾；本章总长控制在约 ${targetWords} 字，不要大幅超出。`,
+            nextText,
             `本章已写全文（衔接与上下文依据）：\n${content}`,
             '返回 JSON：{"content":"续写正文"}。'
-          ].join('\n'),
+          ].filter(Boolean).join('\n'),
           maxTokens: maxTokensForWords(remaining),
           thinkingType: settings.thinkingForWriting ? 'enabled' : 'disabled'
         }),
         (r) => r && typeof r.content === 'string' && r.content.trim().length > 0
       );
       content = `${content}${String(result.content).trim()}`;
+      // 总长上限：目标 105% 内保留，超出则按完整句截断（避免补过头）
+      const cap = Math.round(Number(targetWords) * 1.05);
+      if (content.length > cap) {
+        const slice = content.slice(0, cap);
+        const cut = Math.max(slice.lastIndexOf('。'), slice.lastIndexOf('！'), slice.lastIndexOf('？'), slice.lastIndexOf('\n'));
+        content = cut > cap * 0.8 ? slice.slice(0, cut + 1) : slice;
+      }
       chapter.content = content;
     } catch (err) {
       console.error('[length] 章节补写失败，保留已写内容:', err.message);
