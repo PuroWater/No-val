@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-export default function ChapterEditor({ chapter, onSave, onCommit }) {
+export default function ChapterEditor({ chapter, onSave, onCommit, onDirtyChange }) {
   const [title, setTitle] = useState(chapter.title);
   const [content, setContent] = useState(chapter.content);
   const [dirty, setDirty] = useState(false);
@@ -36,6 +36,10 @@ export default function ChapterEditor({ chapter, onSave, onCommit }) {
   useEffect(() => {
     latestRef.current = { title, content };
   }, [title, content]);
+
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
 
   // 真正编辑完成 = 编辑器卸载（切换标签 / 关闭面板 / 返回导航）：
   // 先确保最新改动已保存，再触发章节摘要与事件维护；失焦只保存不触发维护。

@@ -28,6 +28,7 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
   const prevBookRef = useRef(null);
   const chapterIndexRef = useRef(0);
   const aiToastTimerRef = useRef(null);
+  const editingDirtyRef = useRef(false);
   const directoryRef = useRef(null);
   const addInputRef = useRef(null);
 
@@ -119,7 +120,8 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
           const index = chapterIndexRef.current;
           const prevChapter = prev.chapters?.[index];
           const nextChapter = next.chapters?.[index];
-          if (prevChapter && nextChapter && (prevChapter.title !== nextChapter.title || prevChapter.content !== nextChapter.content)) {
+          // 仅在用户正编辑该章且有未保存草稿时提示覆盖风险；只是查看/选中不提示
+          if (editingDirtyRef.current && prevChapter && nextChapter && (prevChapter.title !== nextChapter.title || prevChapter.content !== nextChapter.content)) {
             setAiEditedToast(true);
             clearTimeout(aiToastTimerRef.current);
             aiToastTimerRef.current = setTimeout(() => setAiEditedToast(false), 3000);
@@ -268,7 +270,13 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
           </aside>
           <div className="chapter-editor-area">
             {chapter ? (
-              <ChapterEditor key={chapter.id} chapter={chapter} onSave={saveChapter} onCommit={commitSummary} />
+              <ChapterEditor
+                key={chapter.id}
+                chapter={chapter}
+                onSave={saveChapter}
+                onCommit={commitSummary}
+                onDirtyChange={(dirty) => { editingDirtyRef.current = dirty; }}
+              />
             ) : (
               <p className="muted">这本书还在构思中，生成后可以在这里编辑。</p>
             )}
