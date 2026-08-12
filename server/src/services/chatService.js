@@ -317,9 +317,9 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
           text: done > 0 ? `正在生成第 ${done}/${totalChapters || '?'} 章…` : '正在生成章节…'
         };
       } else if (mode === 'modify') {
-        job.progress = { ...job.progress, done, text: '正在改写章节…' };
+        job.progress = { total: 0, done: 0, text: '正在改写章节…' };
       } else if (mode === 'delete') {
-        job.progress = { ...job.progress, done, text: '正在删除章节…' };
+        job.progress = { total: 0, done: 0, text: '正在删除章节…' };
       } else if (toolName === 'refresh_chapter_meta') {
         job.progress = { ...job.progress, done, text: '正在维护章节元数据…' };
       } else if (toolName === 'update_outline') {
