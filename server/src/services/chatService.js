@@ -277,7 +277,8 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
     return;
   }
   const { groups, output } = prefilter;
-  const allowed = new Set(groups.length > 0 ? groups : READY_TOOL_GROUPS.map((group) => group.name));
+  // navigate（open_book_widget）始终可用：章节改动后必须展示书籍卡片
+  const allowed = new Set([...(groups.length > 0 ? groups : READY_TOOL_GROUPS.map((group) => group.name)), 'navigate']);
   const effectiveSettings = output
     ? {
         ...settings,
@@ -288,6 +289,7 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
   const totalChapters = output?.chapters || settings.chaptersPerOutput || 0;
   job.progress.total = totalChapters;
   job.progress.text = totalChapters > 0 ? `开始生成（共 ${totalChapters} 章）…` : '正在处理…';
+  changeLog.maxNewChapters = totalChapters;
   const scaleHint = output
     ? `\n本次用户指定输出规模：${output.chapters ? `共 ${output.chapters} 章` : ''}${output.chapterWords ? `、每章约 ${output.chapterWords} 字` : ''}。必须严格按指定章数逐章调用 edit_book(mode=new)，全部完成后再回复用户。`
     : `\n用户未指定输出规模，按默认设置执行：共 ${settings.chaptersPerOutput} 章、每章约 ${settings.chapterWords} 字；用户只要求一章时只写一章，全部完成后统一回复。`;
@@ -298,7 +300,7 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
       '回答具体章节的内容、摘要或细节问题前，必须使用 read_book 工具读取章节，再根据返回内容作答。',
       '用户以数字指代章节（如“第十章”“第5到15章”）时，直接按数字/范围读取（read_book 的 target 传纯阿拉伯数字 "10" 或从小到大范围 "5-15"，不得 "15-5"），不必先读目录；仅当用户以标题指代且不确定序号时才先 read_book(field=chapters) 查目录；编辑类工具的章节参数一律传阿拉伯数字序号（从 1 开始）。',
       '用户明确要求操作（续写、改写、删除、插入、新建章节、更新简介、批量修改等）时必须调用对应工具完成，不得仅以聊天方式回应；工具能力不足时如实说明。',
-      '章节新建/改写/删除等操作完成后，若适合向用户展示书籍卡片定位到相关章节，可调用 open_book_widget 并在 chapter 传入目标章节号；用户也可通过工作台右上角按钮打开并列查看/详情。',
+      '章节新建/改写/删除等操作完成后，必须调用 open_book_widget 展示书籍卡片并定位到操作章节（chapter 传数字序号）；open_book_widget 是展示书籍卡片的工具，章节改动后必须使用。',
       'read_book 可读取图书最新数据（书名、简介、元数据、章节目录、章节内容、概况、时间线等）；用户询问任何书籍信息（书名、字数、进度、设定、章节内容、统计等）时，优先调用 read_book 获取真实数据，不要凭对话历史或猜测回答，也不要编造或沿用历史中可能错误的信息。',
       `全书摘要：${book.storySummary || '暂无'}`,
       `最近章节摘要：${last?.summary || last?.title || '暂无'}`,
@@ -315,12 +317,12 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
         job.progress = {
           total: totalChapters,
           done,
-          text: done > 0 ? `正在生成第 ${done}/${totalChapters || '?'} 章…` : '正在生成章节…'
+          text: `正在生成第 ${Math.min(done, totalChapters || 1)}/${totalChapters || 1} 章…`
         };
       } else if (mode === 'modify') {
-        job.progress = { total: 0, done: 0, text: '正在改写章节…' };
+        job.progress = { total: 1, done: 0, text: '当前进度 0/1，正在改写章节…' };
       } else if (mode === 'delete') {
-        job.progress = { total: 0, done: 0, text: '正在删除章节…' };
+        job.progress = { total: 1, done: 0, text: '当前进度 0/1，正在删除章节…' };
       } else if (toolName === 'refresh_chapter_meta') {
         job.progress = { ...job.progress, done, text: '正在维护章节元数据…' };
       } else if (toolName === 'update_outline') {

@@ -158,11 +158,6 @@ function RelationGraphInner({ relations }) {
       onPointerDown={handlePointerDown}
       style={{ touchAction: 'none' }}
     >
-      <div className="graph-toolbar">
-        <button onClick={() => zoom(1.25)}>放大</button>
-        <button onClick={() => zoom(1 / 1.25)}>缩小</button>
-        <button onClick={() => setView({ x: VIEW_W / 2, y: VIEW_H / 2, scale: 1 })}>重置</button>
-      </div>
       <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} role="img" aria-label="人物与势力关系网">
         <g transform={`translate(${view.x} ${view.y}) scale(${view.scale})`}>
           {edges.map((edge, index) => {

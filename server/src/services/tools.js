@@ -101,6 +101,9 @@ export function defineReadyTools(book, settings, signal, changeLog) {
           };
         }
         if (mode === 'new') {
+          if (changeLog.maxNewChapters > 0 && (changeLog.writtenCount || 0) >= changeLog.maxNewChapters) {
+            return { content: '已按指定规模完成章节生成，请直接总结回复用户。', kind: 'text' };
+          }
           let anchorIndex;
           if (Number.isInteger(chapter)) {
             if (chapter < 1 || chapter > book.chapters.length) {

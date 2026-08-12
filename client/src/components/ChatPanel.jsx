@@ -387,6 +387,11 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
         })}
       </div>
       <div className="chat-input">
+        {hasProcessing && progress && (
+          <div className="chat-progress-inline">
+            当前进度 {Math.min(progress.done || 0, progress.total || 1)}/{progress.total || 1}，请等待生成
+          </div>
+        )}
         <textarea
           value={input}
           onChange={(e) => {

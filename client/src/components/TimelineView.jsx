@@ -12,13 +12,6 @@ function eventsBrief(events) {
   }).join('\n');
 }
 
-function clampPos(left, top, width = 360, height = 300) {
-  return {
-    left: Math.max(8, Math.min(left, window.innerWidth - width - 8)),
-    top: Math.max(8, Math.min(top, window.innerHeight - height - 8))
-  };
-}
-
 function clampScale(scale) {
   return Math.min(2.5, Math.max(0.5, scale));
 }
@@ -72,10 +65,6 @@ export default function TimelineView({
     onViewChange({ ...view, scale: clampScale(view.scale * factor) });
   }
 
-  function zoom(factor) {
-    onViewChange({ ...view, scale: clampScale(view.scale * factor) });
-  }
-
   function handleGroupClick(label, event) {
     if (dragRef.current?.moved) return;
     onToggleGroup(label);
@@ -113,11 +102,11 @@ export default function TimelineView({
 
   // 场景与章节合并为单个浮窗：场景标题可点击展开/收起该场景章节（就地展开，不另弹浮窗）
   function renderFloat() {
-    if (!expandedGroupData || !groupAnchor) return null;
-    const rect = groupAnchor.el.getBoundingClientRect();
-    const pos = vertical
-      ? clampPos(rect.right + 8, rect.top, 420, 340)
-      : clampPos(rect.left, rect.bottom + 8, 380, 360);
+    if (!expandedGroupData || !groupAnchor || !canvasRef.current) return null;
+    const nodeRect = groupAnchor.el.getBoundingClientRect();
+    const canvasRect = canvasRef.current.getBoundingClientRect();
+    const left = nodeRect.left - canvasRect.left + (vertical ? nodeRect.width + 8 : 0);
+    const top = nodeRect.top - canvasRect.top + (vertical ? 0 : nodeRect.height + 8);
     const groupDirection = vertical ? 'row' : 'column';
     const chapterDirection = vertical ? 'column' : 'row';
     const scenes = expandedGroupData.scenes.length > 0
@@ -130,7 +119,7 @@ export default function TimelineView({
       : [];
     const directChapters = expandedGroupData.scenes.length === 0 ? expandedGroupData.chapters : [];
     return (
-      <div className="timeline-float" style={{ position: 'fixed', ...pos, flexDirection: groupDirection }}>
+      <div className="timeline-float" style={{ position: 'absolute', left, top, flexDirection: groupDirection }}>
         {directChapters.length > 0 && (
           <div className="timeline-chapter-column" style={{ flexDirection: chapterDirection }}>
             {renderChapterList(directChapters)}
@@ -144,6 +133,11 @@ export default function TimelineView({
                 if (dragRef.current?.moved) return;
                 onToggleScene(scene.label);
               }}
+              onMouseEnter={(event) => showHover(event, {
+                title: `${scene.label || '未细分'}：${rangeText(scene.chapterStart ?? group.chapterStart, scene.chapterEnd ?? group.chapterEnd)}`
+              })}
+              onMouseMove={(event) => setHover((prev) => (prev ? { ...prev, x: event.clientX, y: event.clientY } : prev))}
+              onMouseLeave={() => setHover(null)}
             >
               {scene.label || '未细分'}
             </button>
@@ -167,11 +161,6 @@ export default function TimelineView({
         onWheel={handleWheel}
         style={{ touchAction: 'none' }}
       >
-        <div className="timeline-toolbar">
-          <button onClick={() => zoom(1.25)}>放大</button>
-          <button onClick={() => zoom(1 / 1.25)}>缩小</button>
-          <button onClick={() => onViewChange({ x: 0, y: 0, scale: 1 })}>重置</button>
-        </div>
         <div
           className={`timeline-content timeline-${orientation}`}
           style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})`, transformOrigin: '0 0' }}
