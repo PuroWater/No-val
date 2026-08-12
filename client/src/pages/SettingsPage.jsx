@@ -24,6 +24,8 @@ export default function SettingsPage() {
   const [chaptersPerOutput, setChaptersPerOutput] = useState(3);
   const [chapterWords, setChapterWords] = useState(2000);
   const [enterToSend, setEnterToSend] = useState(true);
+  const [thinkingForWriting, setThinkingForWriting] = useState(false);
+  const [thinkingTip, setThinkingTip] = useState(null);
   const [reviewAfterWrite, setReviewAfterWrite] = useState(false);
   const [reviewTip, setReviewTip] = useState(null);
   const [trash, setTrash] = useState([]);
@@ -56,13 +58,14 @@ export default function SettingsPage() {
       setChaptersPerOutput(Number(data.settings.chaptersPerOutput) || 3);
       setChapterWords(Number(data.settings.chapterWords) || 2000);
       setEnterToSend(data.settings.enterToSend !== false);
+      setThinkingForWriting(data.settings.thinkingForWriting === true);
       setReviewAfterWrite(data.settings.reviewAfterWrite === true);
       applySettings(data.settings);
     });
     loadTrash();
   }, []);
 
-  async function save(nextTheme, nextSize, nextChapters, nextWords, nextEnter, nextReview) {
+  async function save(nextTheme, nextSize, nextChapters, nextWords, nextEnter, nextThinking, nextReview) {
     try {
       const data = await api('/settings', {
         method: 'PUT',
@@ -72,6 +75,7 @@ export default function SettingsPage() {
           chaptersPerOutput: nextChapters,
           chapterWords: nextWords,
           enterToSend: nextEnter,
+          thinkingForWriting: nextThinking,
           reviewAfterWrite: nextReview
         })
       });
@@ -155,7 +159,7 @@ export default function SettingsPage() {
                 <span>背景风格</span>
                 <div className="option-row">
                   {THEMES.map((item) => (
-                    <button key={item.value} className={theme === item.value ? 'active' : ''} onClick={() => { setTheme(item.value); save(item.value, fontSize, chaptersPerOutput, chapterWords, enterToSend, reviewAfterWrite); }}>
+                    <button key={item.value} className={theme === item.value ? 'active' : ''} onClick={() => { setTheme(item.value); save(item.value, fontSize, chaptersPerOutput, chapterWords, enterToSend, thinkingForWriting, reviewAfterWrite); }}>
                       {item.label}
                     </button>
                   ))}
@@ -165,7 +169,7 @@ export default function SettingsPage() {
                 <span>字号</span>
                 <div className="option-row">
                   {SIZES.map((item) => (
-                    <button key={item.value} className={fontSize === item.value ? 'active' : ''} onClick={() => { setFontSize(item.value); save(theme, item.value, chaptersPerOutput, chapterWords, enterToSend, reviewAfterWrite); }}>
+                    <button key={item.value} className={fontSize === item.value ? 'active' : ''} onClick={() => { setFontSize(item.value); save(theme, item.value, chaptersPerOutput, chapterWords, enterToSend, thinkingForWriting, reviewAfterWrite); }}>
                       {item.label}
                     </button>
                   ))}
@@ -187,7 +191,7 @@ export default function SettingsPage() {
                   onBlur={() => {
                     const value = Math.min(5, Math.max(1, Math.round(Number(chaptersPerOutput) || 1)));
                     setChaptersPerOutput(value);
-                    save(theme, fontSize, value, chapterWords, enterToSend, reviewAfterWrite);
+                    save(theme, fontSize, value, chapterWords, enterToSend, thinkingForWriting, reviewAfterWrite);
                   }}
                 />
               </div>
@@ -204,7 +208,7 @@ export default function SettingsPage() {
                   onBlur={() => {
                     const value = Math.min(10000, Math.max(1000, Math.round(Number(chapterWords) || 1000)));
                     setChapterWords(value);
-                    save(theme, fontSize, chaptersPerOutput, value, enterToSend, reviewAfterWrite);
+                    save(theme, fontSize, chaptersPerOutput, value, enterToSend, thinkingForWriting, reviewAfterWrite);
                   }}
                 />
               </div>
@@ -213,16 +217,47 @@ export default function SettingsPage() {
                 <div className="option-row">
                   <button
                     className={enterToSend ? 'active' : ''}
-                    onClick={() => { setEnterToSend(true); save(theme, fontSize, chaptersPerOutput, chapterWords, true, reviewAfterWrite); }}
+                    onClick={() => { setEnterToSend(true); save(theme, fontSize, chaptersPerOutput, chapterWords, true, thinkingForWriting, reviewAfterWrite); }}
                   >
                     Enter
                   </button>
                   <button
                     className={!enterToSend ? 'active' : ''}
-                    onClick={() => { setEnterToSend(false); save(theme, fontSize, chaptersPerOutput, chapterWords, false, reviewAfterWrite); }}
+                    onClick={() => { setEnterToSend(false); save(theme, fontSize, chaptersPerOutput, chapterWords, false, thinkingForWriting, reviewAfterWrite); }}
                   >
                     Ctrl+Enter
                   </button>
+                </div>
+              </div>
+              <div className="settings-group">
+                <span>正文思考</span>
+                <div className="option-row">
+                  <button
+                    className={!thinkingForWriting ? 'active' : ''}
+                    onClick={() => { setThinkingForWriting(false); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, false, reviewAfterWrite); }}
+                  >
+                    关闭
+                  </button>
+                  <button
+                    className={thinkingForWriting ? 'active' : ''}
+                    onClick={() => { setThinkingForWriting(true); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, true, reviewAfterWrite); }}
+                    onMouseEnter={(event) => setThinkingTip({ x: event.clientX, y: event.clientY })}
+                    onMouseMove={(event) => setThinkingTip({ x: event.clientX, y: event.clientY })}
+                    onMouseLeave={() => setThinkingTip(null)}
+                  >
+                    开启
+                  </button>
+                  {thinkingTip && (
+                    <div
+                      className="chat-date-tooltip"
+                      style={{
+                        left: Math.min(thinkingTip.x + 14, window.innerWidth - 270),
+                        top: Math.min(thinkingTip.y + 16, window.innerHeight - 90)
+                      }}
+                    >
+                      开启后正文生成会先进行深度思考再输出，质量更高但耗时更长；默认关闭。
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="settings-group">

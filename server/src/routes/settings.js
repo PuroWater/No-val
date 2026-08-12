@@ -18,13 +18,14 @@ router.get('/', (req, res) => {
     chaptersPerOutput: 3,
     chapterWords: 2000,
     enterToSend: true,
+    thinkingForWriting: false,
     reviewAfterWrite: false
   };
   res.json({ settings: current });
 });
 
 router.put('/', (req, res) => {
-  const { theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, reviewAfterWrite } = req.body || {};
+  const { theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, thinkingForWriting, reviewAfterWrite } = req.body || {};
   if (!THEMES.includes(theme) || !FONT_SIZES.includes(fontSize)) {
     return res.status(400).json({ error: '设置值不合法' });
   }
@@ -42,6 +43,9 @@ router.put('/', (req, res) => {
   if (reviewAfterWrite !== undefined && typeof reviewAfterWrite !== 'boolean') {
     return res.status(400).json({ error: '生成后审校设置不合法' });
   }
+  if (thinkingForWriting !== undefined && typeof thinkingForWriting !== 'boolean') {
+    return res.status(400).json({ error: '正文思考设置不合法' });
+  }
   const settings = readJson(SETTINGS_FILE, []);
   let current = settings.find((item) => item.userId === req.user.id);
   if (!current) {
@@ -53,6 +57,7 @@ router.put('/', (req, res) => {
   current.chaptersPerOutput = chapterCount;
   current.chapterWords = wordCount;
   if (enterToSend !== undefined) current.enterToSend = enterToSend;
+  if (thinkingForWriting !== undefined) current.thinkingForWriting = thinkingForWriting;
   if (reviewAfterWrite !== undefined) current.reviewAfterWrite = reviewAfterWrite;
   writeJson(SETTINGS_FILE, settings);
   res.json({ settings: current });

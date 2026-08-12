@@ -15,6 +15,7 @@ export function getUserSettings(userId) {
     chaptersPerOutput: clampInt(current.chaptersPerOutput, 1, 5, 3),
     chapterWords: clampInt(current.chapterWords, 1000, 10000, 2000),
     enterToSend: current.enterToSend !== false,
+    thinkingForWriting: current.thinkingForWriting === true,
     reviewAfterWrite: current.reviewAfterWrite === true
   };
 }

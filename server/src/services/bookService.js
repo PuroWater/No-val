@@ -95,7 +95,7 @@ export async function createChapter(book, { anchorIndex, title, instruction, set
       system: '你是小说创作助手。始终只返回 JSON，不要包含 Markdown。',
       user: `创作新章节（插入为第 ${insertAt + 1} 章），本章约 ${chapterWords} 字。${ratioText}\n章节标题统一为“第X章 + 标题”格式。\n返回 JSON：{"title":"章节标题","content":"章节正文"}。\n用户指令：${instruction || '继续创作'}\n${context}`,
       maxTokens: maxTokensForWords(chapterWords),
-      thinkingType: 'enabled'
+      thinkingType: settings.thinkingForWriting ? 'enabled' : 'disabled'
     }),
     (result) => result && typeof result.content === 'string' && result.content.trim().length > 0
   );
@@ -149,7 +149,7 @@ export async function rewriteChapter(book, chapterIndex, instruction, settings =
       system: '你是小说改写助手。始终只返回 JSON，不要包含 Markdown。',
       user: `根据修改意见改写章节，本章约 ${chapterWords} 字。返回 JSON：{"title":"章节标题","content":"新内容"}。\n原章节：\n${target.title}\n${target.content}\n修改意见：${instruction}\n全书概况：${book.storySummary || '暂无'}\n附近章节语境：\n${context}`,
       maxTokens: maxTokensForWords(chapterWords),
-      thinkingType: 'enabled'
+      thinkingType: settings.thinkingForWriting ? 'enabled' : 'disabled'
     }),
     (result) => result && typeof result.content === 'string' && result.content.trim().length > 0
   );
