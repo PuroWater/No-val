@@ -18,7 +18,7 @@ const SIZES = [
 ];
 
 export default function SettingsPage() {
-  const [activeSetting, setActiveSetting] = useState('appearance');
+  const [activeSetting, setActiveSetting] = useState('general');
   const [theme, setTheme] = useState('paper');
   const [fontSize, setFontSize] = useState('medium');
   const [chaptersPerOutput, setChaptersPerOutput] = useState(3);
@@ -131,16 +131,16 @@ export default function SettingsPage() {
       <div className="settings-layout">
         <aside className="settings-directory">
           <button
-            className={`directory-item ${activeSetting === 'appearance' ? 'active' : ''}`}
-            onClick={() => setActiveSetting('appearance')}
-          >
-            外观
-          </button>
-          <button
             className={`directory-item ${activeSetting === 'general' ? 'active' : ''}`}
             onClick={() => setActiveSetting('general')}
           >
             常规
+          </button>
+          <button
+            className={`directory-item ${activeSetting === 'appearance' ? 'active' : ''}`}
+            onClick={() => setActiveSetting('appearance')}
+          >
+            外观
           </button>
           <button
             className={`directory-item ${activeSetting === 'trash' ? 'active' : ''}`}

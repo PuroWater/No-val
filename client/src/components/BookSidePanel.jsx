@@ -231,8 +231,8 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
       </div>
       <div className="tabs">
         <button className={tab === 'content' ? 'active' : ''} onClick={() => setTab('content')}>内容</button>
-        <button className={tab === 'relations' ? 'active' : ''} onClick={() => setTab('relations')}>关系网</button>
         <button className={tab === 'timeline' ? 'active' : ''} onClick={() => setTab('timeline')}>时间线</button>
+        <button className={tab === 'relations' ? 'active' : ''} onClick={() => setTab('relations')}>关系网</button>
       </div>
       {tab === 'content' ? (
         <div className="book-content">
