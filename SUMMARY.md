@@ -275,8 +275,14 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 
   - 提交信息必须使用中文，推荐格式 `类型(模块): 中文描述`，示例：`feat(聊天): 新增持久化会话`。
   - 日常开发在 `Develop` 分支进行，大功能先建功能分支，验证通过后再合并。
-  - 默认只在本地提交/更新，**不主动推送**；仅在用户明确要求推送时才推送到远程。
-  - main 发布规矩（远端合并流程）：① 本地 `git push origin develop` 推送 develop；② 在 GitHub 网页打开 `https://github.com/PuroWater/Creative-Novel/compare/main...develop` 创建 PR（develop → main）并点击 Merge 合并（勿删 develop 分支）；③ 本地 `git checkout main && git pull origin main` 拉回合并结果；本地默认不直接合并 main，除非用户明确要求。
+  - 默认只在本地提交/更新，**不主动推送**；用户明文规定“不推送”时保持本地，不执行发布流程。
+  - 发布流程（功能完成后，且用户说明准备推送、未被明文禁止时执行）：
+    0. 功能完成后先合并回 `develop` 分支，删除已完成的 feature 分支；
+    1. 先 `git pull origin develop` 拉取远端 develop，解决本地冲突；
+    2. `git push origin develop` 推送本地 develop；
+    3. 在 GitHub 网页打开 `https://github.com/PuroWater/Creative-Novel/compare/main...develop` 创建 PR（develop → main）并点击 Merge 合并（create merge commit，勿删 develop 分支）；
+    4. 本地 `git checkout main && git pull origin main` 拉回合并结果；
+    5. 切换回 `develop` 分支继续开发。
   - 开发新功能前先确认 TARGET 需求，必要时补充设计文档和实施计划。
 - 功能完成后必须同步更新 `README.md`、`SUMMARY.md`，涉及需求时同步更新 `TARGET.md`。
 
