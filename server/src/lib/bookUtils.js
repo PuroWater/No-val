@@ -1,27 +1,9 @@
-import { chineseNumberToInt } from './chapterUtils.js';
-
 export function newId(prefix) {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
 export function nextChapterId(book) {
   return `c_${book.id}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-}
-
-export function parseTargetWords(value) {
-  if (value === null || value === undefined || value === '') return 0;
-  const text = String(value).replace(/[，,、\s]/g, '');
-  // 阿拉伯数字优先（可带单位：万/千）；汉字数字统一走 chineseNumberToInt（支持万），避免硬编码枚举漏掉“八万/一万五千”等
-  const arabic = text.match(/(\d+(?:\.\d+)?)/);
-  if (arabic) {
-    const number = Number(arabic[1]);
-    if (/百万/.test(text)) return Math.round(number * 1000000);
-    if (/千字?/.test(text)) return Math.round(number * 1000);
-    if (/万字?/.test(text)) return Math.round(number * 10000);
-    return Number.isFinite(number) && number > 0 ? Math.round(number) : 0;
-  }
-  const chinese = chineseNumberToInt(text);
-  return Number.isFinite(chinese) && chinese > 0 ? chinese : 0;
 }
 
 function backfillChapterCreation(book) {

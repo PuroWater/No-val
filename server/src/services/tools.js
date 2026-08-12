@@ -1,5 +1,4 @@
 import { searchChapters, fixChapterPrefixes, replaceTextInBook, chineseNumberToInt } from '../lib/chapterUtils.js';
-import { parseTargetWords } from '../lib/bookUtils.js';
 import { createChapter, deleteChapters, rewriteChapter, updateOutline } from './bookService.js';
 import { maintainChapterMeta } from './maintenanceService.js';
 import { buildTimeline } from './storyMetaService.js';
@@ -176,14 +175,17 @@ export function defineReadyTools(book, settings, signal, changeLog) {
     {
       group: 'edit',
       name: 'update_book_target',
-      description: '根据用户意图调整全书目标总字数（如“改成20万字”“目标15万”）。value 为新的目标字数（数字或“N万字/N千字”文本）；传 0 或“不设限”表示取消目标。不会影响已有章节内容。',
+      description: '根据用户意图调整全书目标总字数（如用户说“改成20万字”，将 value 转换为阿拉伯数字 200000）。value 为目标字数（阿拉伯数字，0 表示取消目标限制）。不会影响已有章节内容。',
       parameters: {
         type: 'object',
-        properties: { value: { type: 'string', minLength: 1, description: '新的全书目标字数，如 200000 或 "20万字"；0 或 "不设限" 表示取消' } },
+        properties: { value: { type: 'integer', minimum: 0, description: '新的全书目标字数（阿拉伯数字，如 200000；0 表示取消目标限制）' } },
         required: ['value']
       },
       handler: async ({ value }) => {
-        const target = parseTargetWords(value);
+        const target = Number(value);
+        if (!Number.isInteger(target) || target < 0) {
+          return { content: '目标字数必须是大于等于 0 的阿拉伯数字。', kind: 'text' };
+        }
         book.targetWords = target;
         book.updatedAt = new Date().toISOString();
         return {
