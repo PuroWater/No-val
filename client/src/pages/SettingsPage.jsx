@@ -25,6 +25,7 @@ export default function SettingsPage() {
   const [chapterWords, setChapterWords] = useState(2000);
   const [enterToSend, setEnterToSend] = useState(true);
   const [reviewAfterWrite, setReviewAfterWrite] = useState(false);
+  const [reviewTip, setReviewTip] = useState(null);
   const [trash, setTrash] = useState([]);
   const [toasts, setToasts] = useState([]);
   const toastIdRef = useRef(0);
@@ -225,7 +226,15 @@ export default function SettingsPage() {
                 </div>
               </div>
               <div className="settings-group">
-                <span>生成后审校</span>
+                <span
+                  className="settings-label-tip"
+                  onMouseEnter={(event) => setReviewTip({ x: event.clientX, y: event.clientY })}
+                  onMouseMove={(event) => setReviewTip({ x: event.clientX, y: event.clientY })}
+                  onMouseLeave={() => setReviewTip(null)}
+                >
+                  生成后审校
+                  <span className="tip-icon">?</span>
+                </span>
                 <div className="option-row">
                   <button
                     className={!reviewAfterWrite ? 'active' : ''}
@@ -240,7 +249,17 @@ export default function SettingsPage() {
                     开启
                   </button>
                 </div>
-                <p className="muted">生成或改写章节后 AI 会通读一遍，不通过时自动修订；会额外耗时与消耗 token，默认关闭。</p>
+                {reviewTip && (
+                  <div
+                    className="chat-date-tooltip"
+                    style={{
+                      left: Math.min(reviewTip.x + 14, window.innerWidth - 270),
+                      top: Math.min(reviewTip.y + 16, window.innerHeight - 90)
+                    }}
+                  >
+                    生成或改写章节后 AI 会通读一遍，不通过时自动修订；会额外耗时与消耗 token，默认关闭。
+                  </div>
+                )}
               </div>
             </>
           )}
