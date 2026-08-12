@@ -29,6 +29,7 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
   const chapterIndexRef = useRef(0);
   const aiToastTimerRef = useRef(null);
   const editingDirtyRef = useRef(false);
+  const lastOpenChapterRef = useRef(null);
   const directoryRef = useRef(null);
   const addInputRef = useRef(null);
 
@@ -138,7 +139,9 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
   }, [chapterIndex]);
 
   useEffect(() => {
-    if (book && Number.isInteger(openChapter) && openChapter >= 1 && openChapter <= book.chapters.length) {
+    // 仅在外部指定章节（openChapter）变化时定位；自动刷新导致 book 变化不重置当前查看位置
+    if (book && Number.isInteger(openChapter) && openChapter >= 1 && openChapter <= book.chapters.length && lastOpenChapterRef.current !== openChapter) {
+      lastOpenChapterRef.current = openChapter;
       setChapterIndex(openChapter - 1);
     }
   }, [book, openChapter]);
