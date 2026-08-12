@@ -1,8 +1,8 @@
 【项目目标】
 在当前开发环境下（已安装 VSCode、Node.js），生成一个可直接运行的**小说创作平台 Web 应用**。项目不连接任何数据库，后端数据使用本地 JSON 文件持久化。前端为 React 单页应用（SPA），后端为 Express，调用 DeepSeek 大模型辅助创作。
 
-当前版本：0.6.4  
-最近更新：2026-08-11 并列工作台 1/3、每书独立聊天草稿与拖拽防选中
+当前版本：0.7.0（开发中，feature/0.7-arch-cleanup）  
+最近更新：2026-08-12 0.7.0 架构清晰化：构思/已生成/维护分文件，章节编排收敛与统一维护内核，新增 Review 开关
 
 【文档职责】
 - `TARGET.md`：每次更新的目标文件。每次更新前先修改本文档，按“日期 + 版本”划分，写明待更新说明、待更新功能；开发完成后记录实际完成内容。
@@ -1184,3 +1184,27 @@ Novel Agent/
 - `WorkspacePage.startResize` 拖拽防选中：`event.preventDefault()` + 临时 body `user-select: none`，pointerup/pointercancel 恢复；`.split-divider` 样式补 `user-select` / `touch-action`。
 - SUMMARY「Git 与协作约定」成文：默认本地提交不主动推送；main 发布走“develop 推远端 → GitHub 远端合并 develop → main → 拉回本地 main”。CONTEXT 同步。
 - 版本号升级到 0.6.4（根/server/client 同步）；构建通过，本地提交未推送（按新规矩默认本地）。
+
+### 2026-08-12 v0.7.0 架构清晰化：构思/已生成/维护分文件与章节编排统一
+
+待更新说明：
+- 继续写作工具（continue_book）与编辑工具（edit_book）职责重叠，且整章正文若经工具循环传出会造成 maxTokens 爆炸：edit_book 应收敛为 AI 侧薄壳（mode: new/modify/delete），正文产出放在后端对应函数内部的一次 AI 调用（大 maxTokens、开启思考）。
+- 章节 summary/event 的新建与维护散落在 syncChapterOverview / updateOverviewTail / regenerateChapterSummary 等多入口，命名与职责不统一：应收敛为一个统一维护内核。
+- 构思生成与已生成编辑混在 bookService / chatService：构思应独立成文件，一次性初始化整本书（≤5 章 + summary）。
+- 仅支持删除末尾章（0.5.20 收窄），现决定在支持插入中间章后把任意章删除加回：删除不调 AI、不维护概况，靠改写后统一维护修复，需谨慎提示。
+- 章节前缀在插入/删除中间章后可能错位：需自动重排受影响前缀，并把批量修复工具保留给 AI 兜底。
+- 生成后缺一次“通读把关”：需要可开关的 Review（读一遍是否通顺，必要时直接修订），因耗时耗 token 默认关闭。
+
+待更新功能：
+- deepseek.js 支持 `thinking: {type: enabled|disabled}` 与 `reasoning_effort`；写正文/改写/review 开思考，维护调用关思考。
+- 文件拆分：新增 draftService.js（构思生成独立）；overviewService.js 改造成 maintenanceService.js（统一维护内核 maintainChapterMeta）；bookService 瘦身为已生成图书生命周期与章节编排；工具定义按 draft/ready 分界。
+- edit_book 重写：mode: new | modify | delete，参数精简（mode/chapter/title?/instruction?）；删除 continue_book；新增 update_outline 与 refresh_chapter_meta 小工具。
+- 后端章节编排函数：createChapter（锚点插入/末尾追加）、rewriteChapter、deleteChapters（任意单章 + 末尾批量共用）、updateOutline。
+- 删除不调 AI、不维护概况、记录 book.pendingDeletes（normalizeBook 补默认）；下一次 maintainChapterMeta 消费并清理；工具描述与前端确认弹窗写明断层风险。
+- chapterUtils 新增 renumberChapterPrefixes（从受影响位置起重排标准前缀，跳过非标准标题），createChapter/deleteChapters 自动调用；batch_fix_chapter_prefixes 保留兜底。
+- maintainChapterMeta：输入 = 全书概况 + 变更章全文/摘要 + 前后章摘要 + 变更章现有 events + pendingDeletes；输出 = summary + events + 更新后全书概况；一次关思考调用原子写入；触发点统一（create/rewrite 自动、refresh_chapter_meta 主动、手动编辑卸载 POST /summary）。
+- Review：settings.reviewAfterWrite（默认关，按钮式开关同 Enter/Ctrl+Enter 风格）；reviewChapter 后端函数读一遍生成章节输出 {pass, issues, revised}，不通过则应用修订或复用 rewriteChapter；create/rewrite 后按开关触发，多章逐章过。
+- 前端：删除按钮放开任意章 + 谨慎确认文案；设置页新增 review 开关。
+
+完成内容：
+（开发完成后填写）
