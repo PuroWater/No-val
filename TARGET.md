@@ -1240,4 +1240,7 @@ Novel Agent/
 - 维护/审校降级（P4）：`createChapter`/`rewriteChapter` 中 `maintainChapterMeta`、`reviewChapter` 失败改为 catch + 日志降级（保留旧元数据），不再导致整章创建失败或工具重试重复建章。
 - 空章跳过维护（P5）：`maintainChapterMeta` 对空正文直接落“该章暂无内容”、清空 events，不走 AI；pendingDeletes 保留待有内容章清理。
 - 唯一章删除禁用（P6）：前端 `BookSidePanel` 仅剩 1 章时不显示删除按钮并提示“删除整书请到『我的』页面”；删除失败自动回滚重新拉取书籍状态。
+- 设置页“生成后审校”说明改为悬浮提示：鼠标移到“开启”按钮上显示说明气泡（跟随鼠标、移开消失，复用聊天日期下拉同款 tooltip 样式），不再常驻显示。
+- 并列窗口自动刷新：聊天消息返回后工作台通知并列 `BookSidePanel` 重新拉取书籍，AI 改写/续写/删除章节后左侧立即显示最新内容；刷新不打断正在编辑的草稿（编辑器本地状态独立）。
+- 被 AI 修改提示：自动刷新时若当前正在编辑的章节服务端内容（title/content）被 AI 改动，弹出类似“已保存”的深色气泡提示“本章已被 AI 修改，保存后将以你的最后状态覆盖 AI 的修改”，3 秒自动消失。
 - 版本号统一 0.7.1（根/server/client）；单元测试 51/51（新增 detectReadyToolIntent、renumber collect、空章维护、searchChapters 越界用例），前端构建通过；真实 AI 边界测试：改写/续写/删除/插入/不存在章节均正确进入 tool，越界确定性拒绝，构思“由你发挥/信息齐全”进入 confirm；本地提交未推送（按协作规矩）。
