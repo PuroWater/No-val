@@ -320,7 +320,7 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
       <ConfirmModal
         open={Boolean(deleteChapterTarget)}
         title="删除章节"
-        message={`删除《${deleteChapterTarget?.title || ''}》不会进入回收站且不可恢复；中间删除会造成剧情断层，概况与事件中的残留不会立即清理，需在后续改写衔接后自动修复，\n或让 AI 调用概况更新工具刷新。\n确定删除吗？`}
+        message={`删除《${deleteChapterTarget?.title || ''}》不会进入回收站且不可恢复；中间删除会造成剧情断层，概况与事件中的残留不会立即清理，需在后续改写衔接后自动修复，或让 AI 调用概况更新工具刷新。\n确定删除吗？`}
         confirmText="删除"
         onConfirm={confirmDeleteChapter}
         onCancel={() => setDeleteChapterTarget(null)}
