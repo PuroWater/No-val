@@ -75,7 +75,7 @@ export default function TimelineView({
     if (dragRef.current?.moved) return;
     onToggleGroup(label);
     if (expandedGroup !== label) {
-      setGroupAnchor({ rect: event.currentTarget.getBoundingClientRect() });
+      setGroupAnchor({ el: event.currentTarget });
       setSceneAnchor(null);
     } else {
       setGroupAnchor(null);
@@ -87,7 +87,7 @@ export default function TimelineView({
     if (dragRef.current?.moved) return;
     onToggleScene(label);
     if (expandedScene !== label) {
-      setSceneAnchor({ rect: event.currentTarget.getBoundingClientRect() });
+      setSceneAnchor({ el: event.currentTarget });
     } else {
       setSceneAnchor(null);
     }
@@ -120,7 +120,7 @@ export default function TimelineView({
 
   function renderSceneFloat() {
     if (!expandedGroupData || !groupAnchor) return null;
-    const rect = groupAnchor.rect;
+    const rect = groupAnchor.el.getBoundingClientRect();
     const floatStyle = vertical
       ? { position: 'fixed', ...clampPos(rect.right + 8, rect.top, 480, 280), flexDirection: 'row' }
       : { position: 'fixed', ...clampPos(rect.left, rect.bottom + 8, 300, 340), flexDirection: 'column' };
@@ -158,9 +158,12 @@ export default function TimelineView({
                   className="timeline-chapter-float"
                   style={{
                     position: 'fixed',
-                    ...(vertical
-                      ? clampPos(sceneAnchor.rect.left, sceneAnchor.rect.bottom + 8, 300, 260)
-                      : clampPos(sceneAnchor.rect.right + 8, sceneAnchor.rect.top, 380, 220)),
+                    ...(() => {
+                      const sRect = sceneAnchor.el.getBoundingClientRect();
+                      return vertical
+                        ? clampPos(sRect.left, sRect.bottom + 8, 300, 260)
+                        : clampPos(sRect.right + 8, sRect.top, 380, 220);
+                    })(),
                     flexDirection: vertical ? 'column' : 'row'
                   }}
                 >

@@ -1661,9 +1661,9 @@ button, input, textarea, select {
   gap: 8px;
   padding: 10px;
   border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--bg);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
   z-index: 30;
   align-items: flex-start;
   max-height: 300px;
@@ -1673,11 +1673,11 @@ button, input, textarea, select {
 .timeline-chapter-float {
   display: flex;
   gap: 6px;
-  padding: 8px;
+  padding: 10px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--bg);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  background: var(--panel);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
   z-index: 31;
   align-items: flex-start;
 }
