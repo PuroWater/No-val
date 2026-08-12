@@ -5,7 +5,7 @@ import { buildTimeline } from './storyMetaService.js';
 
 export const READY_TOOL_GROUPS = [
   { name: 'read', summary: '查询书籍信息、章节目录或指定章节内容', tools: ['read_book'] },
-  { name: 'edit', summary: '新建/改写/删除章节、编辑整书简介与目标字数，或批量修复章节标题前缀、批量替换文本、批量删除末尾章节、主动维护章节元数据', tools: ['edit_book', 'batch_fix_chapter_prefixes', 'batch_replace_text', 'batch_delete_last_chapters', 'update_outline', 'update_book_target', 'refresh_chapter_meta'] },
+  { name: 'edit', summary: '新建/改写/删除章节、编辑整书简介与目标字数、修改事件背景，或批量修复章节标题前缀、批量替换文本、批量删除末尾章节、主动维护章节元数据', tools: ['edit_book', 'batch_fix_chapter_prefixes', 'batch_replace_text', 'batch_delete_last_chapters', 'update_outline', 'update_book_target', 'update_events_context', 'refresh_chapter_meta'] },
   { name: 'navigate', summary: '打开并列查看/详情，展示书籍卡片', tools: ['open_book_widget'] }
 ];
 
@@ -164,6 +164,43 @@ export function defineReadyTools(book, settings, signal, changeLog) {
         book.updatedAt = new Date().toISOString();
         return {
           content: target > 0 ? `全书目标字数已更新为约 ${target} 字。` : '已取消全书目标字数限制。',
+          kind: 'text'
+        };
+      }
+    },
+    {
+      group: 'edit',
+      name: 'update_events_context',
+      description: '主动修改章节事件的大背景（context）：将指定章节范围内所有事件的 context 统一替换为用户指定的背景路径，并即时同步时间线（时间线按 context 分组）。\n详细说明：用户以自然语言描述章节范围与背景（如“把第3到8章的背景改成家族”“第2-5章归入北境矿脉之行”）时，由 AI 分析并转换为数字范围与背景数组传入；start/end 为阿拉伯数字章节号（从 1 开始、end 不小于 start）；context 为背景路径数组（从大到小最多 3 层，如 ["家族","藏书阁"]，空数组 [] 表示清除该范围背景）。本工具只修改 context 字段，不重算 summary/events/foreshadow，不调用维护 AI；修改后前端时间线自动刷新。',
+      parameters: {
+        type: 'object',
+        properties: {
+          start: { type: 'integer', minimum: 1, description: '起始章节号（阿拉伯数字，从 1 开始）' },
+          end: { type: 'integer', minimum: 1, description: '结束章节号（阿拉伯数字，end ≥ start）' },
+          context: { type: 'array', items: { type: 'string' }, description: '新的背景路径数组（从大到小最多 3 层，如 ["家族","藏书阁"]；空数组 [] 表示清除背景）' }
+        },
+        required: ['start', 'end', 'context']
+      },
+      handler: async ({ start, end, context }) => {
+        const s = Number(start);
+        const e = Number(end);
+        if (!Number.isInteger(s) || !Number.isInteger(e) || s < 1 || e < s || e > book.chapters.length) {
+          return { content: `章节范围无效：本书共 ${book.chapters.length} 章，start/end 需为 1-${book.chapters.length} 的阿拉伯数字且 end ≥ start。`, kind: 'text' };
+        }
+        const ctx = Array.isArray(context)
+          ? context.map(String).map((item) => item.trim()).filter(Boolean).slice(0, 3)
+          : [];
+        const now = new Date().toISOString();
+        for (let i = s - 1; i <= e - 1; i += 1) {
+          const chapter = book.chapters[i];
+          if (!chapter) continue;
+          (chapter.events || []).forEach((item) => { item.context = [...ctx]; });
+          chapter.updatedAt = now;
+          changeLog.chapterIds.add(chapter.id);
+        }
+        book.updatedAt = now;
+        return {
+          content: `已将第 ${s}-${e} 章的事件背景统一为${ctx.length > 0 ? `：${ctx.join('/')}` : '空（清除背景）'}，时间线已同步。`,
           kind: 'text'
         };
       }

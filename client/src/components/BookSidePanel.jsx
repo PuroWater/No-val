@@ -164,7 +164,7 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
       })
       .catch((err) => setTimelineError(err.message))
       .finally(() => setTimelineLoading(false));
-  }, [tab, bookId, book?.chapters?.length]);
+  }, [tab, bookId, book?.chapters?.length, refreshSignal]);
 
   useEffect(() => {
     if (!book) return undefined;
