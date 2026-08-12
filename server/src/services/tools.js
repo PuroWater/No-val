@@ -25,6 +25,7 @@ export function defineReadyTools(book, settings, signal, changeLog) {
       handler: async ({ format }) => {
         const fmt = format === 'chinese' ? 'chinese' : 'arabic';
         const count = fixChapterPrefixes(book, fmt, changeLog.chapterIds);
+        if (count > 0) changeLog.lastEditedIndex = book.chapters.length - 1;
         return {
           followUp: true,
           data: count > 0
@@ -47,6 +48,7 @@ export function defineReadyTools(book, settings, signal, changeLog) {
       },
       handler: async ({ from, to }) => {
         const count = replaceTextInBook(book, from, to, changeLog.chapterIds);
+        if (count > 0) changeLog.lastEditedIndex = book.chapters.length - 1;
         return {
           followUp: true,
           data: count > 0
@@ -70,6 +72,7 @@ export function defineReadyTools(book, settings, signal, changeLog) {
         const deleted = book.chapters.slice(-count);
         deleted.forEach((chapter) => changeLog.deletedChapterIds.add(chapter.id));
         await deleteChapters(book, { count });
+        changeLog.lastEditedIndex = book.chapters.length - 1;
         return {
           followUp: true,
           data: `已删除末尾 ${count} 章（不可恢复），当前共 ${book.chapters.length} 章。删除造成的概况残留会在后续改写任意章时自动修复，也可调用 refresh_chapter_meta 立即刷新。`
@@ -101,6 +104,7 @@ export function defineReadyTools(book, settings, signal, changeLog) {
           changeLog.deletedChapterIds.add(book.chapters[index].id);
           const { affectedIds = [] } = await deleteChapters(book, { index });
           affectedIds.forEach((id) => changeLog.chapterIds.add(id));
+          changeLog.lastEditedIndex = Math.min(index, book.chapters.length - 1);
           return {
             followUp: true,
             data: `已删除第 ${index + 1} 章《${removedTitle}》（不可恢复）。删除造成的剧情断层与概况残留会在后续改写任意章时自动修复，也可调用 refresh_chapter_meta 立即刷新。`
@@ -122,6 +126,7 @@ export function defineReadyTools(book, settings, signal, changeLog) {
           changeLog.chapterIds.add(created.id);
           affectedIds.forEach((id) => changeLog.chapterIds.add(id));
           changeLog.writtenCount = (changeLog.writtenCount || 0) + 1;
+          changeLog.lastEditedIndex = book.chapters.indexOf(created);
           return { followUp: true, data: `已新建第 ${book.chapters.indexOf(created) + 1} 章《${created.title}》，可打开并列窗口查看。` };
         }
         if (!Number.isInteger(chapter) || chapter < 1 || chapter > book.chapters.length) {
@@ -131,6 +136,7 @@ export function defineReadyTools(book, settings, signal, changeLog) {
         const rewrittenId = book.chapters[index].id;
         await rewriteChapter(book, index, String(instruction || '').trim() || '请按用户意图润色重写本章', { ...settings, signal });
         changeLog.chapterIds.add(rewrittenId);
+        changeLog.lastEditedIndex = index;
         return {
           followUp: true,
           data: `已修改第 ${index + 1} 章《${book.chapters[index]?.title || '本章'}》。`
@@ -203,6 +209,7 @@ export function defineReadyTools(book, settings, signal, changeLog) {
           chapter.updatedAt = now;
           changeLog.chapterIds.add(chapter.id);
         }
+        changeLog.lastEditedIndex = e - 1;
         book.updatedAt = now;
         return {
           followUp: true,
@@ -225,6 +232,9 @@ export function defineReadyTools(book, settings, signal, changeLog) {
         }
         const index = chapter - 1;
         await maintainChapterMeta(book, { chapterIndex: index, mode: 'modify', signal });
+        // 必须记入 changeLog，否则 mergeBookState 写回时该章 summary/events/updatedAt 会被丢弃
+        changeLog.chapterIds.add(book.chapters[index].id);
+        changeLog.lastEditedIndex = index;
         return {
           followUp: true,
           data: `已重新维护第 ${index + 1} 章《${book.chapters[index].title}》的摘要、事件与全书概况。`
@@ -377,8 +387,14 @@ export function defineReadyTools(book, settings, signal, changeLog) {
       },
       handler: async ({ chapter }) => ({
         followUp: true,
-        data: `书籍卡片已定位到第 ${Number(chapter) || 1} 章。`,
-        card: { bookId: book.id, chapter: Number(chapter) || 1 }
+        data: Number.isInteger(chapter) && chapter > 0
+          ? `书籍卡片已定位到第 ${chapter} 章。`
+          : '书籍卡片已展示。',
+        // 未传 chapter 时不默认 1，由协议层按本轮最后一个变更章补齐定位
+        card: {
+          bookId: book.id,
+          ...(Number.isInteger(chapter) && chapter > 0 ? { chapter } : {})
+        }
       })
     }
   ];

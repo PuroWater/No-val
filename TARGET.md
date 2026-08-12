@@ -1442,6 +1442,8 @@ Novel Agent/
 - 进度与等待文案落地：发送即轮询（不依赖 processing 消息出现）、输入框统一等待提示、顶部进度条仅进度操作显示；新书首条消息先 /chat/sessions 再 /chat/message，草稿可轮询进度；“构思：xxx”命名兼容两阶段。
 - 卡片协议落地：open_book_widget 返回 followUp + card，runToolDecision 把卡片合并进模型最终回复（kind=book + extra），所有 ready 工具改为 followUp（含参数/越界错误的提示），最终文案由模型产出，不再复述工具内置文案；提示词改为“调用后总结，不要复述工具文案”。
 - 数字解析落地：detectReadyToolIntent 识别“再写/继续写/写 + N章”，每章字数支持约/大概/左右/写限定词（实测“续写3章，每章约5000字”解析出 chapters=3、chapterWords=5000）；chatService 按“纯追加批量（后端循环）/ 锚点新建插入（AI 传参 + maxNewChapters 兜底）/ 改写删除（不消费章数）”分类，修复反复生成与插入丢锚点；scaleHint 不再教模型“逐章调用”。
+- 维护写回修复：refresh_chapter_meta 补记 changeLog.chapterIds（此前章节元数据实际未落盘）；新增 lastEditedIndex 供卡片默认定位；维护 prompt 强制事件 context 至少 1 层；批量收尾提示词注入真实章数。
 - 时间线：新增“刷新时间线”按钮；拉取依赖增加 book.updatedAt 与手动 tick；浮窗移入 .timeline-content 内部按内容坐标定位，随画布缩放（不做最小字号，用户可自行放大）。
 - 清理：删除 /chat/continue、/chat/create-book 及 continueBook、createBookFromConcept；前端 intToChinese 补全百位/千位。
+- 真实验证（沙箱外起服务）：副本“再写一章”11→12 章恰好 1 章、进度可见、最终回复为模型总结且卡片定位第 12 章；真实书维护 1-3 章落盘且 context 非空、时间线其他组消失。
 - 单元测试 52/52（新增“再写一章”等解析用例与 card 合并用例）；前端构建通过；版本号统一 0.7.12（根/server/client）；本地提交未推送（按协作规矩）。

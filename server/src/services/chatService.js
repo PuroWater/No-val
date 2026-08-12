@@ -16,6 +16,16 @@ export function hasPending(book) {
   return book.chat.some((message) => message.kind === 'processing');
 }
 
+// 最终回复的渲染附加信息：卡片未指定 chapter 时，用本轮最后一个变更章补齐定位。
+// 属于协议层默认（open_book_widget 只发信号），模型显式传 chapter 时以其为准。
+function finalOutcomeExtra(book, outcome, changeLog) {
+  const extra = outcome?.extra && typeof outcome.extra === 'object' ? { ...outcome.extra } : {};
+  if (outcome?.kind === 'book' && !extra.chapter && Number.isInteger(changeLog.lastEditedIndex) && changeLog.lastEditedIndex >= 0) {
+    extra.chapter = changeLog.lastEditedIndex + 1;
+  }
+  return Object.keys(extra).length > 0 ? extra : { bookId: book.id };
+}
+
 function localDateKey(iso) {
   const date = new Date(iso);
   const year = date.getFullYear();
@@ -308,6 +318,7 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
       ? `\n本次用户要求处理共 ${rawNewCount} 章：新建/插入请逐章调用 edit_book(mode=new) 并传对 chapter/position（最多 ${rawNewCount} 章，后端已拦截超量）；完成后请总结并调用 open_book_widget 展示书籍卡片。`
       : `\n用户未明确指定新建章节数：默认一次新建 ${settings.chaptersPerOutput} 章、每章约 ${settings.chapterWords} 字；仅当用户要求续写/新建时才新建章节，改写/删除/插入等操作请使用对应工具，不要擅自新建章节。`;
   if (batchNew) {
+    job.progress = { total: totalChapters, done: 0, text: `正在生成第 1/${totalChapters} 章…` };
     for (let i = 0; i < totalChapters; i += 1) {
       await createChapter(book, {
         instruction: content,
@@ -315,6 +326,7 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
         signal
       });
       changeLog.writtenCount = i + 1;
+      changeLog.lastEditedIndex = book.chapters.length - 1;
       job.progress = { total: totalChapters, done: i + 1, text: `正在生成第 ${i + 1}/${totalChapters} 章…` };
     }
     // 批量完成后只给“读 + 展示 + 轻量编辑”工具，不提供 edit_book 等章节编辑工具，防止 AI 再调
@@ -323,9 +335,8 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
     const decision = await runToolDecision({
       system: [
         '你是小说协作 Agent，根据用户消息选择一个工具调用。',
-        `本次已按用户指定规模批量生成 ${totalChapters} 章，生成已完成，不要再调用 edit_book(mode=new) 等编辑工具。`,
-        '章节新建/改写/删除等操作完成后，必须调用 open_book_widget 展示书籍卡片并定位到操作章节（chapter 传数字序号）。',
-        '请总结本次续写结果，并调用 open_book_widget 展示书籍卡片；最终回复请用自己的话总结，不要复述工具内置文案。',
+        `本次已按用户指定规模批量生成 ${totalChapters} 章，生成已完成（新增前共 ${book.chapters.length - totalChapters} 章，现全书共 ${book.chapters.length} 章），不要再调用 edit_book(mode=new) 等编辑工具，也无需调用 read_book 确认书籍状态。`,
+        `请直接总结本次续写结果（新增 ${totalChapters} 章、现全书共 ${book.chapters.length} 章），并调用 open_book_widget 展示书籍卡片；最终回复请用自己的话总结，不要复述工具内置文案。`,
         `全书摘要：${book.storySummary || '暂无'}`
       ].join('\n'),
       tools,
@@ -338,7 +349,10 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
       }
     });
     const outcome = decision.outcome || {};
-    replaceProcessing(book, outcome.content || `已按指定规模生成 ${totalChapters} 章。`, outcome.kind || 'text', outcome.extra || { bookId: book.id });
+    const extra = finalOutcomeExtra(book, outcome, changeLog);
+    // 批量生成由后端执行，新章序号后端确定：卡片统一定位到最后新建的一章
+    if (outcome.kind === 'book') extra.chapter = book.chapters.length;
+    replaceProcessing(book, outcome.content || `已按指定规模生成 ${totalChapters} 章。`, outcome.kind || 'text', extra);
     return;
   }
   const tools = defineReadyTools(book, effectiveSettings, signal, changeLog).filter((tool) => allowed.has(tool.group));
@@ -380,9 +394,9 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
   });
   if (!decision.tool) {
     const outcome = decision.outcome || {};
-    replaceProcessing(book, outcome.content || '好的，我记下了。', outcome.kind || 'text', outcome.extra || { bookId: book.id });
+    replaceProcessing(book, outcome.content || '好的，我记下了。', outcome.kind || 'text', finalOutcomeExtra(book, outcome, changeLog));
     return;
   }
   const outcome = decision.outcome || {};
-  replaceProcessing(book, outcome.content || '好的，我记下了。', outcome.kind || 'text', outcome.extra || { bookId: book.id });
+  replaceProcessing(book, outcome.content || '好的，我记下了。', outcome.kind || 'text', finalOutcomeExtra(book, outcome, changeLog));
 }

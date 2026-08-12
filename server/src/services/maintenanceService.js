@@ -74,7 +74,7 @@ export async function maintainChapterMeta(book, { chapterIndex, mode = 'modify',
     nextEvents ? `下一章事件：${nextEvents}` : '',
     `章节正文：\n${content.slice(0, 12000)}`,
     existingEvents,
-    '返回 JSON：{"summary":"本章 80-150 字剧情摘要","events":[{"event":"事件","characters":["人物"],"time":"文中时间点（可选）","context":["大背景","细场景"],"foreshadow":"setup|pay|null","foreshadowFor":"伏笔指向（可选）"}],"prose":"更新后的精简全书概况（300-800 字）"}。events 只包含本章事件且必须能在本章正文中找到依据，不得凭空编造；每条 event 正文不超过 50 字（event 只描述事件本身，背景/伏笔/时间分别放 context/foreshadow/time 字段）；context[0] 必须是贯穿当前情节段的大背景（如"家族""北境矿脉之行"），同一情节段的章节 context[0] 必须保持一致，不要用单个地点（如"藏书阁"）、动作（如"返回家族"）当作 context[0]——地点/场景细分放 context[1]/context[2]；context 最多 3 层并延续前后章事件中的背景；删除的章节不得出现。'
+    '返回 JSON：{"summary":"本章 80-150 字剧情摘要","events":[{"event":"事件","characters":["人物"],"time":"文中时间点（可选）","context":["大背景","细场景"],"foreshadow":"setup|pay|null","foreshadowFor":"伏笔指向（可选）"}],"prose":"更新后的精简全书概况（300-800 字）"}。events 只包含本章事件且必须能在本章正文中找到依据，不得凭空编造；每条 event 正文不超过 50 字（event 只描述事件本身，背景/伏笔/时间分别放 context/foreshadow/time 字段）；context[0] 必须是贯穿当前情节段的大背景（如"家族""北境矿脉之行"），同一情节段的章节 context[0] 必须保持一致，不要用单个地点（如"藏书阁"）、动作（如"返回家族"）当作 context[0]——地点/场景细分放 context[1]/context[2]；context 最多 3 层并延续前后章事件中的背景；每条事件都必须给出 context（至少 1 层）：有明确地点/场景时按 大背景→场景 分层，开篇/过渡章节若无显著大背景，用本书稳定基调（如"家族""开局"）作为 context[0]，不得返回空数组；删除的章节不得出现。'
   ].filter(Boolean).join('\n');
   const result = await callModel(
     () => ({
@@ -105,7 +105,7 @@ export async function initializeBookMeta(book, signal) {
   const result = await callModel(
     () => ({
       system: '你是全书概况初始化助手。只返回 JSON，不要包含 Markdown。',
-      user: `根据各章摘要生成每章结构化事件与全书概况。\n章节：\n${chapters}\n返回 JSON：{"chapters":[{"chapterIndex":0,"events":[{"event":"事件","characters":["人物"],"time":"文中时间点（可选）","context":["大背景","细场景"]}]}],"prose":"精简全书概况（300-800 字）"}。事件必须能在对应章节摘要中找到依据；每条 event 正文不超过 50 字（简洁概括事件本身）；context[0] 必须是贯穿情节段的大背景（如"家族"），同一情节段保持一致，地点/场景细分放 context[1]/context[2]，最多 3 层。`,
+      user: `根据各章摘要生成每章结构化事件与全书概况。\n章节：\n${chapters}\n返回 JSON：{"chapters":[{"chapterIndex":0,"events":[{"event":"事件","characters":["人物"],"time":"文中时间点（可选）","context":["大背景","细场景"]}]}],"prose":"精简全书概况（300-800 字）"}。事件必须能在对应章节摘要中找到依据；每条 event 正文不超过 50 字（简洁概括事件本身）；context[0] 必须是贯穿情节段的大背景（如"家族"），同一情节段保持一致，地点/场景细分放 context[1]/context[2]，最多 3 层；每条事件都必须给出 context（至少 1 层），开篇章节用本书稳定基调作为 context[0]，不得返回空数组。`,
       temperature: 0.4,
       maxTokens: 4096,
       thinkingType: 'disabled'
