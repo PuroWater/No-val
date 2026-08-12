@@ -30,8 +30,8 @@ export async function generateBookContent(concept, options = {}) {
       () => ({
         system: '你是小说创作助手。始终只返回 JSON，不要包含 Markdown。',
         user: index === 0
-          ? `根据构思创作小说的第 1 章，本章约 ${chapterWords} 字。${ratioText}\n章节标题统一为「第X章+标题」格式（如「第一章 少年」）。\n返回 JSON：{"title":"书名","outline":"简介","chapter":{"title":"章节标题","content":"章节正文","summary":"本章 80-150 字剧情摘要"}}。构思：${concept}`
-          : `继续创作第 ${index + 1} 章，本章约 ${chapterWords} 字。${ratioText}\n章节标题统一为「第X章+标题」格式（如「第${index + 1}章 标题」）。\n书名：${title}\n简介：${outline}\n上一章摘要：${chapters[index - 1]?.summary || '暂无'}\n返回 JSON：{"chapter":{"title":"章节标题","content":"章节正文","summary":"本章 80-150 字剧情摘要"}}。`,
+          ? `根据构思创作小说的第 1 章，本章约 ${chapterWords} 字。${ratioText}\n章节标题统一为「第X章+标题」格式（如「第一章 少年」）；正文按情节自然分段，段落之间用空行分隔。\n返回 JSON：{"title":"书名","outline":"简介","chapter":{"title":"章节标题","content":"章节正文","summary":"本章 80-150 字剧情摘要"}}。构思：${concept}`
+          : `继续创作第 ${index + 1} 章，本章约 ${chapterWords} 字。${ratioText}\n章节标题统一为「第X章+标题」格式（如「第${index + 1}章 标题」）；正文按情节自然分段，段落之间用空行分隔。\n书名：${title}\n简介：${outline}\n上一章摘要：${chapters[index - 1]?.summary || '暂无'}\n返回 JSON：{"chapter":{"title":"章节标题","content":"章节正文","summary":"本章 80-150 字剧情摘要"}}。`,
         maxTokens: maxTokensForWords(chapterWords),
         thinkingType: options.thinkingForWriting ? 'enabled' : 'disabled'
       }),

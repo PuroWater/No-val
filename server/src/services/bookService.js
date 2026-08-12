@@ -94,6 +94,7 @@ async function ensureChapterLength(book, chapterIndex, targetWords, settings = {
             `章节标题：《${chapter.title}》`,
             `本章已写约 ${content.length} 字，目标约 ${targetWords} 字，请直接衔接章节结尾继续书写约 ${remaining} 字的情节。`,
             `要求：保持人物、设定与情节连贯，不要重复已有内容，不要提前收尾；本章总长控制在约 ${targetWords} 字，不要大幅超出。`,
+            '正文按情节自然分段，段落之间用空行分隔。',
             nextText,
             `本章已写全文（衔接与上下文依据）：\n${content}`,
             '返回 JSON：{"content":"续写正文"}。'
@@ -142,7 +143,7 @@ export async function createChapter(book, { anchorIndex, title, instruction, set
   const result = await callModel(
     () => ({
       system: '你是小说创作助手。始终只返回 JSON，不要包含 Markdown。',
-      user: `创作新章节（插入为第 ${insertAt + 1} 章），本章约 ${chapterWords} 字。${ratioText}\n章节标题统一为“第X章 + 标题”格式。\n返回 JSON：{"title":"章节标题","content":"章节正文"}。\n用户指令：${instruction || '继续创作'}\n${context}`,
+      user: `创作新章节（插入为第 ${insertAt + 1} 章），本章约 ${chapterWords} 字。${ratioText}\n章节标题统一为“第X章 + 标题”格式；正文按情节自然分段，段落之间用空行分隔。\n返回 JSON：{"title":"章节标题","content":"章节正文"}。\n用户指令：${instruction || '继续创作'}\n${context}`,
       maxTokens: maxTokensForWords(chapterWords),
       thinkingType: settings.thinkingForWriting ? 'enabled' : 'disabled'
     }),
@@ -200,7 +201,7 @@ export async function rewriteChapter(book, chapterIndex, instruction, settings =
   const result = await callModel(
     () => ({
       system: '你是小说改写助手。始终只返回 JSON，不要包含 Markdown。',
-      user: `根据修改意见改写章节，本章约 ${chapterWords} 字。返回 JSON：{"title":"章节标题","content":"新内容"}。\n原章节：\n${target.title}\n${target.content}\n修改意见：${instruction}\n全书概况：${book.storySummary || '暂无'}\n附近章节语境：\n${context}`,
+      user: `根据修改意见改写章节，本章约 ${chapterWords} 字。正文按情节自然分段，段落之间用空行分隔。返回 JSON：{"title":"章节标题","content":"新内容"}。\n原章节：\n${target.title}\n${target.content}\n修改意见：${instruction}\n全书概况：${book.storySummary || '暂无'}\n附近章节语境：\n${context}`,
       maxTokens: maxTokensForWords(chapterWords),
       thinkingType: settings.thinkingForWriting ? 'enabled' : 'disabled'
     }),
