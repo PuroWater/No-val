@@ -189,7 +189,7 @@ export async function handleMessage(userId, bookId, content, settings = {}) {
 
   const jobKey = `${userId}:${book.id}`;
   const controller = new AbortController();
-  const changeLog = { chapterIds: new Set(), deletedChapterIds: new Set(), lastEditedChapter: null };
+  const changeLog = { chapterIds: new Set(), deletedChapterIds: new Set() };
   activeJobs.set(jobKey, { controller, isNewDraft: created });
   try {
     if (book.status === 'draft') {
@@ -286,6 +286,7 @@ async function handleReadyMessage(book, content, settings, signal, changeLog) {
       '你是小说协作 Agent，根据用户消息选择一个工具调用。',
       '回答具体章节的内容、摘要或细节问题前，必须使用 read_book 工具读取章节，再根据返回内容作答。',
       '用户明确要求操作（续写、改写、删除、插入、新建章节、更新简介、批量修改等）时必须调用对应工具完成，不得仅以聊天方式回应；工具能力不足时如实说明。',
+      '章节新建/改写/删除等操作完成后，若适合向用户展示书籍卡片定位到相关章节，可调用 open_book_widget 并在 chapter 传入目标章节号；用户也可通过工作台右上角按钮打开并列查看/详情。',
       `全书摘要：${book.storySummary || '暂无'}`,
       `最近章节摘要：${last?.summary || last?.title || '暂无'}`,
       scaleHint
@@ -301,17 +302,5 @@ async function handleReadyMessage(book, content, settings, signal, changeLog) {
     return;
   }
   const outcome = decision.outcome || {};
-  const hasChapterChange = changeLog.chapterIds.size > 0 || changeLog.deletedChapterIds.size > 0;
-  const bookExtra = {
-    bookId: book.id,
-    ...(changeLog.lastEditedChapter ? { chapter: changeLog.lastEditedChapter } : {})
-  };
-  // 本轮发生过章节新建/改写/删除时，最终回复自动升级为书籍卡片（并列查看/详情入口），
-  // 恢复“聊天中带书链接”体验；否则保持工具返回的原 kind。
-  replaceProcessing(
-    book,
-    outcome.content || '好的，我记下了。',
-    hasChapterChange ? 'book' : outcome.kind || 'text',
-    hasChapterChange ? bookExtra : outcome.extra || { bookId: book.id }
-  );
+  replaceProcessing(book, outcome.content || '好的，我记下了。', outcome.kind || 'text', outcome.extra || { bookId: book.id });
 }

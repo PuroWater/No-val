@@ -64,7 +64,6 @@ export function defineReadyTools(book, settings, signal, changeLog) {
         const deleted = book.chapters.slice(-count);
         deleted.forEach((chapter) => changeLog.deletedChapterIds.add(chapter.id));
         await deleteChapters(book, { count });
-        changeLog.lastEditedChapter = book.chapters.length;
         return {
           content: `已删除末尾 ${count} 章（不可恢复），当前共 ${book.chapters.length} 章。删除造成的概况残留会在后续改写任意章时自动修复，也可让我调用 refresh_chapter_meta 立即刷新。`,
           kind: 'text'
@@ -101,7 +100,6 @@ export function defineReadyTools(book, settings, signal, changeLog) {
           changeLog.deletedChapterIds.add(book.chapters[index].id);
           const { affectedIds = [] } = await deleteChapters(book, { index });
           affectedIds.forEach((id) => changeLog.chapterIds.add(id));
-          changeLog.lastEditedChapter = Math.min(index + 1, book.chapters.length);
           return {
             content: `已删除第 ${index + 1} 章《${removedTitle}》（不可恢复）。删除造成的剧情断层与概况残留会在后续改写任意章时自动修复，也可让我调用 refresh_chapter_meta 立即刷新。`,
             kind: 'text'
@@ -128,7 +126,6 @@ export function defineReadyTools(book, settings, signal, changeLog) {
           const { chapter: created, affectedIds = [] } = await createChapter(book, { anchorIndex, title, instruction, settings, signal });
           changeLog.chapterIds.add(created.id);
           affectedIds.forEach((id) => changeLog.chapterIds.add(id));
-          changeLog.lastEditedChapter = book.chapters.indexOf(created) + 1;
           return { followUp: true, data: `已新建第 ${book.chapters.indexOf(created) + 1} 章《${created.title}》，可打开并列窗口查看。` };
         }
         const requestText = String(chapter || '').trim() || context.user || '';
@@ -151,7 +148,6 @@ export function defineReadyTools(book, settings, signal, changeLog) {
         const rewrittenId = book.chapters[index].id;
         await rewriteChapter(book, index, String(instruction || '').trim() || '请按用户意图润色重写本章', { ...settings, signal });
         changeLog.chapterIds.add(rewrittenId);
-        changeLog.lastEditedChapter = index + 1;
         return {
           content: `已修改第 ${index + 1} 章《${book.chapters[index]?.title || '本章'}》，可打开并列窗口查看。`,
           kind: 'book',
@@ -293,7 +289,7 @@ export function defineReadyTools(book, settings, signal, changeLog) {
     {
       group: 'navigate',
       name: 'open_book_widget',
-      description: '当用户需要查看书籍、选择章节，或改写目标不明确时，展示书籍卡片并提供并列查看/详情入口；chapter 为打开并列窗口后定位的章节号（从 1 开始，默认 1）。',
+      description: '当用户需要查看书籍、选择章节、改写目标不明确，或章节新建/改写/删除操作完成后适合展示书籍卡片时调用；chapter 为打开并列窗口后定位的章节号（从 1 开始，默认 1）。',
       parameters: {
         type: 'object',
         properties: { chapter: { type: 'integer', description: '章节号，从 1 开始' } },
