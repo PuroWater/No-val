@@ -1,46 +1,42 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 
 function rangeText(start, end) {
   return `第 ${start + 1}-${end + 1} 章`;
 }
 
+// 事件浮窗只显示简略事件文本（50 字内），不贴 context/伏笔等字段
 function eventsBrief(events) {
   return (events || []).map((item, index) => {
-    const ctx = Array.isArray(item.context) && item.context.length > 0 ? `（${item.context.join('/')}）` : '';
-    const fw = item.foreshadow ? ` [伏笔：${item.foreshadow === 'setup' ? '铺设' : '回收'}]` : '';
-    return `${index + 1}. ${item.event}${ctx}${fw}${item.time ? `（${item.time}）` : ''}`;
+    const text = String(item.event || '').trim();
+    const brief = text.length > 50 ? `${text.slice(0, 50)}…` : text;
+    return `${index + 1}. ${brief}`;
   }).join('\n');
 }
 
-function clampPos(left, top, width = 320, height = 240) {
+function clampPos(left, top, width = 360, height = 300) {
   return {
     left: Math.max(8, Math.min(left, window.innerWidth - width - 8)),
     top: Math.max(8, Math.min(top, window.innerHeight - height - 8))
   };
 }
 
+function clampScale(scale) {
+  return Math.min(2.5, Math.max(0.5, scale));
+}
+
 export default function TimelineView({
   timeline,
   orientation,
   expandedGroup,
-  expandedScene,
   onToggleGroup,
-  onToggleScene,
   onOpenChapter,
-  scrollTop,
-  onScroll
+  view,
+  onViewChange
 }) {
-  const scrollRef = useRef(null);
+  const canvasRef = useRef(null);
   const dragRef = useRef(null);
   const [hover, setHover] = useState(null);
   const [groupAnchor, setGroupAnchor] = useState(null);
-  const [sceneAnchor, setSceneAnchor] = useState(null);
-
-  useEffect(() => {
-    if (scrollRef.current && typeof scrollTop === 'number') {
-      scrollRef.current.scrollTop = scrollTop;
-    }
-  }, [scrollTop]);
 
   const groups = Array.isArray(timeline?.groups) ? timeline.groups : [];
   const expandedGroupData = groups.find((group) => group.label === expandedGroup) || null;
@@ -48,27 +44,35 @@ export default function TimelineView({
 
   function startDrag(event) {
     if (event.button !== 0) return;
-    const el = scrollRef.current;
-    if (!el) return;
-    dragRef.current = { x: event.clientX, y: event.clientY, sl: el.scrollLeft, st: el.scrollTop, moved: false };
-    const onMove = (ev) => {
+    if (event.target?.closest?.('button')) return;
+    dragRef.current = { startX: event.clientX - view.x, startY: event.clientY - view.y, moved: false };
+    const onMove = (moveEvent) => {
       const drag = dragRef.current;
       if (!drag) return;
-      const dx = ev.clientX - drag.x;
-      const dy = ev.clientY - drag.y;
-      if (Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true;
-      if (drag.moved) {
-        el.scrollLeft = drag.sl - dx;
-        el.scrollTop = drag.st - dy;
-      }
+      const dx = moveEvent.clientX - drag.startX;
+      const dy = moveEvent.clientY - drag.startY;
+      if (Math.abs(dx - view.x) + Math.abs(dy - view.y) > 4) drag.moved = true;
+      onViewChange({ x: dx, y: dy, scale: view.scale });
     };
     const onUp = () => {
       dragRef.current = null;
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
     };
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+  }
+
+  function handleWheel(event) {
+    event.preventDefault();
+    const factor = event.deltaY < 0 ? 1.15 : 1 / 1.15;
+    onViewChange({ ...view, scale: clampScale(view.scale * factor) });
+  }
+
+  function zoom(factor) {
+    onViewChange({ ...view, scale: clampScale(view.scale * factor) });
   }
 
   function handleGroupClick(label, event) {
@@ -76,20 +80,8 @@ export default function TimelineView({
     onToggleGroup(label);
     if (expandedGroup !== label) {
       setGroupAnchor({ el: event.currentTarget });
-      setSceneAnchor(null);
     } else {
       setGroupAnchor(null);
-      setSceneAnchor(null);
-    }
-  }
-
-  function handleSceneClick(label, event) {
-    if (dragRef.current?.moved) return;
-    onToggleScene(label);
-    if (expandedScene !== label) {
-      setSceneAnchor({ el: event.currentTarget });
-    } else {
-      setSceneAnchor(null);
     }
   }
 
@@ -118,61 +110,38 @@ export default function TimelineView({
     ));
   }
 
-  function renderSceneFloat() {
+  // 场景与章节合并为单个浮窗：场景分组标题 + 章节列表，避免两级浮窗错位
+  function renderFloat() {
     if (!expandedGroupData || !groupAnchor) return null;
     const rect = groupAnchor.el.getBoundingClientRect();
-    const floatStyle = vertical
-      ? { position: 'fixed', ...clampPos(rect.right + 8, rect.top, 480, 280), flexDirection: 'row' }
-      : { position: 'fixed', ...clampPos(rect.left, rect.bottom + 8, 300, 340), flexDirection: 'column' };
-    const directChapters = expandedGroupData.scenes.length === 0 ? expandedGroupData.chapters : [];
+    const pos = vertical
+      ? clampPos(rect.right + 8, rect.top, 420, 340)
+      : clampPos(rect.left, rect.bottom + 8, 380, 360);
     const scenes = expandedGroupData.scenes.length > 0
       ? [
           ...(expandedGroupData.chapters.length > 0
-            ? [{ label: '（未细分）', chapterStart: expandedGroupData.chapterStart, chapterEnd: expandedGroupData.chapterEnd, chapters: expandedGroupData.chapters }]
+            ? [{ label: '（未细分）', chapters: expandedGroupData.chapters }]
             : []),
           ...expandedGroupData.scenes
         ]
       : [];
+    const directChapters = expandedGroupData.scenes.length === 0 ? expandedGroupData.chapters : [];
+    const chapterDirection = vertical ? 'column' : 'row';
     return (
-      <div className="timeline-float" style={floatStyle}>
-        {directChapters.length > 0 ? (
-          <div className="timeline-chapter-column" style={{ flexDirection: vertical ? 'column' : 'row' }}>
+      <div className="timeline-float" style={{ position: 'fixed', ...pos }}>
+        {directChapters.length > 0 && (
+          <div className="timeline-chapter-column" style={{ flexDirection: chapterDirection }}>
             {renderChapterList(directChapters)}
           </div>
-        ) : (
-          scenes.map((scene) => (
-            <div key={scene.label || '__plain__'} className="timeline-scene-block">
-              <button
-                className={`timeline-node timeline-scene${expandedScene === scene.label ? ' active' : ''}`}
-                onClick={(event) => handleSceneClick(scene.label, event)}
-                onMouseEnter={(event) => showHover(event, {
-                  title: `${scene.label || '未细分'}：${rangeText(scene.chapterStart, scene.chapterEnd)}`
-                })}
-                onMouseMove={(event) => setHover((prev) => (prev ? { ...prev, x: event.clientX, y: event.clientY } : prev))}
-                onMouseLeave={() => setHover(null)}
-              >
-                <span className="timeline-node-label">{scene.label || '未细分'}</span>
-              </button>
-              {expandedScene === scene.label && sceneAnchor && (
-                <div
-                  className="timeline-chapter-float"
-                  style={{
-                    position: 'fixed',
-                    ...(() => {
-                      const sRect = sceneAnchor.el.getBoundingClientRect();
-                      return vertical
-                        ? clampPos(sRect.left, sRect.bottom + 8, 300, 260)
-                        : clampPos(sRect.right + 8, sRect.top, 380, 220);
-                    })(),
-                    flexDirection: vertical ? 'column' : 'row'
-                  }}
-                >
-                  {renderChapterList(scene.chapters)}
-                </div>
-              )}
-            </div>
-          ))
         )}
+        {scenes.map((scene) => (
+          <div key={scene.label || '__plain__'} className="timeline-scene-group">
+            <div className="timeline-scene-title">{scene.label || '未细分'}</div>
+            <div className="timeline-chapter-column" style={{ flexDirection: chapterDirection }}>
+              {renderChapterList(scene.chapters)}
+            </div>
+          </div>
+        ))}
       </div>
     );
   }
@@ -180,30 +149,41 @@ export default function TimelineView({
   return (
     <div className="timeline-view">
       <div
-        ref={scrollRef}
-        className={`timeline-scroll timeline-${orientation}`}
-        onScroll={(event) => onScroll(event.currentTarget.scrollTop)}
+        ref={canvasRef}
+        className="timeline-canvas"
         onPointerDown={startDrag}
+        onWheel={handleWheel}
+        style={{ touchAction: 'none' }}
       >
-        {groups.length === 0 && <p className="muted">这本书还在构思中，生成章节后这里会按重大事件展示时间线。</p>}
-        {groups.map((group) => (
-          <div key={group.label} className="timeline-group-block">
-            <button
-              className={`timeline-node timeline-group${expandedGroup === group.label ? ' active' : ''}`}
-              onClick={(event) => handleGroupClick(group.label, event)}
-              onMouseEnter={(event) => showHover(event, {
-                title: `${group.label}：影响范围 ${rangeText(group.chapterStart, group.chapterEnd)}`
-              })}
-              onMouseMove={(event) => setHover((prev) => (prev ? { ...prev, x: event.clientX, y: event.clientY } : prev))}
-              onMouseLeave={() => setHover(null)}
-            >
-              <span className="timeline-node-label">{group.label}</span>
-              <span className="timeline-node-range">{rangeText(group.chapterStart, group.chapterEnd)}</span>
-            </button>
-          </div>
-        ))}
+        <div className="timeline-toolbar">
+          <button onClick={() => zoom(1.25)}>放大</button>
+          <button onClick={() => zoom(1 / 1.25)}>缩小</button>
+          <button onClick={() => onViewChange({ x: 0, y: 0, scale: 1 })}>重置</button>
+        </div>
+        <div
+          className={`timeline-content timeline-${orientation}`}
+          style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})`, transformOrigin: '0 0' }}
+        >
+          {groups.length === 0 && <p className="muted">这本书还在构思中，生成章节后这里会按重大事件展示时间线。</p>}
+          {groups.map((group) => (
+            <div key={group.label} className="timeline-group-block">
+              <button
+                className={`timeline-node timeline-group${expandedGroup === group.label ? ' active' : ''}`}
+                onClick={(event) => handleGroupClick(group.label, event)}
+                onMouseEnter={(event) => showHover(event, {
+                  title: `${group.label}：影响范围 ${rangeText(group.chapterStart, group.chapterEnd)}`
+                })}
+                onMouseMove={(event) => setHover((prev) => (prev ? { ...prev, x: event.clientX, y: event.clientY } : prev))}
+                onMouseLeave={() => setHover(null)}
+              >
+                <span className="timeline-node-label">{group.label}</span>
+                <span className="timeline-node-range">{rangeText(group.chapterStart, group.chapterEnd)}</span>
+              </button>
+            </div>
+          ))}
+        </div>
       </div>
-      {renderSceneFloat()}
+      {renderFloat()}
       {hover && (
         <div
           className="chat-date-tooltip timeline-tooltip"

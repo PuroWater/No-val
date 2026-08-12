@@ -1564,33 +1564,59 @@ button, input, textarea, select {
   min-height: 0;
 }
 
-.timeline-scroll {
+.timeline-canvas {
   flex: 1;
   min-height: 0;
-  overflow: auto;
-  padding: 12px;
+  overflow: hidden;
+  position: relative;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--panel);
   cursor: grab;
+  touch-action: none;
+  user-select: none;
 }
 
 .timeline-vertical {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  align-items: stretch;
 }
 
 .timeline-horizontal {
   display: flex;
   flex-direction: row;
   gap: 10px;
+}
+
+.timeline-content {
+  width: max-content;
+  min-width: 100%;
+  min-height: 100%;
+  padding: 12px;
   align-items: flex-start;
 }
 
+.timeline-toolbar {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 10;
+  display: flex;
+  gap: 6px;
+}
+
+.timeline-toolbar button {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+}
+
 .timeline-group-block {
-  position: relative;
   display: flex;
   align-items: flex-start;
   gap: 10px;
@@ -1638,22 +1664,27 @@ button, input, textarea, select {
   white-space: nowrap;
 }
 
-.timeline-scene-column {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-}
-
-.timeline-scene-block {
-  display: flex;
-  gap: 6px;
-  align-items: flex-start;
-}
-
 .timeline-chapter-column {
   display: flex;
   gap: 6px;
   align-items: flex-start;
+}
+
+.timeline-scene-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.timeline-scene-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 2px 4px;
 }
 
 .timeline-float {
@@ -1671,15 +1702,7 @@ button, input, textarea, select {
 }
 
 .timeline-chapter-float {
-  display: flex;
-  gap: 6px;
-  padding: 10px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--panel);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
-  z-index: 31;
-  align-items: flex-start;
+  display: none;
 }
 
 .timeline-tooltip-detail {

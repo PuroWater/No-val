@@ -18,8 +18,7 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
   const [timelineError, setTimelineError] = useState('');
   const [orientation, setOrientation] = useState('vertical');
   const [expandedGroup, setExpandedGroup] = useState(null);
-  const [expandedScene, setExpandedScene] = useState(null);
-  const [timelineScroll, setTimelineScroll] = useState(0);
+  const [timelineView, setTimelineView] = useState({ x: 0, y: 0, scale: 1 });
   const [addingChapter, setAddingChapter] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [deleteChapterTarget, setDeleteChapterTarget] = useState(null);
@@ -311,15 +310,13 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
               timeline={timeline}
               orientation={orientation}
               expandedGroup={expandedGroup}
-              expandedScene={expandedScene}
               onToggleGroup={(label) => setExpandedGroup((prev) => (prev === label ? null : label))}
-              onToggleScene={(label) => setExpandedScene((prev) => (prev === label ? null : label))}
               onOpenChapter={(index) => {
                 setTab('content');
                 setChapterIndex(index);
               }}
-              scrollTop={timelineScroll}
-              onScroll={setTimelineScroll}
+              view={timelineView}
+              onViewChange={setTimelineView}
             />
           )}
         </div>
