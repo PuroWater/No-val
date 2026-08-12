@@ -40,7 +40,12 @@ export function detectReadyToolIntent(user) {
     if (chinese) output.chapters = chineseNumberToInt(chinese[1]);
   }
   const words = withoutChapterRefs.match(/每章\s*([\d,]+)\s*字/);
-  if (words) output.chapterWords = Number(words[1].replace(/,/g, ''));
+  if (words) {
+    output.chapterWords = Number(words[1].replace(/,/g, ''));
+  } else {
+    const cnWords = withoutChapterRefs.match(/每章\s*([零一二两三四五六七八九十百千]+)\s*字/);
+    if (cnWords) output.chapterWords = chineseNumberToInt(cnWords[1]);
+  }
   const normalized = normalizeOutputScale(output);
   if (normalized.over) return { over: true };
   return { groups: ['read', 'edit', 'navigate'], output: normalized.output };

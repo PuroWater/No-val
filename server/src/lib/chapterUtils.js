@@ -22,19 +22,27 @@ export function clampOutput(value, min, max, fallback) {
 
 export function chineseNumberToInt(text) {
   const digits = { 零: 0, 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 };
-  const units = { 十: 10, 百: 100, 千: 1000 };
+  const units = { 十: 10, 百: 100, 千: 1000, 万: 10000 };
   let total = 0;
+  let section = 0;
   let current = 0;
   for (const ch of String(text)) {
     if (ch in digits) {
       current = digits[ch];
     } else if (ch in units) {
-      if (current === 0) current = 1;
-      total += current * units[ch];
+      const unit = units[ch];
+      const value = current === 0 ? 1 : current;
       current = 0;
+      if (unit === 10000) {
+        // “万”用当前节（或单位前的数字）整体放大：二十万=20*10000
+        total += (section > 0 ? section : value) * unit;
+        section = 0;
+      } else {
+        section += value * unit;
+      }
     }
   }
-  return total + current;
+  return total + section + current;
 }
 
 export function intToChinese(number) {

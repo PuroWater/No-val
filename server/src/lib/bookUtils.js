@@ -1,3 +1,5 @@
+import { chineseNumberToInt } from './chapterUtils.js';
+
 export function newId(prefix) {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -9,15 +11,17 @@ export function nextChapterId(book) {
 export function parseTargetWords(value) {
   if (value === null || value === undefined || value === '') return 0;
   const text = String(value).replace(/[，,、\s]/g, '');
-  const numberPart = Number(text.match(/(\d+(?:\.\d+)?)/)?.[1]);
-  if (/百万/.test(text)) return 1000000;
-  if (/五十万/.test(text)) return 500000;
-  if (/二十万/.test(text)) return 200000;
-  if (/十万/.test(text)) return 100000;
-  if (/千字?/.test(text)) return Math.round((numberPart || 1) * 1000);
-  if (/万字?/.test(text)) return Math.round((numberPart || 1) * 10000);
-  const plain = Number(text);
-  return Number.isFinite(plain) && plain > 0 ? Math.round(plain) : 0;
+  // 阿拉伯数字优先（可带单位：万/千）；汉字数字统一走 chineseNumberToInt（支持万），避免硬编码枚举漏掉“八万/一万五千”等
+  const arabic = text.match(/(\d+(?:\.\d+)?)/);
+  if (arabic) {
+    const number = Number(arabic[1]);
+    if (/百万/.test(text)) return Math.round(number * 1000000);
+    if (/千字?/.test(text)) return Math.round(number * 1000);
+    if (/万字?/.test(text)) return Math.round(number * 10000);
+    return Number.isFinite(number) && number > 0 ? Math.round(number) : 0;
+  }
+  const chinese = chineseNumberToInt(text);
+  return Number.isFinite(chinese) && chinese > 0 ? chinese : 0;
 }
 
 function backfillChapterCreation(book) {
