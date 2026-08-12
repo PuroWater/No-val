@@ -1,4 +1,4 @@
-import { searchChapters, fixChapterPrefixes, replaceTextInBook, chineseNumberToInt } from '../lib/chapterUtils.js';
+import { fixChapterPrefixes, replaceTextInBook } from '../lib/chapterUtils.js';
 import { createChapter, deleteChapters, rewriteChapter, updateOutline } from './bookService.js';
 import { maintainChapterMeta } from './maintenanceService.js';
 import { buildTimeline } from './storyMetaService.js';
@@ -78,24 +78,19 @@ export function defineReadyTools(book, settings, signal, changeLog) {
         type: 'object',
         properties: {
           mode: { type: 'string', enum: ['new', 'modify', 'delete'], description: 'new=新建 / modify=改写 / delete=删除（默认 modify）' },
-          chapter: { type: 'string', description: '章节号或标题；modify/delete 指定目标，new 时作为插入锚点（缺省追加末尾）' },
+          chapter: { type: 'integer', minimum: 1, description: '章节序号（从 1 开始）。用户以标题或“第X章”指代时，请先调用 read_book(field=chapters) 获取目录再转换为数字序号；new 模式为插入锚点序号（缺省追加末尾）' },
+          position: { type: 'string', enum: ['before', 'after'], description: 'new 模式插入位置：before=锚点章之前 / after=锚点章之后（默认 after）' },
           title: { type: 'string', description: '新章标题（仅 mode=new 可选，缺省由创作调用生成）' },
           instruction: { type: 'string', description: '写作方向（new）或修改意见（modify）' }
         },
         required: []
       },
-      handler: async ({ mode = 'modify', chapter, title, instruction }, context) => {
+      handler: async ({ mode = 'modify', chapter, position, title, instruction }) => {
         if (mode === 'delete') {
-          const requestText = String(chapter || '').trim() || context.user || '';
-          const matches = requestText ? searchChapters(book, requestText) : [];
-          if (matches.length === 0) {
-            return { content: '没有找到要删除的章节，请提供章节号或标题。', kind: 'text' };
+          if (!Number.isInteger(chapter) || chapter < 1 || chapter > book.chapters.length) {
+            return { content: '请先调用 read_book(field=chapters) 获取章节目录，删除时 chapter 传数字序号（从 1 开始）。', kind: 'text' };
           }
-          if (matches.length > 1) {
-            const list = matches.slice(0, 5).map((item, order) => `${order + 1}. ${item.title}`).join('\n');
-            return { content: `找到多个相似章节，请确认要删除哪一章：\n${list}`, kind: 'question' };
-          }
-          const index = matches[0].index;
+          const index = chapter - 1;
           const removedTitle = book.chapters[index].title;
           changeLog.deletedChapterIds.add(book.chapters[index].id);
           const { affectedIds = [] } = await deleteChapters(book, { index });
@@ -107,47 +102,23 @@ export function defineReadyTools(book, settings, signal, changeLog) {
         }
         if (mode === 'new') {
           let anchorIndex;
-          let position = 'after';
-          const anchorText = String(chapter || '').trim();
-          if (anchorText) {
-            const anchorMatches = searchChapters(book, anchorText);
-            if (anchorMatches.length === 0) {
-              return {
-                content: '没有找到要插入新章的锚点章节。请在下方书籍中打开并列查看或详情确认章节，然后回复章节号或章节名。',
-                kind: 'book',
-                extra: { bookId: book.id }
-              };
+          if (Number.isInteger(chapter)) {
+            if (chapter < 1 || chapter > book.chapters.length) {
+              return { content: '锚点章节序号超出范围，请先调用 read_book(field=chapters) 确认目录。', kind: 'text' };
             }
-            if (anchorMatches.length > 1) {
-              const list = anchorMatches.slice(0, 5).map((item, order) => `${order + 1}. ${item.title}`).join('\n');
-              return { content: `找到多个相似章节，请选择插入位置：\n${list}`, kind: 'question' };
-            }
-            anchorIndex = anchorMatches[0].index;
-            if (/(前|之前|前面)/.test(anchorText) && !/(后|之后|后面)/.test(anchorText)) position = 'before';
+            anchorIndex = chapter - 1;
           }
-          const { chapter: created, affectedIds = [] } = await createChapter(book, { anchorIndex, title, instruction, settings, signal, position });
+          const pos = position === 'before' ? 'before' : 'after';
+          const { chapter: created, affectedIds = [] } = await createChapter(book, { anchorIndex, title, instruction, settings, signal, position: pos });
           changeLog.chapterIds.add(created.id);
           affectedIds.forEach((id) => changeLog.chapterIds.add(id));
           changeLog.writtenCount = (changeLog.writtenCount || 0) + 1;
           return { followUp: true, data: `已新建第 ${book.chapters.indexOf(created) + 1} 章《${created.title}》，可打开并列窗口查看。` };
         }
-        const requestText = String(chapter || '').trim() || context.user || '';
-        if (!requestText) {
-          return { content: '请提供要改写的章节号或标题，例如“第二章”。', kind: 'text' };
+        if (!Number.isInteger(chapter) || chapter < 1 || chapter > book.chapters.length) {
+          return { content: '请先调用 read_book(field=chapters) 获取章节目录，改写时 chapter 传数字序号（从 1 开始）。', kind: 'text' };
         }
-        const matches = searchChapters(book, requestText);
-        if (matches.length === 0) {
-          return {
-            content: '没有找到对应章节。请在下方书籍中打开并列查看或详情确认章节，然后回复章节号或章节名（支持模糊匹配）。',
-            kind: 'book',
-            extra: { bookId: book.id }
-          };
-        }
-        if (matches.length > 1) {
-          const list = matches.slice(0, 5).map((item, order) => `${order + 1}. ${item.title}`).join('\n');
-          return { content: `找到多个相似章节，请选择要修改哪一章：\n${list}`, kind: 'question' };
-        }
-        const index = matches[0].index;
+        const index = chapter - 1;
         const rewrittenId = book.chapters[index].id;
         await rewriteChapter(book, index, String(instruction || '').trim() || '请按用户意图润色重写本章', { ...settings, signal });
         changeLog.chapterIds.add(rewrittenId);
@@ -197,21 +168,17 @@ export function defineReadyTools(book, settings, signal, changeLog) {
     {
       group: 'edit',
       name: 'refresh_chapter_meta',
-      description: '唤起后端对指定章节的一次主动维护：重算该章 summary/events 并更新全书概况（含清理已删除章节残留）。不修改正文；聊天 AI 不能直接改 summary，需通过本工具维护。',
+      description: '唤起后端对指定章节的一次主动维护：重算该章 summary/events 并更新全书概况（含清理已删除章节残留）。不修改正文；聊天 AI 不能直接改 summary，需通过本工具维护。用户以标题或“第X章”指代章节时，先调用 read_book(field=chapters) 获取目录，chapter 传数字序号（从 1 开始）。',
       parameters: {
         type: 'object',
-        properties: { chapter: { type: 'string', description: '章节号或标题，如 "第二章"' } },
+        properties: { chapter: { type: 'integer', minimum: 1, description: '章节序号（从 1 开始）' } },
         required: ['chapter']
       },
-      handler: async ({ chapter }, context) => {
-        const requestText = String(chapter || '').trim() || context.user || '';
-        const matches = requestText ? searchChapters(book, requestText) : [];
-        if (matches.length === 0) return { content: '没有找到对应章节，请提供章节号或标题。', kind: 'text' };
-        if (matches.length > 1) {
-          const list = matches.slice(0, 5).map((item, order) => `${order + 1}. ${item.title}`).join('\n');
-          return { content: `找到多个相似章节：\n${list}\n请回复具体章节号。`, kind: 'text' };
+      handler: async ({ chapter }) => {
+        if (!Number.isInteger(chapter) || chapter < 1 || chapter > book.chapters.length) {
+          return { content: '请先调用 read_book(field=chapters) 获取章节目录，chapter 传数字序号（从 1 开始）。', kind: 'text' };
         }
-        const index = matches[0].index;
+        const index = chapter - 1;
         await maintainChapterMeta(book, { chapterIndex: index, mode: 'modify', signal });
         return { content: `已重新维护第 ${index + 1} 章《${book.chapters[index].title}》的摘要、事件与全书概况。`, kind: 'text' };
       }
@@ -219,12 +186,12 @@ export function defineReadyTools(book, settings, signal, changeLog) {
     {
       group: 'read',
       name: 'read_book',
-      description: '查询书籍信息（只读，可读除“全部章节全文”与“关系网全量数据”外的所有书籍字段）。field 为 info（书名/简介/章节数/进度/目标字数/构思设定）、meta（完整书籍元数据：状态/目标字数/构思设定与概念/草稿输出规模/关系网概要/时间等）、overview（当前全书概况）、chapters（章节目录）、chapter（指定章节的标题/摘要/事件/正文节选）、timeline（全书分层时间线：重大事件→场景→章节）；回答书籍信息前必须先调用本工具读取，不要凭摘要或对话历史猜测；正文过长时用 maxChars 控制节选长度。',
+      description: '查询书籍信息（只读，可读除“全部章节全文”与“关系网全量数据”外的所有书籍字段）。field 为 info（书名/简介/章节数/进度/目标字数/构思设定）、meta（完整书籍元数据：状态/目标字数/构思设定与概念/草稿输出规模/关系网概要/时间等）、overview（当前全书概况）、chapters（章节目录）、chapter（指定章节的标题/摘要/事件/正文节选，target 传数字序号）、timeline（全书分层时间线：重大事件→场景→章节）；用户以标题或“第X章”指代章节时，先调用 field=chapters 获取目录再转换数字序号；回答书籍信息前必须先调用本工具读取，不要凭摘要或对话历史猜测；正文过长时用 maxChars 控制节选长度。',
       parameters: {
         type: 'object',
         properties: {
           field: { type: 'string', description: 'info | meta | overview | chapters | chapter | timeline' },
-          target: { type: 'string', description: '章节号或标题，field=chapter 时必填' },
+          target: { type: 'integer', minimum: 1, description: '章节序号（从 1 开始），field=chapter 时必填；用户以标题指代时先 read_book(field=chapters) 转换' },
           scope: { type: 'string', description: 'summary 或 content，field=chapter 时生效' },
           maxChars: { type: 'integer', minimum: 100, maximum: 8000, description: '正文节选最大字数，默认 3000、上限 8000（仅 field=chapter 且 scope=content 时生效）' }
         },
@@ -299,23 +266,13 @@ export function defineReadyTools(book, settings, signal, changeLog) {
             .join('\n');
           return { followUp: true, data: `全书分层时间线：\n${text || '暂无事件'}` };
         }
-        const matches = searchChapters(book, String(target || '').trim() || context.user || '');
-        if (matches.length === 0) {
-          const chapterMatch = String(target || '').trim().match(/第\s*([0-9零一二两三四五六七八九十百千]+)\s*章/);
-          if (chapterMatch) {
-            const raw = chapterMatch[1];
-            const number = /^\d+$/.test(raw) ? Number(raw) : chineseNumberToInt(raw);
-            if (number > 0 && book.chapters.length > 0 && number > book.chapters.length) {
-              return { content: `本书目前只有 ${book.chapters.length} 章，没有第 ${number} 章。请确认章节号后再试。`, kind: 'text' };
-            }
+        const index = Number(target) - 1;
+        if (!Number.isInteger(index) || index < 0 || index >= book.chapters.length) {
+          if (Number.isInteger(Number(target)) && Number(target) > book.chapters.length) {
+            return { content: `本书目前只有 ${book.chapters.length} 章，没有第 ${Number(target)} 章。请先调用 read_book(field=chapters) 确认目录。`, kind: 'text' };
           }
-          return { content: '没有找到对应章节，请确认章节号或标题。', kind: 'text' };
+          return { content: '请先调用 read_book(field=chapters) 获取章节目录，读取时 target 传数字序号（从 1 开始）。', kind: 'text' };
         }
-        if (matches.length > 1) {
-          const list = matches.slice(0, 5).map((item, order) => `${order + 1}. ${item.title}`).join('\n');
-          return { content: `找到多个相似章节：\n${list}\n请回复具体章节号。`, kind: 'text' };
-        }
-        const index = matches[0].index;
         const chapter = book.chapters[index];
         const useContent = String(scope || '') === 'content';
         const limit = Math.min(Math.max(Number(maxChars) || 3000, 100), 8000);
