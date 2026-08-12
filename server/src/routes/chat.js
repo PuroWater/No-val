@@ -6,6 +6,7 @@ import { createDraft, handleMessage, interruptProcessing } from '../services/cha
 import { createBookFromConcept } from '../services/draftService.js';
 import { continueBook } from '../services/bookService.js';
 import { getUserSettings } from '../services/settingsService.js';
+import { enqueueBookWrite } from '../lib/writeQueue.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -22,7 +23,10 @@ router.post('/message', async (req, res) => {
   }
   try {
     const settings = getUserSettings(req.user.id);
-    const book = await handleMessage(req.user.id, bookId || '', String(content).trim(), settings);
+    // 慢写：同一本书的聊天消息进书级队列串行，避免与维护/关系网等写回互相覆盖
+    const book = await enqueueBookWrite(bookId || `new:${req.user.id}`, () =>
+      handleMessage(req.user.id, bookId || '', String(content).trim(), settings)
+    );
     return res.status(bookId ? 200 : 201).json({ book });
   } catch (err) {
     return res.status(502).json({ error: err.message });
