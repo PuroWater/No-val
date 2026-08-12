@@ -121,10 +121,10 @@ async function ensureChapterLength(book, chapterIndex, targetWords, settings = {
 
 // 新建章节（AI 工具/续写兼容入口）：可追加末尾或插入锚点章后。
 // 内部一次写正文调用（开思考、大预算，只产 title/content），写后自动维护章节元数据并重排受影响前缀。
-export async function createChapter(book, { anchorIndex, title, instruction, settings = {}, signal } = {}) {
+export async function createChapter(book, { anchorIndex, title, instruction, settings = {}, signal, position = 'after' } = {}) {
   const chapterWords = clampOutput(settings.chapterWords, 1000, 10000, 2000);
   const insertAt = Number.isInteger(anchorIndex) && anchorIndex >= 0 && anchorIndex < book.chapters.length
-    ? anchorIndex + 1
+    ? (position === 'before' ? anchorIndex : anchorIndex + 1)
     : book.chapters.length;
   const prev = insertAt > 0 ? book.chapters[insertAt - 1] : null;
   const next = insertAt < book.chapters.length ? book.chapters[insertAt] : null;
@@ -149,9 +149,12 @@ export async function createChapter(book, { anchorIndex, title, instruction, set
     (result) => result && typeof result.content === 'string' && result.content.trim().length > 0
   );
   const now = new Date().toISOString();
+  // 新章标题强制按当前位置编号：去掉 AI 可能携带的任意“第N章”前缀再按位置补齐
+  const rawTitle = String(result.title || title || '').trim() || '';
+  const cleanedTitle = rawTitle.replace(/^第\s*[0-9零一二两三四五六七八九十百千]+\s*章[\s:：]*/, '');
   const chapter = {
     id: nextChapterId(book),
-    title: ensureChapterTitle(insertAt, String(result.title || title || '').trim() || ''),
+    title: ensureChapterTitle(insertAt, cleanedTitle),
     content: String(result.content).trim(),
     summary: '',
     events: [],

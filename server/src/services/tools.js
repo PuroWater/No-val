@@ -107,6 +107,7 @@ export function defineReadyTools(book, settings, signal, changeLog) {
         }
         if (mode === 'new') {
           let anchorIndex;
+          let position = 'after';
           const anchorText = String(chapter || '').trim();
           if (anchorText) {
             const anchorMatches = searchChapters(book, anchorText);
@@ -122,8 +123,9 @@ export function defineReadyTools(book, settings, signal, changeLog) {
               return { content: `找到多个相似章节，请选择插入位置：\n${list}`, kind: 'question' };
             }
             anchorIndex = anchorMatches[0].index;
+            if (/(前|之前|前面)/.test(anchorText) && !/(后|之后|后面)/.test(anchorText)) position = 'before';
           }
-          const { chapter: created, affectedIds = [] } = await createChapter(book, { anchorIndex, title, instruction, settings, signal });
+          const { chapter: created, affectedIds = [] } = await createChapter(book, { anchorIndex, title, instruction, settings, signal, position });
           changeLog.chapterIds.add(created.id);
           affectedIds.forEach((id) => changeLog.chapterIds.add(id));
           changeLog.writtenCount = (changeLog.writtenCount || 0) + 1;
