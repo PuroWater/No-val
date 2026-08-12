@@ -52,7 +52,7 @@ export async function reviewChapter(book, chapterIndex, { instruction = '', sett
       system: '你是小说质量审校助手。通读刚生成的章节，判断是否通顺、是否符合用户指令与全书概况；若不通过，给出修订后的完整章节。只返回 JSON，不要包含 Markdown。',
       user: `请审校以下章节（约 ${chapterWords} 字）：\n《${target.title}》\n${target.content}\n生成指令：${instruction || '无'}\n全书概况：${book.storySummary || '暂无'}\n\n若内容通顺且符合指令，返回 {"pass":true,"issues":""}；若需要修订，返回 {"pass":false,"issues":"问题要点","revised":{"title":"修订后标题","content":"修订后完整章节正文"}}。修订版必须保留情节主线且为完整章节。`,
       maxTokens: maxTokensForWords(chapterWords),
-      thinkingType: 'enabled'
+      thinkingType: 'disabled'
     }),
     (r) => r && typeof r.pass === 'boolean'
   );
