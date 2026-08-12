@@ -16,6 +16,7 @@ export function getUserSettings(userId) {
     chapterWords: clampInt(current.chapterWords, 1000, 10000, 2000),
     enterToSend: current.enterToSend !== false,
     thinkingForWriting: current.thinkingForWriting === true,
+    timelineOrientation: current.timelineOrientation === 'horizontal' ? 'horizontal' : 'vertical',
     reviewAfterWrite: current.reviewAfterWrite === true
   };
 }

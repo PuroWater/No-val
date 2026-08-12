@@ -22,7 +22,6 @@ function clampPos(left, top, width = 320, height = 240) {
 export default function TimelineView({
   timeline,
   orientation,
-  onToggleOrientation,
   expandedGroup,
   expandedScene,
   onToggleGroup,
@@ -177,10 +176,6 @@ export default function TimelineView({
 
   return (
     <div className="timeline-view">
-      <div className="timeline-toolbar">
-        <button className={vertical ? 'active' : ''} onClick={() => onToggleOrientation('vertical')}>纵向</button>
-        <button className={!vertical ? 'active' : ''} onClick={() => onToggleOrientation('horizontal')}>横向</button>
-      </div>
       <div
         ref={scrollRef}
         className={`timeline-scroll timeline-${orientation}`}

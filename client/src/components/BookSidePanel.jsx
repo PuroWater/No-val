@@ -139,6 +139,14 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
   }, [chapterIndex]);
 
   useEffect(() => {
+    api('/settings')
+      .then((data) => {
+        setOrientation(data.settings?.timelineOrientation === 'horizontal' ? 'horizontal' : 'vertical');
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     // 仅在外部指定章节（openChapter）变化时定位；自动刷新导致 book 变化不重置当前查看位置
     if (book && Number.isInteger(openChapter) && openChapter >= 1 && openChapter <= book.chapters.length && lastOpenChapterRef.current !== openChapter) {
       lastOpenChapterRef.current = openChapter;
@@ -302,7 +310,6 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
             <TimelineView
               timeline={timeline}
               orientation={orientation}
-              onToggleOrientation={setOrientation}
               expandedGroup={expandedGroup}
               expandedScene={expandedScene}
               onToggleGroup={(label) => setExpandedGroup((prev) => (prev === label ? null : label))}
