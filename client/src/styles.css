@@ -1590,7 +1590,11 @@ button, input, textarea, select {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 8px 12px;
+  margin: 0 12px 12px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: grab;
 }
 
 .timeline-vertical {
@@ -1657,67 +1661,47 @@ button, input, textarea, select {
 }
 
 .timeline-scene-column {
-  position: absolute;
-  z-index: 20;
   display: flex;
   gap: 8px;
+  align-items: flex-start;
+}
+
+.timeline-scene-block {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.timeline-chapter-column {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.timeline-float {
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  z-index: 30;
+  align-items: flex-start;
+  max-height: 300px;
+  overflow: auto;
+}
+
+.timeline-chapter-float {
+  display: flex;
+  gap: 6px;
   padding: 8px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--bg);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  z-index: 31;
   align-items: flex-start;
-}
-
-.timeline-vertical .timeline-scene-column {
-  left: 100%;
-  top: 0;
-  flex-direction: row;
-}
-
-.timeline-horizontal .timeline-scene-column {
-  top: 100%;
-  left: 0;
-  flex-direction: column;
-}
-
-.timeline-scene-block {
-  position: relative;
-  display: flex;
-  gap: 6px;
-  align-items: flex-start;
-}
-
-.timeline-vertical .timeline-scene-block {
-  flex-direction: column;
-}
-
-.timeline-horizontal .timeline-scene-block {
-  flex-direction: row;
-}
-
-.timeline-chapter-column {
-  position: absolute;
-  z-index: 21;
-  display: flex;
-  gap: 6px;
-  padding: 6px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--bg);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
-}
-
-.timeline-vertical .timeline-chapter-column {
-  top: 100%;
-  left: 0;
-  flex-direction: column;
-}
-
-.timeline-horizontal .timeline-chapter-column {
-  left: 100%;
-  top: 0;
-  flex-direction: row;
 }
 
 .timeline-tooltip-detail {

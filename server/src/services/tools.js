@@ -186,12 +186,12 @@ export function defineReadyTools(book, settings, signal, changeLog) {
     {
       group: 'read',
       name: 'read_book',
-      description: '查询书籍信息（只读，可读除“全部章节全文”与“关系网全量数据”外的所有书籍字段）。field 为 info（书名/简介/章节数/进度/目标字数/构思设定）、meta（完整书籍元数据：状态/目标字数/构思设定与概念/草稿输出规模/关系网概要/时间等）、overview（当前全书概况）、chapters（章节目录，支持 start/count 分页）、chapter（指定章节的标题/摘要/事件/正文节选，target 传数字序号）、timeline（全书分层时间线：重大事件→场景→章节）；用户以标题或“第X章”指代章节时，先调用 field=chapters 获取目录再转换数字序号；回答书籍信息前必须先调用本工具读取，不要凭摘要或对话历史猜测；正文过长时用 maxChars 控制节选长度。',
+      description: '查询书籍信息（只读，可读除“全部章节全文”与“关系网全量数据”外的所有书籍字段）。field 为 info（书名/简介/章节数/进度/目标字数/构思设定）、meta（完整书籍元数据：状态/目标字数/构思设定与概念/草稿输出规模/关系网概要/时间等）、overview（当前全书概况）、chapters（章节目录，支持 start/count 分页）、chapter（按数字序号或范围读取章节的标题/摘要/事件/正文节选）、timeline（全书分层时间线：重大事件→场景→章节）；用户以数字指代章节（如“第十章”“第5到15章”）时直接传序号/范围，不必先读目录；仅当用户以标题指代且不确定序号时才先读 field=chapters；回答书籍信息前必须先调用本工具读取，不要凭摘要或对话历史猜测；正文过长时用 maxChars 控制节选长度。',
       parameters: {
         type: 'object',
         properties: {
           field: { type: 'string', description: 'info | meta | overview | chapters | chapter | timeline' },
-          target: { type: 'integer', minimum: 1, description: '章节序号（从 1 开始），field=chapter 时必填；用户以标题指代时先 read_book(field=chapters) 转换' },
+          target: { type: 'string', description: '章节序号（阿拉伯数字，如 "10"）或范围（如 "5-15"），field=chapter 时必填；用户以数字指代时直接填，仅标题指代且不确定序号时才先读 chapters' },
           start: { type: 'integer', minimum: 1, description: '目录分页起始章节号（从 1 开始，默认 1），仅 field=chapters 生效' },
           count: { type: 'integer', minimum: 1, maximum: 500, description: '目录分页数量（默认 200、上限 500），仅 field=chapters 生效' },
           scope: { type: 'string', description: 'summary 或 content，field=chapter 时生效' },
@@ -274,13 +274,31 @@ export function defineReadyTools(book, settings, signal, changeLog) {
             .join('\n');
           return { followUp: true, data: `全书分层时间线：\n${text || '暂无事件'}` };
         }
-        const index = Number(target) - 1;
-        if (!Number.isInteger(index) || index < 0 || index >= book.chapters.length) {
-          if (Number.isInteger(Number(target)) && Number(target) > book.chapters.length) {
-            return { content: `本书目前只有 ${book.chapters.length} 章，没有第 ${Number(target)} 章。请先调用 read_book(field=chapters) 确认目录。`, kind: 'text' };
+        const targetText = String(target || '').trim();
+        const rangeMatch = targetText.match(/^(\d+)\s*-\s*(\d+)$/);
+        if (rangeMatch) {
+          const from = Number(rangeMatch[1]);
+          const to = Number(rangeMatch[2]);
+          if (from < 1 || to > book.chapters.length || from > to) {
+            return { content: `章节范围无效：本书共 ${book.chapters.length} 章，请确认范围（如 "5-15"）。`, kind: 'text' };
           }
-          return { content: '请先调用 read_book(field=chapters) 获取章节目录，读取时 target 传数字序号（从 1 开始）。', kind: 'text' };
+          const chapters = book.chapters.slice(from - 1, to);
+          const lines = chapters.map((item, offset) => {
+            const ctx = Array.isArray(item.events) && item.events.length > 0
+              ? `事件：${item.events.map((e) => e.event).join('；')}`
+              : '';
+            return `第 ${from + offset} 章《${item.title}》\n摘要：${item.summary || '无'}${ctx ? `\n${ctx}` : ''}`;
+          });
+          return { followUp: true, data: `第 ${from}-${to} 章：\n${lines.join('\n\n')}` };
         }
+        const num = Number(targetText);
+        if (!/^\d+$/.test(targetText) || !Number.isInteger(num) || num < 1 || num > book.chapters.length) {
+          if (/^\d+$/.test(targetText) && Number(targetText) > book.chapters.length) {
+            return { content: `本书目前只有 ${book.chapters.length} 章，没有第 ${Number(targetText)} 章。`, kind: 'text' };
+          }
+          return { content: 'target 请填阿拉伯数字序号（如 "10"）或范围（如 "5-15"）。', kind: 'text' };
+        }
+        const index = num - 1;
         const chapter = book.chapters[index];
         const useContent = String(scope || '') === 'content';
         const limit = Math.min(Math.max(Number(maxChars) || 3000, 100), 8000);
