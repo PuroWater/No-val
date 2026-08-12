@@ -27,7 +27,9 @@ export default function TimelineView({
   timeline,
   orientation,
   expandedGroup,
+  expandedScene,
   onToggleGroup,
+  onToggleScene,
   onOpenChapter,
   view,
   onViewChange
@@ -109,13 +111,15 @@ export default function TimelineView({
     ));
   }
 
-  // 场景与章节合并为单个浮窗：场景分组标题 + 章节列表，避免两级浮窗错位
+  // 场景与章节合并为单个浮窗：场景标题可点击展开/收起该场景章节（就地展开，不另弹浮窗）
   function renderFloat() {
     if (!expandedGroupData || !groupAnchor) return null;
     const rect = groupAnchor.el.getBoundingClientRect();
     const pos = vertical
       ? clampPos(rect.right + 8, rect.top, 420, 340)
       : clampPos(rect.left, rect.bottom + 8, 380, 360);
+    const groupDirection = vertical ? 'row' : 'column';
+    const chapterDirection = vertical ? 'column' : 'row';
     const scenes = expandedGroupData.scenes.length > 0
       ? [
           ...(expandedGroupData.chapters.length > 0
@@ -125,9 +129,8 @@ export default function TimelineView({
         ]
       : [];
     const directChapters = expandedGroupData.scenes.length === 0 ? expandedGroupData.chapters : [];
-    const chapterDirection = vertical ? 'column' : 'row';
     return (
-      <div className="timeline-float" style={{ position: 'fixed', ...pos }}>
+      <div className="timeline-float" style={{ position: 'fixed', ...pos, flexDirection: groupDirection }}>
         {directChapters.length > 0 && (
           <div className="timeline-chapter-column" style={{ flexDirection: chapterDirection }}>
             {renderChapterList(directChapters)}
@@ -135,10 +138,20 @@ export default function TimelineView({
         )}
         {scenes.map((scene) => (
           <div key={scene.label || '__plain__'} className="timeline-scene-group">
-            <div className="timeline-scene-title">{scene.label || '未细分'}</div>
-            <div className="timeline-chapter-column" style={{ flexDirection: chapterDirection }}>
-              {renderChapterList(scene.chapters)}
-            </div>
+            <button
+              className={`timeline-scene-title${expandedScene === scene.label ? ' active' : ''}`}
+              onClick={() => {
+                if (dragRef.current?.moved) return;
+                onToggleScene(scene.label);
+              }}
+            >
+              {scene.label || '未细分'}
+            </button>
+            {expandedScene === scene.label && (
+              <div className="timeline-chapter-column" style={{ flexDirection: chapterDirection }}>
+                {renderChapterList(scene.chapters)}
+              </div>
+            )}
           </div>
         ))}
       </div>

@@ -178,6 +178,23 @@ export default function SettingsPage() {
                   ))}
                 </div>
               </div>
+              <div className="settings-group">
+                <span>时间线方向</span>
+                <div className="option-row">
+                  <button
+                    className={timelineOrientation === 'vertical' ? 'active' : ''}
+                    onClick={() => { setTimelineOrientation('vertical'); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, 'vertical', thinkingForWriting, reviewAfterWrite); }}
+                  >
+                    纵向
+                  </button>
+                  <button
+                    className={timelineOrientation === 'horizontal' ? 'active' : ''}
+                    onClick={() => { setTimelineOrientation('horizontal'); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, 'horizontal', thinkingForWriting, reviewAfterWrite); }}
+                  >
+                    横向
+                  </button>
+                </div>
+              </div>
             </>
           )}
           {activeSetting === 'general' && (
@@ -261,23 +278,6 @@ export default function SettingsPage() {
                       开启后正文生成会先进行深度思考再输出，质量更高但耗时更长；默认关闭。
                     </div>
                   )}
-                </div>
-              </div>
-              <div className="settings-group">
-                <span>时间线方向</span>
-                <div className="option-row">
-                  <button
-                    className={timelineOrientation === 'vertical' ? 'active' : ''}
-                    onClick={() => { setTimelineOrientation('vertical'); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, 'vertical', thinkingForWriting, reviewAfterWrite); }}
-                  >
-                    纵向
-                  </button>
-                  <button
-                    className={timelineOrientation === 'horizontal' ? 'active' : ''}
-                    onClick={() => { setTimelineOrientation('horizontal'); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, 'horizontal', thinkingForWriting, reviewAfterWrite); }}
-                  >
-                    横向
-                  </button>
                 </div>
               </div>
               <div className="settings-group">

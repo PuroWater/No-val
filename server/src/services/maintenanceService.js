@@ -74,7 +74,7 @@ export async function maintainChapterMeta(book, { chapterIndex, mode = 'modify',
     nextEvents ? `下一章事件：${nextEvents}` : '',
     `章节正文：\n${content.slice(0, 12000)}`,
     existingEvents,
-    '返回 JSON：{"summary":"本章 80-150 字剧情摘要","events":[{"event":"事件","characters":["人物"],"time":"文中时间点（可选）","context":["大背景","细场景"],"foreshadow":"setup|pay|null","foreshadowFor":"伏笔指向（可选）"}],"prose":"更新后的精简全书概况（300-800 字）"}。events 只包含本章事件且必须能在本章正文中找到依据，不得凭空编造；每条 event 正文不超过 50 字（简洁概括事件本身，不要展开背景、伏笔或时间细节）；context 为背景路径数组（从大到小最多 3 层，如 ["秘境探险","藏宝室"]），应延续前后章事件中的背景并随阶段细化；删除的章节不得出现。'
+    '返回 JSON：{"summary":"本章 80-150 字剧情摘要","events":[{"event":"事件","characters":["人物"],"time":"文中时间点（可选）","context":["大背景","细场景"],"foreshadow":"setup|pay|null","foreshadowFor":"伏笔指向（可选）"}],"prose":"更新后的精简全书概况（300-800 字）"}。events 只包含本章事件且必须能在本章正文中找到依据，不得凭空编造；每条 event 正文不超过 50 字（event 只描述事件本身，背景/伏笔/时间分别放 context/foreshadow/time 字段）；context 为背景路径数组（从大到小最多 3 层，如 ["秘境探险","藏宝室"]），应延续前后章事件中的背景并随阶段细化；删除的章节不得出现。'
   ].filter(Boolean).join('\n');
   const result = await callModel(
     () => ({
