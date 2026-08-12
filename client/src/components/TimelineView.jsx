@@ -40,6 +40,8 @@ export default function TimelineView({
   function startDrag(event) {
     if (event.button !== 0) return;
     if (event.target?.closest?.('button')) return;
+    // 浮窗内部有独立滚动与按钮交互，框内按下不应平移画布
+    if (event.target?.closest?.('.timeline-float')) return;
     dragRef.current = { startX: event.clientX - view.x, startY: event.clientY - view.y, moved: false };
     const onMove = (moveEvent) => {
       const drag = dragRef.current;
@@ -61,6 +63,8 @@ export default function TimelineView({
   }
 
   function handleWheel(event) {
+    // 鼠标在二级浮窗内滚动时交给浮窗原生滚动，不缩放画布
+    if (event.target?.closest?.('.timeline-float')) return;
     event.preventDefault();
     const factor = event.deltaY < 0 ? 1.15 : 1 / 1.15;
     onViewChange({ ...view, scale: clampScale(view.scale * factor) });
