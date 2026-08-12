@@ -70,6 +70,36 @@ export async function reviewChapter(book, chapterIndex, { instruction = '', sett
   return { pass: false, issues: String(result.issues || ''), revised };
 }
 
+// 正文长度兜底：目标字数不足 85% 时，带章节结尾续写补齐（最多 2 轮），避免“写不满”；
+// 补写失败降级为保留已写内容，不阻断生成。
+async function ensureChapterLength(book, chapterIndex, targetWords, settings = {}, signal) {
+  const chapter = book.chapters[chapterIndex];
+  if (!chapter) return;
+  const target = Math.round(Number(targetWords) * 0.85);
+  if (!Number.isFinite(target) || target <= 0) return;
+  let content = String(chapter.content || '');
+  for (let round = 0; round < 2 && content.length < target; round += 1) {
+    const remaining = Math.max(500, Math.round(Number(targetWords)) - content.length);
+    const tail = content.slice(-1500);
+    try {
+      const result = await callModel(
+        () => ({
+          system: '你是小说续写助手。只返回 JSON，不要包含 Markdown。',
+          user: `当前章节《${chapter.title}》已写约 ${content.length} 字，目标约 ${targetWords} 字。请直接衔接上文结尾继续书写约 ${remaining} 字的情节，不要重复已有内容，不要提前收尾。\n章节结尾（衔接用）：\n${tail}\n返回 JSON：{"content":"续写正文"}。`,
+          maxTokens: maxTokensForWords(remaining),
+          thinkingType: settings.thinkingForWriting ? 'enabled' : 'disabled'
+        }),
+        (r) => r && typeof r.content === 'string' && r.content.trim().length > 0
+      );
+      content = `${content}${String(result.content).trim()}`;
+      chapter.content = content;
+    } catch (err) {
+      console.error('[length] 章节补写失败，保留已写内容:', err.message);
+      break;
+    }
+  }
+}
+
 // 新建章节（AI 工具/续写兼容入口）：可追加末尾或插入锚点章后。
 // 内部一次写正文调用（开思考、大预算，只产 title/content），写后自动维护章节元数据并重排受影响前缀。
 export async function createChapter(book, { anchorIndex, title, instruction, settings = {}, signal } = {}) {
@@ -114,6 +144,7 @@ export async function createChapter(book, { anchorIndex, title, instruction, set
   // 新章自身（AI 可能返回“第一章/第N章”等任意前缀）+ 其后章节统一按当前位置重排，
   // collect 收集受影响章节 id 供上层 changeLog 写回，避免重排结果在写回时丢失。
   renumberChapterPrefixes(book, { fromIndex: insertAt, collect: affectedIds });
+  await ensureChapterLength(book, insertAt, chapterWords, settings, signal);
   if (settings.reviewAfterWrite) {
     try {
       await reviewChapter(book, insertAt, { instruction, settings, signal });
@@ -155,6 +186,7 @@ export async function rewriteChapter(book, chapterIndex, instruction, settings =
   );
   target.title = String(result.title || target.title).trim();
   target.content = String(result.content).trim();
+  await ensureChapterLength(book, chapterIndex, chapterWords, settings, settings.signal);
   if (settings.reviewAfterWrite) {
     try {
       await reviewChapter(book, chapterIndex, { instruction, settings, signal: settings.signal });
