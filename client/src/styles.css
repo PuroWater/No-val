@@ -905,6 +905,10 @@ button, input, textarea, select {
   cursor: help;
 }
 
+.settings-label-text {
+  line-height: 16px;
+}
+
 .tip-icon {
   display: inline-flex;
   align-items: center;
@@ -918,8 +922,6 @@ button, input, textarea, select {
   color: var(--text);
   font-size: 11px;
   line-height: 1;
-  vertical-align: middle;
-  padding-bottom: 1px;
   user-select: none;
 }
 

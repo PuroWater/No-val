@@ -232,7 +232,7 @@ export default function SettingsPage() {
                   onMouseMove={(event) => setReviewTip({ x: event.clientX, y: event.clientY })}
                   onMouseLeave={() => setReviewTip(null)}
                 >
-                  生成后审校
+                  <span className="settings-label-text">生成后审校</span>
                   <span className="tip-icon">?</span>
                 </span>
                 <div className="option-row">
