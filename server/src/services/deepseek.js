@@ -88,7 +88,8 @@ export async function chatCompletion(options) {
       user: `以下是损坏的 JSON，请修复为合法 JSON：\n${content}\n\n解析错误：${err.message}`,
       temperature: 0,
       maxTokens: Math.max(options.maxTokens || 2400, 4000),
-      timeoutMs: Math.min(options.timeoutMs || 120000, 60000)
+      timeoutMs: Math.min(options.timeoutMs || 120000, 60000),
+      thinkingType: 'disabled'
     });
     return parseDeepSeekJson(repaired);
   }

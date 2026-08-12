@@ -66,7 +66,7 @@ export async function prefilterDraftIntent({ user, history = '', signal, ask = c
   let lastError = '';
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     try {
-      const result = await ask({ system: '你是小说构思阶段的意图筛选 Agent。', user: prompt, maxTokens, signal });
+      const result = await ask({ system: '你是小说构思阶段的意图筛选 Agent。', user: prompt, maxTokens, signal, thinkingType: 'disabled' });
       const { output, over } = normalizeOutputScale(result?.output);
       if (over) return { mode: 'chat', reply: OVER_LIMIT_REPLY, output: null };
       const mode = String(result?.mode || '');
@@ -187,7 +187,7 @@ export async function runToolDecision({
       ].filter(Boolean).join('\n');
       let result;
       try {
-        result = await ask({ system, user: prompt, maxTokens, signal });
+        result = await ask({ system, user: prompt, maxTokens, signal, thinkingType: 'disabled' });
       } catch (err) {
         if (/中断|超时/.test(err.message)) throw err;
         lastError = `模型调用失败：${err.message}`;
@@ -262,7 +262,7 @@ export async function prefilterIntent({
   let lastError = '';
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     try {
-      const result = await ask({ system, user: prompt, maxTokens, signal });
+      const result = await ask({ system, user: prompt, maxTokens, signal, thinkingType: 'disabled' });
       const rawMode = String(result?.mode || 'tool');
       if (rawMode === 'chat') {
         const reply = String(result?.reply || '').trim();
