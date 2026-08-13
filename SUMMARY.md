@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-- 当前版本：0.8.8（0.8.7 系列 + 0.8.8 golden 对话 eval）
+- 当前版本：0.8.9（0.8.8 系列 + 0.8.9 系统级 interrupt：写前确认）
 - 当前分支：Develop
 - 技术栈：React 18 + Vite 5，Express 4，Node.js 18+，JSON 本地持久化
 - 大模型：DeepSeek，模型默认 `deepseek-v4-flash`
@@ -1388,3 +1388,13 @@ npm start
 - 版本号升级到 0.8.8（根/server/client 同步）；本地提交未推送（按协作规矩）。
 
 完成结果：真实完整链路回归可一键运行（`npm run eval`），并已在首跑中发现/修复“打开章节”路由回归。
+
+### 2026-08-13 v0.8.9 系统级 interrupt（写前确认）
+
+更新内容：
+- 设置新增 `confirmBeforeWrite`（默认关，前端“常规”开关）；开启后，章节写意图（新建/改写/删除/批量/背景修改）先落 `book.pendingAction` 并回复“确认执行：…”，用户回复“确认”才执行，完成后清除；非确认消息清除 pending 按新消息处理；
+- `normalizeBook` / `mergeBookState` 同步 pendingAction；
+- 真实验证（dev 服务）：开启→“再写一章”返回 question + pendingAction→“确认”→恰好 +1 章、kind=book、pending 清除；
+- 版本号升级到 0.8.9（根/server/client 同步）；单元测试 61/61；前端构建通过；本地提交未推送（按协作规矩）。
+
+完成结果：写工具执行前可人工确认（系统级 interrupt，默认关，不影响既有流畅体验）；确认状态跨消息持久化。

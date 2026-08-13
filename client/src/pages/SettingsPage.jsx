@@ -28,6 +28,7 @@ export default function SettingsPage() {
   const [thinkingTip, setThinkingTip] = useState(null);
   const [timelineOrientation, setTimelineOrientation] = useState('vertical');
   const [reviewAfterWrite, setReviewAfterWrite] = useState(false);
+  const [confirmBeforeWrite, setConfirmBeforeWrite] = useState(false);
   const [reviewTip, setReviewTip] = useState(null);
   const [trash, setTrash] = useState([]);
   const [toasts, setToasts] = useState([]);
@@ -62,12 +63,14 @@ export default function SettingsPage() {
       setThinkingForWriting(data.settings.thinkingForWriting === true);
       setTimelineOrientation((data.settings.developmentLineOrientation ?? data.settings.timelineOrientation) === 'horizontal' ? 'horizontal' : 'vertical');
       setReviewAfterWrite(data.settings.reviewAfterWrite === true);
+      setConfirmBeforeWrite(data.settings.confirmBeforeWrite === true);
       applySettings(data.settings);
     });
     loadTrash();
   }, []);
 
-  async function save(nextTheme, nextSize, nextChapters, nextWords, nextEnter, nextOrientation, nextThinking, nextReview) {
+  async function save(nextTheme, nextSize, nextChapters, nextWords, nextEnter, nextOrientation, nextThinking, nextReview, nextConfirm) {
+    const confirm = nextConfirm === undefined ? confirmBeforeWrite : nextConfirm;
     try {
       const data = await api('/settings', {
         method: 'PUT',
@@ -79,7 +82,8 @@ export default function SettingsPage() {
           enterToSend: nextEnter,
           developmentLineOrientation: nextOrientation,
           thinkingForWriting: nextThinking,
-          reviewAfterWrite: nextReview
+          reviewAfterWrite: nextReview,
+          confirmBeforeWrite: confirm
         })
       });
       applySettings(data.settings);
@@ -246,6 +250,23 @@ export default function SettingsPage() {
                     onClick={() => { setEnterToSend(false); save(theme, fontSize, chaptersPerOutput, chapterWords, false, timelineOrientation, thinkingForWriting, reviewAfterWrite); }}
                   >
                     Ctrl+Enter
+                  </button>
+                </div>
+              </div>
+              <div className="settings-group">
+                <span>写前确认</span>
+                <div className="option-row">
+                  <button
+                    className={!confirmBeforeWrite ? 'active' : ''}
+                    onClick={() => { setConfirmBeforeWrite(false); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, timelineOrientation, thinkingForWriting, reviewAfterWrite, false); }}
+                  >
+                    关闭
+                  </button>
+                  <button
+                    className={confirmBeforeWrite ? 'active' : ''}
+                    onClick={() => { setConfirmBeforeWrite(true); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, timelineOrientation, thinkingForWriting, reviewAfterWrite, true); }}
+                  >
+                    开启
                   </button>
                 </div>
               </div>

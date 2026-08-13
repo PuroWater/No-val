@@ -90,5 +90,7 @@ export function normalizeBook(book) {
   if (!book.targetWords) book.targetWords = 0;
   // 删除记录：删除章节后暂存（不立即维护概况），由下一次 maintainChapterMeta 消费清理。
   if (!Array.isArray(book.pendingDeletes)) book.pendingDeletes = [];
+  // 写前确认（系统级 interrupt）：待确认的写意图，确认后执行、否则清除
+  if (!book.pendingAction) book.pendingAction = null;
   return book;
 }

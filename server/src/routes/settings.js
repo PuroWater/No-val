@@ -20,13 +20,14 @@ router.get('/', (req, res) => {
     enterToSend: true,
     thinkingForWriting: false,
     developmentLineOrientation: 'vertical',
-    reviewAfterWrite: false
+    reviewAfterWrite: false,
+    confirmBeforeWrite: false
   };
   res.json({ settings: current });
 });
 
 router.put('/', (req, res) => {
-  const { theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, thinkingForWriting, developmentLineOrientation, timelineOrientation, reviewAfterWrite } = req.body || {};
+  const { theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, thinkingForWriting, developmentLineOrientation, timelineOrientation, reviewAfterWrite, confirmBeforeWrite } = req.body || {};
   // 0.8.6 起字段改名 developmentLineOrientation，旧名 timelineOrientation 兼容
   const orientation = developmentLineOrientation ?? timelineOrientation;
   if (!THEMES.includes(theme) || !FONT_SIZES.includes(fontSize)) {
@@ -45,6 +46,9 @@ router.put('/', (req, res) => {
   }
   if (reviewAfterWrite !== undefined && typeof reviewAfterWrite !== 'boolean') {
     return res.status(400).json({ error: '生成后审校设置不合法' });
+  }
+  if (confirmBeforeWrite !== undefined && typeof confirmBeforeWrite !== 'boolean') {
+    return res.status(400).json({ error: '写前确认设置不合法' });
   }
   if (thinkingForWriting !== undefined && typeof thinkingForWriting !== 'boolean') {
     return res.status(400).json({ error: '正文思考设置不合法' });
@@ -66,6 +70,7 @@ router.put('/', (req, res) => {
   if (thinkingForWriting !== undefined) current.thinkingForWriting = thinkingForWriting;
   if (orientation !== undefined) current.developmentLineOrientation = orientation;
   if (reviewAfterWrite !== undefined) current.reviewAfterWrite = reviewAfterWrite;
+  if (confirmBeforeWrite !== undefined) current.confirmBeforeWrite = confirmBeforeWrite;
   writeJson(SETTINGS_FILE, settings);
   res.json({ settings: current });
 });

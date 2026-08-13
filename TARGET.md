@@ -1659,6 +1659,12 @@ Novel Agent/
 - 设置新增 `confirmBeforeWrite`（默认关，常规分类开关）；开启后，写意图先落 `book.pendingAction` 并向用户确认，下一条消息回复“确认”才执行；非确认消息清除 pending 按新消息处理。
 - mergeBookState/normalizeBook 同步 pendingAction；前端设置项。
 
+完成内容：
+- 设置新增 `confirmBeforeWrite`（默认关）；写意图（create_append/create_insert/rewrite/delete/batch_edit/context_edit）在开启时先落 `book.pendingAction` 并回复“确认执行：…”，下一条“确认”恢复执行、完成后清除；非确认消息清除 pending 按新消息路由；
+- `normalizeBook`/`mergeBookState` 同步 pendingAction；前端“常规”新增“写前确认”开关；
+- 真实验证（dev 服务）：开启→“再写一章”返回 question+pendingAction→“确认”→恰好 +1 章、kind=book、pending 清除；
+- 单元测试 61/61（新增 pendingAction 合并与默认值用例）；前端构建通过；版本号统一 0.8.9（根/server/client）；本地提交未推送（按协作规矩）。
+
 ### 2026-08-13 v0.8.10 多 provider 查表分发
 
 待更新说明：

@@ -8,6 +8,28 @@ import { defineDraftTools } from './draftTools.js';
 
 const activeJobs = new Map();
 
+// 需要写前确认（系统级 interrupt）的写意图
+const WRITE_INTENTS = new Set(['create_append', 'create_insert', 'rewrite', 'delete', 'batch_edit', 'context_edit']);
+
+function intentConfirmText(intent, output, target, settings) {
+  switch (intent) {
+    case 'create_append':
+      return `将续写/新建 ${output?.chapters || settings.chaptersPerOutput || 1} 章（追加到末尾）。`;
+    case 'create_insert':
+      return `将在${Number.isInteger(target?.chapter) ? `第 ${target.chapter} 章${target?.position === 'before' ? '前' : '后'}` : '指定位置'}插入 ${output?.chapters || 1} 章。`;
+    case 'rewrite':
+      return `将改写第 ${target?.chapter || '目标'} 章。`;
+    case 'delete':
+      return `将删除第 ${target?.chapter || '目标'} 章（不可恢复）。`;
+    case 'batch_edit':
+      return '将执行批量修改（替换文本 / 修复前缀 / 删除末尾章节）。';
+    case 'context_edit':
+      return '将修改指定章节范围的事件背景。';
+    default:
+      return '将执行章节操作。';
+  }
+}
+
 export function isConfirmation(text) {
   return /确认|确定|可以|没问题|不用改|不需要修改|就这样|开始生成|生成吧/.test(String(text));
 }
@@ -108,6 +130,7 @@ export function mergeBookState(latest, mutated, changedChapterIds = new Set(), d
   latest.targetWords = mutated.targetWords;
   latest.draft = mutated.draft;
   latest.pendingDeletes = mutated.pendingDeletes;
+  latest.pendingAction = mutated.pendingAction;
   latest.updatedAt = mutated.updatedAt;
   const mutatedChapters = new Map(mutated.chapters.map((chapter) => [chapter.id, chapter]));
   const seen = new Set();
@@ -280,23 +303,41 @@ async function handleDraftMessage(book, content, settings, signal) {
 
 async function handleReadyMessage(book, content, settings, signal, changeLog, job) {
   const last = book.chapters[book.chapters.length - 1];
-  const route = await runRouter({
-    user: content,
-    history: buildTodayHistory(book),
-    signal,
-    system: [
-      '你是小说创作平台的意图路由 Agent。',
-      'read_book 可读取图书最新数据（书名、简介、元数据、章节目录、章节内容、概况、时间线等）；用户询问任何书籍信息时意图为 read。',
-      `全书概况：${book.storySummary || '暂无'}`,
-      `最近章节摘要：${last?.summary || last?.title || '暂无'}`
-    ].join('\n')
-  });
+  // 系统级 interrupt：上一条消息已落 pendingAction，本条为“确认”则恢复执行；否则清除 pending 按新消息路由
+  const isConfirmReply = isConfirmation(content) && Boolean(book.pendingAction);
+  let route;
+  if (isConfirmReply) {
+    route = {
+      mode: 'tool',
+      intent: book.pendingAction.intent,
+      output: book.pendingAction.output,
+      target: book.pendingAction.target
+    };
+  } else {
+    if (book.pendingAction) book.pendingAction = null;
+    route = await runRouter({
+      user: content,
+      history: buildTodayHistory(book),
+      signal,
+      system: [
+        '你是小说创作平台的意图路由 Agent。',
+        'read_book 可读取图书最新数据（书名、简介、元数据、章节目录、章节内容、概况、发展线等）；用户询问任何书籍信息时意图为 read。',
+        `全书概况：${book.storySummary || '暂无'}`,
+        `最近章节摘要：${last?.summary || last?.title || '暂无'}`
+      ].join('\n')
+    });
+  }
   if (route.mode === 'chat') {
     replaceProcessing(book, route.reply || '好的，我记下了。', 'text', { bookId: book.id });
     return;
   }
   // 路由产出意图 → 任务单（工具白名单 + 步骤 + 完成条件），执行器按任务单执行
   const plan = buildPlan(route.intent, { output: route.output, target: route.target, settings });
+  if (settings.confirmBeforeWrite && !isConfirmReply && WRITE_INTENTS.has(route.intent)) {
+    book.pendingAction = { intent: route.intent, output: route.output, target: route.target, content };
+    replaceProcessing(book, `确认执行：${intentConfirmText(route.intent, route.output, route.target, settings)}\n\n回复“确认”继续，或直接提出修改。`, 'question');
+    return;
+  }
   const effectiveSettings = route.output?.chapterWords
     ? { ...settings, chapterWords: route.output.chapterWords }
     : settings;
@@ -349,5 +390,6 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
   const outcome = decision.outcome || {};
   const extra = finalOutcomeExtra(book, outcome, changeLog);
   if (outcome.kind === 'book' && counted && !extra.chapter) extra.chapter = book.chapters.length;
+  book.pendingAction = null;
   replaceProcessing(book, outcome.content || '好的，我记下了。', outcome.kind || 'text', extra);
 }

@@ -158,3 +158,10 @@ test('mergeBookState applies rewritten chapters', () => {
   mergeBookState(latest, mutated, new Set(['c1']));
   assert.equal(latest.chapters[0].content, 'AI 改写结果');
 });
+
+test('mergeBookState syncs pendingAction (interrupt state)', () => {
+  const latest = { chapters: [], chat: [], pendingAction: { intent: 'rewrite', output: null, target: null } };
+  const mutated = { chapters: [], chat: [], pendingAction: null };
+  mergeBookState(latest, mutated, new Set(), new Set());
+  assert.equal(latest.pendingAction, null);
+});
