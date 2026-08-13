@@ -127,6 +127,19 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
   }, [book?.chat?.length, bookId, selectedDate, progressBarVisible]);
 
   useEffect(() => {
+    const el = messagesRef.current;
+    if (!el) return undefined;
+    // 布局变化（如打开并列窗口导致宽度/高度变化、长文本重排）时，
+    // 若用户原本就在底部附近则重新钉底，避免最新消息被挤走；翻历史时保持不动。
+    const nearBottom = () => el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    const observer = new ResizeObserver(() => {
+      if (nearBottom()) el.scrollTop = el.scrollHeight;
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
     if (!dateOpen) return undefined;
     const onDown = (event) => {
       if (dateWrapRef.current && !dateWrapRef.current.contains(event.target)) {

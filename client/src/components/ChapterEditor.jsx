@@ -5,9 +5,9 @@ export default function ChapterEditor({ chapter, onSave, onCommit, onDirtyChange
   const [content, setContent] = useState(chapter.content);
   const [dirty, setDirty] = useState(false);
   const first = useRef(true);
-  const editedRef = useRef(false);
   const committedRef = useRef(false);
   const dirtyRef = useRef(false);
+  const contentEditedRef = useRef(false);
   const latestRef = useRef({ title: chapter.title, content: chapter.content });
 
   useEffect(() => {
@@ -46,7 +46,7 @@ export default function ChapterEditor({ chapter, onSave, onCommit, onDirtyChange
       const chain = shouldSave
         ? onSave({ title: latest.title, content: latest.content })
         : Promise.resolve();
-      if (editedRef.current) {
+      if (contentEditedRef.current) {
         chain.then(() => onCommit?.()).catch(() => {});
       }
     };
@@ -68,13 +68,13 @@ export default function ChapterEditor({ chapter, onSave, onCommit, onDirtyChange
     <div className="chapter-editor">
       <input
         value={title}
-        onChange={(e) => { setTitle(e.target.value); dirtyRef.current = true; setDirty(true); editedRef.current = true; }}
+        onChange={(e) => { setTitle(e.target.value); dirtyRef.current = true; setDirty(true); }}
         onBlur={handleBlur}
         placeholder="章节标题"
       />
       <textarea
         value={content}
-        onChange={(e) => { setContent(e.target.value); dirtyRef.current = true; setDirty(true); editedRef.current = true; }}
+        onChange={(e) => { setContent(e.target.value); dirtyRef.current = true; setDirty(true); contentEditedRef.current = true; }}
         onBlur={handleBlur}
         placeholder={content ? '正文内容' : '还没有内容，可键入章节构思'}
       />
