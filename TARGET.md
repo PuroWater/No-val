@@ -1888,6 +1888,19 @@ Novel Agent/
 完成内容：
 - `server/package.json` dev 脚本 `--watch-path=src`；`chatService.recoverStaleProcessing` + `index.js` 启动调用；实测 data 写入不触发重启、src 修改正常重启；残留 processing 自动清理；版本号统一 0.8.25（根/server/client）；本地提交未推送（按协作规矩）。
 
+### 2026-08-14 v0.8.26 修复：目录切换误报“已保存”
+
+待更新说明：
+- ChapterEditor 自动保存（停止输入 1 秒）成功后未清除 `dirty`，只要编辑过一次，之后每次切换目录都触发失焦保存并弹“已保存”，未修改也提示；
+- 卸载时“保存 + 触发摘要维护”绑定过宽：未改动也重复 PUT。
+
+待更新功能：
+- 自动保存成功后清除 `dirty`（`dirtyRef` 同步）；
+- 卸载拆分：有未保存改动（dirtyRef）才保存，曾编辑过（editedRef）才触发摘要维护，未编辑则什么都不做。
+
+完成内容：
+- `ChapterEditor` 修复：自动保存清 dirty、卸载按 dirtyRef/editedRef 分别判断保存与维护；未修改的章节切换不再 PUT、不再弹“已保存”；前端构建通过；版本号统一 0.8.26（根/server/client）；本地提交未推送（按协作规矩）。
+
 ### 后续建议方向（交接快照 2026-08-13）
 
 - 0.8.7-0.8.19 待办已全部完成（幂等 call.id/跨消息、golden eval、写前确认、多 provider、乐观锁、规模信任守卫、背景/场景语义修正、P1 拆分、P2 统一记账、P3 抽公共、场景拼合模板、工具白名单、卡片打开语义、发送白屏修复）。
