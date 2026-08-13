@@ -1600,6 +1600,12 @@ button, input, textarea, select {
   align-items: flex-start;
 }
 
+/* 横版：内容高度随内容（不再撑满画布），行内容垂直居中；竖版保持撑满+水平居中 */
+.timeline-horizontal {
+  min-height: auto;
+  align-items: center;
+}
+
 .timeline-group-block {
   display: flex;
   align-items: flex-start;

@@ -37,3 +37,10 @@ test('normalizeChapterEvents keeps empty context untouched and handles empty inp
   const events = normalizeChapterEvents([{ event: '无背景事件', characters: [] }]);
   assert.deepEqual(events[0].context, []);
 });
+
+test('normalizeChapterEvents trims context to two levels', () => {
+  const events = normalizeChapterEvents([
+    { event: '深入矿洞', characters: [], context: ['北境矿脉之行', '矿洞深处', '隐秘洞窟'] }
+  ]);
+  assert.deepEqual(events[0].context, ['北境矿脉之行', '矿洞深处']);
+});

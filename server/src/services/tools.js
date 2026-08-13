@@ -195,13 +195,13 @@ export function defineReadyTools(book, settings, signal, changeLog) {
     {
       group: 'edit',
       name: 'update_events_context',
-      description: '主动修改章节事件的大背景（context）：将指定章节范围内所有事件的 context 统一替换为用户指定的背景路径，并即时同步时间线（时间线按 context 分组）。\n详细说明：用户以自然语言描述章节范围与背景（如“把第3到8章的背景改成家族”“第2-5章归入北境矿脉之行”）时，由 AI 分析并转换为数字范围与背景数组传入；start/end 为阿拉伯数字章节号（从 1 开始、end 不小于 start）；context 为背景路径数组（从大到小最多 3 层，如 ["家族","藏书阁"]，空数组 [] 表示清除该范围背景）。本工具只修改 context 字段，不重算 summary/events/foreshadow，不调用维护 AI；修改后前端时间线自动刷新。',
+      description: '主动修改章节事件的大背景（context）：将指定章节范围内所有事件的 context 统一替换为用户指定的背景路径，并即时同步时间线（时间线按 context 分组）。\n详细说明：用户以自然语言描述章节范围与背景（如“把第3到8章的背景改成家族”“第2-5章归入北境矿脉之行”）时，由 AI 分析并转换为数字范围与背景数组传入；start/end 为阿拉伯数字章节号（从 1 开始、end 不小于 start）；context 为背景路径数组（从大到小最多 2 层：大背景 + 场景，如 ["家族","藏书阁"]，空数组 [] 表示清除该范围背景）。本工具只修改 context 字段，不重算 summary/events/foreshadow，不调用维护 AI；修改后前端时间线自动刷新。',
       parameters: {
         type: 'object',
         properties: {
           start: { type: 'integer', minimum: 1, description: '起始章节号（阿拉伯数字，从 1 开始）' },
           end: { type: 'integer', minimum: 1, description: '结束章节号（阿拉伯数字，end ≥ start）' },
-          context: { type: 'array', items: { type: 'string' }, description: '新的背景路径数组（从大到小最多 3 层，如 ["家族","藏书阁"]；空数组 [] 表示清除背景）' }
+          context: { type: 'array', items: { type: 'string' }, description: '新的背景路径数组（从大到小最多 2 层：大背景 + 场景，如 ["家族","藏书阁"]；空数组 [] 表示清除背景）' }
         },
         required: ['start', 'end', 'context']
       },
@@ -212,7 +212,7 @@ export function defineReadyTools(book, settings, signal, changeLog) {
           return { ok: false, retryable: true, data: `章节范围无效：本书共 ${book.chapters.length} 章，start/end 需为 1-${book.chapters.length} 的阿拉伯数字且 end ≥ start。` };
         }
         const ctx = Array.isArray(context)
-          ? context.map(String).map((item) => item.trim()).filter(Boolean).slice(0, 3)
+          ? context.map(String).map((item) => item.trim()).filter(Boolean).slice(0, 2)
           : [];
         const now = new Date().toISOString();
         for (let i = s - 1; i <= e - 1; i += 1) {

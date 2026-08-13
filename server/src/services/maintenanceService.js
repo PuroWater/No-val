@@ -15,7 +15,7 @@ function cleanEvents(raw) {
       characters: Array.isArray(item?.characters) ? item.characters.map(String) : [],
       time: String(item?.time || '').trim(),
       context: Array.isArray(item?.context)
-        ? item.context.map(String).map((value) => value.trim()).filter(Boolean).slice(0, 3)
+        ? item.context.map(String).map((value) => value.trim()).filter(Boolean).slice(0, 2)
         : [],
       foreshadow: item?.foreshadow === 'setup' || item?.foreshadow === 'pay' ? item.foreshadow : null,
       foreshadowFor: String(item?.foreshadowFor || '').trim()
@@ -26,7 +26,7 @@ function cleanEvents(raw) {
 // 事件确定性归一化（维护内核通用规则，非单工具补丁）：
 // 1) 每章最多 3 个事件（prompt 要求按重要性排序，这里做硬上限）；
 // 2) 一章只允许一个主要背景 context[0]：取出现最多的为统一背景，其余事件归入，
-//    保留各自 context[1]/[2]（场景可不同，大背景唯一）。
+//    保留各自 context[1]（场景可不同，大背景唯一）；context 只保留两层（大背景+场景）。
 export function normalizeChapterEvents(raw) {
   const events = cleanEvents(raw).slice(0, 3);
   if (events.length === 0) return events;
@@ -46,36 +46,9 @@ export function normalizeChapterEvents(raw) {
   return events.map((item) => ({
     ...item,
     context: dominant
-      ? [dominant, ...(Array.isArray(item.context) ? item.context.slice(1, 3) : [])]
+      ? [dominant, ...(Array.isArray(item.context) ? item.context.slice(1, 2) : [])]
       : []
   }));
-}
-
-// 事件阶段一致性修复（模型化，不硬编码地点表）：
-// 让模型判断“场景 context[1] 是否属于阶段 context[0]”，剔除矛盾事件并保持 ≤3，
-// 再走确定性归一化。失败降级为保留原事件。
-async function repairPhaseConsistency(events, signal) {
-  if (events.length === 0) return events;
-  const phase = Array.isArray(events[0]?.context) && events[0].context[0] ? events[0].context[0] : '无';
-  const text = events
-    .map((item, index) => `${index + 1}. ${item.event}（场景：${(item.context || []).slice(1).join('/') || '无'}）`)
-    .join('\n');
-  try {
-    const result = await callModel(
-      () => ({
-        system: '你是小说时间线数据清洗助手。只返回 JSON，不要包含 Markdown。',
-        user: `本章阶段(context[0])：${phase}。检查下列事件的场景(context[1])是否属于该阶段：\n${text}\n规则：若事件整体属于其他阶段（如北境矿脉之行阶段出现家族议事、家族阶段出现北境矿脉剧情），从列表中移除该事件；若事件确属本章阶段、但场景用了其他阶段的地点名（如家族阶段回矿洞采药解毒、场景写成"矿洞深处"），把场景改写为本阶段内的表述（如"采药""后山采药"），不要保留其他阶段地名；其余保留。返回 {"events":[{"event":"事件","context":["阶段","场景"]},...]}，最多 3 个。`,
-        temperature: 0,
-        maxTokens: 16384,
-        thinkingType: 'disabled'
-      }),
-      (r) => Array.isArray(r?.events)
-    );
-    return normalizeChapterEvents(result.events);
-  } catch (err) {
-    console.error('[maintenance] 阶段一致性修复失败，保留原事件:', err.message);
-    return events;
-  }
 }
 
 function deletedText(book) {
@@ -129,11 +102,11 @@ export async function maintainChapterMeta(book, { chapterIndex, mode = 'modify',
     nextEvents ? `下一章事件：${nextEvents}` : '',
     `章节正文：\n${content.slice(0, 12000)}`,
     existingEvents,
-    '返回 JSON：{"summary":"本章 80-150 字剧情摘要","events":[{"event":"事件","characters":["人物"],"time":"文中时间点（可选）","context":["大背景","场景"],"foreshadow":"setup|pay|null","foreshadowFor":"伏笔指向（可选）"}],"prose":"更新后的精简全书概况（300-800 字）"}。事件规则：分三步处理——第一步判断本章主线阶段 context[0]（如"家族""北境矿脉之行"），不是确切地名，同一情节段保持一致；第二步只从该阶段实际发生的情节中选择最重要的 3 个事件（最多 3 个，按重要性排序，删除琐碎细节与整体属于其他阶段的事件，例如北境阶段中的家族议事、家中场景一律不选）；第三步给每个事件配 context[1] 场景：必须是本阶段的地点/推进节点（如"北境矿脉之行"阶段配矿脉/矿洞/营地/地下宫殿，"家族"阶段配家里/藏书阁/议事堂/后山/宗祠），若事件确属本阶段但发生地用了其他阶段地名（如家族阶段回矿洞采药解毒），场景改写为本阶段表述（如"采药""后山采药"），不得保留其他阶段地名；禁止"阶段与场景明显矛盾"（如北境阶段配家里/议事堂场景、家族阶段配矿洞深处场景）；场景同时体现剧情推进到什么阶段；大背景下场景最多 3 个。其余规则：events 只包含本章事件且必须能在本章正文中找到依据，不得凭空编造；每条 event 正文不超过 50 字（event 只描述事件本身，背景/伏笔/时间分别放 context/foreshadow/time 字段）；context 最多 3 层并延续前后章事件中的背景；每条事件都必须给出 context（至少 1 层），不得返回空数组；删除的章节不得出现。'
+    '返回 JSON：{"summary":"本章 80-150 字剧情摘要","events":[{"event":"事件","characters":["人物"],"time":"文中时间点（可选）","context":["大背景","场景"],"foreshadow":"setup|pay|null","foreshadowFor":"伏笔指向（可选）"}],"prose":"更新后的精简全书概况（300-800 字）"}。事件规则：分三步处理——第一步判断本章主线阶段 context[0]（如"家族""北境矿脉之行"），不是确切地名，同一情节段保持一致；第二步只从该阶段实际发生的情节中选择最重要的 3 个事件（最多 3 个，按重要性排序，删除琐碎细节与整体属于其他阶段的事件，例如北境阶段中的家族议事、家中场景一律不选）；第三步给每个事件配 context[1] 场景：必须是本阶段的地点/推进节点（如"北境矿脉之行"阶段配矿脉/矿洞/营地/地下宫殿，"家族"阶段配家里/藏书阁/议事堂/后山/宗祠），若事件确属本阶段但发生地用了其他阶段地名（如家族阶段回矿洞采药解毒），场景改写为本阶段表述（如"采药""后山采药"），不得保留其他阶段地名；禁止"阶段与场景明显矛盾"（如北境阶段配家里/议事堂场景、家族阶段配矿洞深处场景）；场景同时体现剧情推进到什么阶段；大背景下场景最多 3 个。其余规则：events 只包含本章事件且必须能在本章正文中找到依据，不得凭空编造；每条 event 正文不超过 50 字（event 只描述事件本身，背景/伏笔/时间分别放 context/foreshadow/time 字段）；context 只允许两层（context[0] 大背景 + context[1] 场景），不要第三层，并延续前后章事件中的背景；每条事件都必须给出 context（至少 1 层），不得返回空数组；删除的章节不得出现。'
   ].filter(Boolean).join('\n');
   const result = await callModel(
     () => ({
-      system: '你是全书概况与章节元数据维护助手。事件必须来自本章正文内容，不得凭空编造；背景 context 延续前后章事件，同一大事件跨多章时按阶段/地点细化 context（如“秘境探险→藏宝室→决战之地”），避免整段只有一个粗背景；只返回 JSON，不要包含 Markdown。',
+      system: '你是全书概况与章节元数据维护助手。事件必须来自本章正文内容，不得凭空编造；背景 context 延续前后章事件，同一大事件跨多章时按阶段/地点细化 context（如“秘境探险→藏宝室”），避免整段只有一个粗背景；只返回 JSON，不要包含 Markdown。',
       user,
       temperature: 0.4,
       maxTokens: 16384,
@@ -142,7 +115,7 @@ export async function maintainChapterMeta(book, { chapterIndex, mode = 'modify',
     (r) => r && typeof r.summary === 'string' && r.summary.trim() && typeof r.prose === 'string'
   );
   chapter.summary = String(result.summary).trim();
-  chapter.events = await repairPhaseConsistency(normalizeChapterEvents(result.events), signal);
+  chapter.events = normalizeChapterEvents(result.events);
   book.storySummary = String(result.prose).trim();
   book.pendingDeletes = [];
   chapter.updatedAt = new Date().toISOString();
@@ -160,18 +133,17 @@ export async function initializeBookMeta(book, signal) {
   const result = await callModel(
     () => ({
       system: '你是全书概况初始化助手。只返回 JSON，不要包含 Markdown。',
-      user: `根据各章摘要生成每章结构化事件与全书概况。\n章节：\n${chapters}\n返回 JSON：{"chapters":[{"chapterIndex":0,"events":[{"event":"事件","characters":["人物"],"time":"文中时间点（可选）","context":["大背景","场景"]}]}],"prose":"精简全书概况（300-800 字）"}。事件规则：事件必须能在对应章节摘要中找到依据；每章只输出最重要的 3 个事件（最多 3 个，按重要性排序）；每条 event 正文不超过 50 字（简洁概括事件本身）。背景规则：context[0] 是贯穿情节段的大背景/阶段（如"家族""北境矿脉之行"），不是确切地名，同一情节段保持一致；context[1] 是场景，必须属于 context[0] 阶段的场景范围（如北境阶段配矿脉/矿洞相关地点、家族阶段配家族宅院地点），禁止阶段与场景矛盾，并体现剧情推进；大背景下场景最多 3 个；每条事件都必须给出 context（至少 1 层），不得返回空数组。`,
+      user: `根据各章摘要生成每章结构化事件与全书概况。\n章节：\n${chapters}\n返回 JSON：{"chapters":[{"chapterIndex":0,"events":[{"event":"事件","characters":["人物"],"time":"文中时间点（可选）","context":["大背景","场景"]}]}],"prose":"精简全书概况（300-800 字）"}。事件规则：事件必须能在对应章节摘要中找到依据；每章只输出最重要的 3 个事件（最多 3 个，按重要性排序）；每条 event 正文不超过 50 字（简洁概括事件本身）。背景规则：context[0] 是贯穿情节段的大背景/阶段（如"家族""北境矿脉之行"），不是确切地名，同一情节段保持一致；context[1] 是场景，必须属于 context[0] 阶段的场景范围（如北境阶段配矿脉/矿洞相关地点、家族阶段配家族宅院地点），禁止阶段与场景矛盾，并体现剧情推进；大背景下场景最多 3 个；context 只允许两层（大背景 + 场景），不要第三层；每条事件都必须给出 context（至少 1 层），不得返回空数组。`,
       temperature: 0.4,
       maxTokens: 16384,
       thinkingType: 'disabled'
     }),
     (r) => Array.isArray(r?.chapters) && typeof r.prose === 'string'
   );
-  const byIndex = new Map();
-  for (const item of Array.isArray(result.chapters) ? result.chapters : []) {
-    const index = Number(item.chapterIndex);
-    byIndex.set(index, await repairPhaseConsistency(normalizeChapterEvents(item.events), signal));
-  }
+  const byIndex = new Map(
+    (Array.isArray(result.chapters) ? result.chapters : [])
+      .map((item) => [Number(item.chapterIndex), normalizeChapterEvents(item.events)])
+  );
   book.chapters.forEach((chapter, index) => {
     if (byIndex.has(index)) chapter.events = byIndex.get(index);
   });

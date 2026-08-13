@@ -1,8 +1,8 @@
 【项目目标】
 在当前开发环境下（已安装 VSCode、Node.js），生成一个可直接运行的**小说创作平台 Web 应用**。项目不连接任何数据库，后端数据使用本地 JSON 文件持久化。前端为 React 单页应用（SPA），后端为 Express，调用 DeepSeek 大模型辅助创作。
 
-当前版本：0.8.4  
-最近更新：2026-08-13 0.8.4 时间线场景-阶段一致性修复、前端浮窗变量修复
+当前版本：0.8.5  
+最近更新：2026-08-13 0.8.5 简化维护链路：移除阶段一致性修复、context 收敛两层
 
 【文档职责】
 - `TARGET.md`：每次更新的目标文件。每次更新前先修改本文档，按“日期 + 版本”划分，写明待更新说明、待更新功能；开发完成后记录实际完成内容。
@@ -1589,6 +1589,22 @@ Novel Agent/
 - `repairPhaseConsistency` 接入 maintainChapterMeta 与 initializeBookMeta；《仙路逆鳞》重迁移后北境组仅矿脉场景、家族组仅家族场景（家族阶段采药场景改写为“采药/采药炼药”），时间线 家族(1-3) → 北境(4-8) → 家族(9-12) → 北境(13-14)；
 - 前端 `group` 未定义引用修复；
 - 单元测试 58/58；前端构建通过；版本号统一 0.8.4（根/server/client）；本地提交未推送（按协作规矩）。
+
+### 2026-08-13 v0.8.5 简化维护链路：移除阶段一致性修复、context 收敛两层
+
+待更新说明：
+- `repairPhaseConsistency`（模型化一致性修复）+ 二次 normalize 使维护链路复杂（一次维护两次模型调用）；
+- context 设计本应为两层（大背景 + 场景），代码此前允许三层（`slice(0,3)`），模型会产出“矿洞深处/隐秘洞窟”这类第三层。
+
+待更新功能：
+- 移除 `repairPhaseConsistency` 与二次归一化：维护/初始化 = 一次模型产出 → 一次 `normalizeChapterEvents`；
+- context 收敛两层：cleanEvents / normalizeChapterEvents / update_events_context 的 `slice(0,3)` 改 `slice(0,2)`，维护/初始化/工具提示词统一“只允许两层（大背景 + 场景）”；
+- 场景-阶段一致性回归 prompt 约束（三步：定阶段 → 只选该阶段事件 → 配阶段内场景）。
+
+完成内容：
+- 删除 `repairPhaseConsistency`；维护/初始化改单次确定性归一化；context 两层约束落地（代码 + 提示词 + update_events_context 工具）；
+- 时间线横版垂直居中（`.timeline-horizontal` min-height auto + align-items center），竖版保持撑满+水平居中；
+- 单元测试 59/59（新增 context 两层用例）；前端构建通过；版本号统一 0.8.5（根/server/client）；本地提交未推送（按协作规矩）。
 
 ### 2026-08-13 v0.8.0 Agent 工作流重构（规划）
 

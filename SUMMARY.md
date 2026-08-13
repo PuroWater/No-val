@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-- 当前版本：0.8.4（0.8.3 系列 + 0.8.4 时间线场景-阶段一致性修复、前端浮窗变量修复）
+- 当前版本：0.8.5（0.8.4 系列 + 0.8.5 简化维护链路、context 收敛两层）
 - 当前分支：Develop
 - 技术栈：React 18 + Vite 5，Express 4，Node.js 18+，JSON 本地持久化
 - 大模型：DeepSeek，模型默认 `deepseek-v4-flash`
@@ -1348,3 +1348,14 @@ npm start
 - 版本号升级到 0.8.4（根/server/client 同步）；单元测试 58/58；前端构建通过；本地提交未推送（按协作规矩）。
 
 完成结果：时间线“北境组出现家中场景”的数据矛盾消除；维护链路每章增加一次模型化一致性修复，场景与阶段保持一致且可泛化（不依赖硬编码地点表）。
+
+### 2026-08-13 v0.8.5 简化维护链路：移除阶段一致性修复、context 收敛两层
+
+更新内容：
+- 移除 `repairPhaseConsistency`（模型化一致性修复）与二次归一化：维护/初始化回归“一次模型产出 → 一次 `normalizeChapterEvents`”，一次维护只调一次模型；
+- context 收敛为两层（大背景 + 场景）：`cleanEvents` / `normalizeChapterEvents` / `update_events_context` 由 `slice(0,3)` 改 `slice(0,2)`，维护/初始化/工具提示词统一“只允许两层，不要第三层”；
+- 场景-阶段一致性保留在 prompt 层（三步：定阶段 → 只选该阶段事件 → 配阶段内场景），不再有额外清洗调用；
+- 时间线横版垂直居中：`.timeline-horizontal` 设 `min-height: auto` + `align-items: center`（竖版保持撑满、水平居中）；
+- 版本号升级到 0.8.5（根/server/client 同步）；单元测试 59/59（新增 context 两层用例）；前端构建通过；本地提交未推送（按协作规矩）。
+
+完成结果：维护链路回归单次调用，context 数据结构收敛为两层；已存在的三层历史事件在下次维护时自动截断为两层（buildTimeline 只消费前两层，时间线展示不受影响）。
