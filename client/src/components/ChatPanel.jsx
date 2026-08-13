@@ -129,11 +129,21 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
   useEffect(() => {
     const el = messagesRef.current;
     if (!el) return undefined;
-    // 布局变化（如打开并列窗口导致宽度/高度变化、长文本重排）时，
-    // 若用户原本就在底部附近则重新钉底，避免最新消息被挤走；翻历史时保持不动。
-    const nearBottom = () => el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    // 布局/尺寸变化（打开并列窗口、窗口缩放、进度条出现等）会导致内容重排，
+    // 保持“滚动相对进度”不变：记录变化前的 scrollTop/可滚动高度比例，变化后按新高度恢复，
+    // 视觉上内容位置不跳；在底部（比例≈1）时自然保持钉底。新消息钉底由下方 effect 负责。
+    let lastRatio = 1;
+    const syncRatio = () => {
+      const maxScroll = el.scrollHeight - el.clientHeight;
+      lastRatio = maxScroll > 0 ? Math.min(1, Math.max(0, el.scrollTop / maxScroll)) : 1;
+    };
+    syncRatio();
     const observer = new ResizeObserver(() => {
-      if (nearBottom()) el.scrollTop = el.scrollHeight;
+      const maxScroll = el.scrollHeight - el.clientHeight;
+      if (maxScroll > 0) {
+        el.scrollTop = lastRatio * maxScroll;
+        syncRatio();
+      }
     });
     observer.observe(el);
     return () => observer.disconnect();
