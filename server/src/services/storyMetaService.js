@@ -113,7 +113,7 @@ export async function extractRelations(book, { mode } = {}) {
       () => ({
         system: '你是小说关系网维护助手。根据本批剧情摘要和现有关系网更新关系，只返回 JSON，不要包含 Markdown。',
         user: `现有关系网：\n${relationsText(relations)}\n\n本批剧情摘要：\n${entriesToText(block)}\n\n返回更新后的完整关系网 JSON：{"nodes":[{"id":"n_1","name":"名称","type":"person|faction","weight":5,"isMain":true}],"edges":[{"from":"n_1","to":"n_2","label":"关系"}]}。节点 id 必须唯一且尽量沿用现有 id；边必须引用已有节点；weight 表示重要度 1-10，主角节点 isMain 为 true；已不再出现的角色/势力可保留或删除。`,
-        maxTokens: 4096
+        maxTokens: 16384
       }),
       (result) => Array.isArray(result?.nodes)
     );

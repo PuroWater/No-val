@@ -17,7 +17,7 @@ export async function chat({
   messages,
   tools,
   temperature = 0.8,
-  maxTokens = 4096,
+  maxTokens = 16384,
   thinkingType = 'enabled',
   reasoningEffort,
   signal,

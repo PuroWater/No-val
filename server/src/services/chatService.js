@@ -249,6 +249,7 @@ async function handleDraftMessage(book, content, settings, signal) {
   if (book.draft.summary && isConfirmation(content)) {
     await finalizeDraftBook(book, {
       ...settings,
+      chatContext: [buildTodayHistory(book), `用户：${content}`].filter(Boolean).join('\n'),
       ...(Number.isInteger(book.draft.chaptersPerOutput) ? { chaptersPerOutput: book.draft.chaptersPerOutput } : {}),
       ...(Number.isFinite(book.draft.chapterWords) ? { chapterWords: book.draft.chapterWords } : {}),
       signal

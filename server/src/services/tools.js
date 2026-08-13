@@ -97,7 +97,9 @@ export function defineReadyTools(book, settings, signal, changeLog) {
         },
         required: []
       },
-      handler: async ({ mode = 'modify', chapter, position, title, instruction }) => {
+      handler: async ({ mode = 'modify', chapter, position, title, instruction }, handlerContext = {}) => {
+        // 写正文需要“当天+本条”聊天上下文：近期对话 + 本条用户消息
+        const chatContext = [handlerContext.history, `用户：${handlerContext.user || ''}`].filter(Boolean).join('\n');
         if (mode === 'delete') {
           if (!Number.isInteger(chapter) || chapter < 1 || chapter > book.chapters.length) {
             return { ok: false, retryable: true, data: '请先调用 read_book(field=chapters) 获取章节目录，删除时 chapter 传数字序号（从 1 开始）。' };
@@ -124,7 +126,7 @@ export function defineReadyTools(book, settings, signal, changeLog) {
             anchorIndex = chapter - 1;
           }
           const pos = position === 'before' ? 'before' : 'after';
-          const { chapter: created, affectedIds = [] } = await createChapter(book, { anchorIndex, title, instruction, settings, signal, position: pos });
+          const { chapter: created, affectedIds = [] } = await createChapter(book, { anchorIndex, title, instruction, settings, signal, position: pos, chatContext });
           changeLog.chapterIds.add(created.id);
           affectedIds.forEach((id) => changeLog.chapterIds.add(id));
           changeLog.lastEditedIndex = book.chapters.indexOf(created);
@@ -139,7 +141,7 @@ export function defineReadyTools(book, settings, signal, changeLog) {
         }
         const index = chapter - 1;
         const rewrittenId = book.chapters[index].id;
-        await rewriteChapter(book, index, String(instruction || '').trim() || '请按用户意图润色重写本章', { ...settings, signal });
+        await rewriteChapter(book, index, String(instruction || '').trim() || '请按用户意图润色重写本章', { ...settings, signal }, chatContext);
         changeLog.chapterIds.add(rewrittenId);
         changeLog.lastEditedIndex = index;
         return {

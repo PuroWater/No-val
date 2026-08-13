@@ -13,7 +13,7 @@ export { OUTPUT_LIMITS, OVER_LIMIT_REPLY, normalizeOutputScale } from '../lib/ou
 
 // ---------- 构思阶段路由（独立于已生成图书） ----------
 
-export async function prefilterDraftIntent({ user, history = '', signal, ask = chatCompletion, maxAttempts = 2, maxTokens = 4096 }) {
+export async function prefilterDraftIntent({ user, history = '', signal, ask = chatCompletion, maxAttempts = 2, maxTokens = 16384 }) {
   if (/由你|你决定|你发挥|你安排|你定|自由发挥|随便你/.test(String(user || ''))) {
     return { mode: 'confirm', reply: '', output: null };
   }
@@ -72,7 +72,7 @@ export async function runRouter({
   ask = chatCompletion,
   system = '你是意图路由 Agent。',
   maxAttempts = 2,
-  maxTokens = 4096
+  maxTokens = 16384
 }) {
   const intentNames = INTENTS.join(' / ');
   const prompt = [
@@ -330,7 +330,7 @@ export async function runTask({
   ask = chatTools,
   plan = { termination: { kind: 'none' } },
   maxAttempts = 3,
-  maxTokens = 4096,
+  maxTokens = 16384,
   maxSteps = 30
 }) {
   const state = stateFromPlan(plan);
@@ -391,7 +391,7 @@ export async function runTask({
     }
     let outcome;
     try {
-      outcome = await tool.handler(normalizedArgs, { user, signal });
+      outcome = await tool.handler(normalizedArgs, { user, signal, history: context, plan });
     } catch (err) {
       if (/中断|超时/.test(err.message)) throw err;
       recordFailure(call, `工具执行失败：${err.message}`);

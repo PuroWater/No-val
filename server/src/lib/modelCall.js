@@ -1,8 +1,8 @@
 import { chatCompletion } from '../services/modelClient.js';
 
-// 写正文调用的输出预算：字数 × 2.2，上限 32768（deepseek-v4-flash 实测能力，覆盖 10000 字章节 + 推理余量）。
+// 写正文调用的输出预算：字数 × 2.2，上限 65536（覆盖 10000 字章节 + 推理余量 + 补写空间）。
 export function maxTokensForWords(chapterWords) {
-  return Math.min(32768, Math.max(3000, Math.round(Number(chapterWords) * 2.2)));
+  return Math.min(65536, Math.max(3000, Math.round(Number(chapterWords) * 2.2)));
 }
 
 // 通用模型调用：带重试与结果校验（中断/超时立即抛出，其余错误重试后抛出）。
