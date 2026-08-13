@@ -225,6 +225,33 @@ test('runTask normalizes chapter args before executing tool', async () => {
   assert.deepEqual(decision.outcome.extra, { bookId: 'b1', chapter: 1 });
 });
 
+test('runTask dedupes identical call ids (idempotency)', async () => {
+  let runs = 0;
+  const createTool = {
+    name: 'edit_book',
+    description: '新建',
+    parameters: { type: 'object', properties: { mode: { type: 'string' } }, required: [] },
+    handler: async ({ mode }) => {
+      runs += 1;
+      return { ok: true, data: `已新建第 ${mode} 章。`, effect: { type: 'chapters', delta: 1, ids: ['c' + runs] } };
+    }
+  };
+  const decision = await runTask({
+    system: 's',
+    tools: [createTool],
+    user: '再写两章',
+    plan: { termination: { kind: 'counted', target: 2 } },
+    ask: askSequence([
+      { content: '', toolCalls: [{ id: 'call_A', name: 'edit_book', arguments: { mode: 'new' } }] },
+      { content: '', toolCalls: [{ id: 'call_A', name: 'edit_book', arguments: { mode: 'new' } }] },
+      { content: '', toolCalls: [{ id: 'call_B', name: 'edit_book', arguments: { mode: 'new' } }] },
+      { content: '已写两章。', toolCalls: [] }
+    ])
+  });
+  assert.equal(runs, 2);
+  assert.equal(decision.outcome.content, '已写两章。');
+});
+
 test('runTask finalizes silent tool loops instead of exhausting steps', async () => {
   const readTool = {
     name: 'read_book',

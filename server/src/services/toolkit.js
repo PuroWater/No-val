@@ -335,6 +335,8 @@ export async function runTask({
 }) {
   const state = stateFromPlan(plan);
   const apiTools = toApiTools(toolList);
+  // 幂等：同一响应重放（同 call.id）不重复执行 handler，直接回放首次结果。
+  const executed = new Map();
   // 防绕圈：连续多次工具调用仍无内容回复时，用最后一次工具结果收尾，不裸靠 maxSteps。
   // none 终止（read 类）更严，其余意图给足工具调用空间。
   const silentCap = plan?.termination?.kind === 'none' ? 6 : 12;
@@ -389,6 +391,16 @@ export async function runTask({
       if (state.failures >= maxAttempts) throw new Error(`工具调用多次失败：${validation.errors.join('；')}`);
       continue;
     }
+    const callId = call.id || `call_${step}_${name}`;
+    if (executed.has(callId)) {
+      const cached = executed.get(callId);
+      messages.push({
+        role: 'assistant',
+        tool_calls: [{ id: callId, type: 'function', function: { name, arguments: JSON.stringify(normalizedArgs || {}) } }]
+      });
+      messages.push({ role: 'tool', tool_call_id: callId, content: String(cached.data || '') });
+      continue;
+    }
     let outcome;
     try {
       outcome = await tool.handler(normalizedArgs, { user, signal, history: context, plan });
@@ -406,7 +418,7 @@ export async function runTask({
     }
     onStep?.(name, outcome, call.arguments, state);
     applyTransition(state, name, outcome, plan);
-    const callId = call.id || `call_${step}_${name}`;
+    if (outcome.ok) executed.set(callId, outcome);
     messages.push({
       role: 'assistant',
       tool_calls: [{ id: callId, type: 'function', function: { name, arguments: JSON.stringify(normalizedArgs || {}) } }]

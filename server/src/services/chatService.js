@@ -208,6 +208,7 @@ export async function handleMessage(userId, bookId, content, settings = {}) {
   const jobKey = `${userId}:${book.id}`;
   const controller = new AbortController();
   const changeLog = { chapterIds: new Set(), deletedChapterIds: new Set() };
+  const startChapterCount = book.chapters.length;
   const job = { controller, isNewDraft: created, progress: { total: 0, done: 0, text: '处理中…' } };
   activeJobs.set(jobKey, job);
   try {
@@ -224,7 +225,13 @@ export async function handleMessage(userId, bookId, content, settings = {}) {
       if (/中断/.test(message)) {
         replaceProcessing(book, '输出已中断', 'text');
       } else {
-        replaceProcessing(book, `处理失败：${message}`, 'error');
+        // 写入已发生但后续中断/失败：提示部分完成，避免用户误判后重试造成重复写入
+        const hasWrites = changeLog.chapterIds.size > 0 || changeLog.deletedChapterIds.size > 0 || book.chapters.length !== startChapterCount;
+        replaceProcessing(
+          book,
+          hasWrites ? `处理中断，但已有部分操作完成（章节可能已更新），请查看后继续；错误：${message}` : `处理失败：${message}`,
+          hasWrites ? 'text' : 'error'
+        );
       }
     }
   } finally {
