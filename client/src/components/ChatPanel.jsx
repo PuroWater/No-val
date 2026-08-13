@@ -151,7 +151,10 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
   }, [draftKey]);
 
   async function sendMessage(contentOverride, messageIdOverride, isRetry) {
-    const content = contentOverride != null ? contentOverride : input.trim();
+    // 防御：onClick 直接传函数时首个参数是事件对象，必须回退到输入框内容
+    const content = typeof contentOverride === 'string' && contentOverride.trim()
+      ? contentOverride.trim()
+      : input.trim();
     if (!content || sending || hasProcessing) return;
     // 幂等重试：沿用首次消息 id（后端按 book.lastAppliedMessageId 去重），避免重复写入
     const messageId = messageIdOverride || `local_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
@@ -387,7 +390,6 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
               <BookWidget
                 book={book}
                 onOpen={onOpenBook}
-                active={sideOpen}
                 chapter={Number(message.chapter) || 1}
               />
             </Fragment>
@@ -440,7 +442,7 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
         />
         <button
           className={`primary${canAbort ? ' stop' : ''}`}
-          onClick={canAbort ? abortSend : sendMessage}
+          onClick={canAbort ? abortSend : () => sendMessage()}
           disabled={canAbort ? false : viewOnly || !input.trim()}
           title={canAbort ? '中断输出' : '发送'}
         >

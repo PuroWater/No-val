@@ -79,6 +79,15 @@ export default function WorkspacePage() {
     setSideBookId(bookId);
   }
 
+  // 卡片“并列查看”按钮：始终打开/定位，不做切换关闭（右上角按钮才是切换）
+  function openSideFor(bookId, chapter = 1) {
+    const container = document.querySelector('.workspace-body');
+    const width = container?.clientWidth || window.innerWidth;
+    setLeftWidth(Math.max(260, Math.floor(width / 2)));
+    setSideChapter(Math.max(1, Number(chapter) || 1));
+    setSideBookId(bookId);
+  }
+
   function notifyBookChanged() {
     setSideRefresh((value) => value + 1);
   }
@@ -204,7 +213,7 @@ export default function WorkspacePage() {
                     bookId={selectedBookId}
                     sideOpen={Boolean(sideBookId)}
                     onToggleSide={toggleSide}
-                    onOpenBook={toggleSideFor}
+                    onOpenBook={openSideFor}
                     onBookChanged={notifyBookChanged}
                   />
                 </>
@@ -214,7 +223,7 @@ export default function WorkspacePage() {
                   bookId={selectedBookId}
                   sideOpen={false}
                   onToggleSide={toggleSide}
-                  onOpenBook={toggleSideFor}
+                  onOpenBook={openSideFor}
                   onBookChanged={notifyBookChanged}
                 />
               )}

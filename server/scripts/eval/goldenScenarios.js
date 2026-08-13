@@ -79,5 +79,21 @@ export const GOLDEN_SCENARIOS = [
         }
       }
     ]
+  },
+  {
+    name: '改写第一章（正文改写，不落入背景工具）',
+    async setup(api, token) {
+      return api.createBookCopy(REAL_BOOK_ID, token, '【golden】改写副本');
+    },
+    steps: [
+      {
+        content: '把第一章改写得更有悬念',
+        assert(book, lastMsg) {
+          const text = String(lastMsg.content || '');
+          const ok = !/失败|上限/.test(text) && !/已统一.*背景|update_events_context/.test(text) && /第\s*1\s*章|第一章|天骄蒙尘/.test(text);
+          return { ok, detail: `kind=${lastMsg.kind}, content=${text.slice(0, 80)}` };
+        }
+      }
+    ]
   }
 ];

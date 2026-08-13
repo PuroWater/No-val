@@ -380,8 +380,9 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
   const effectiveSettings = safeOutput?.chapterWords
     ? { ...settings, chapterWords: safeOutput.chapterWords }
     : settings;
-  const allowed = new Set(plan.groups);
-  const tools = defineReadyTools(book, effectiveSettings, signal).filter((tool) => allowed.has(tool.group));
+  // 任务单显式工具白名单：模型只能调用任务允许的工具（如改写意图不再暴露 update_events_context 等）
+  const allowedTools = new Set(plan.tools);
+  const tools = defineReadyTools(book, effectiveSettings, signal).filter((tool) => allowedTools.has(tool.name));
   const counted = plan.termination.kind === 'counted';
   const totalChapters = counted ? plan.termination.target : 0;
   job.progress.total = totalChapters;

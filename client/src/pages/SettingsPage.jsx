@@ -29,6 +29,7 @@ export default function SettingsPage() {
   const [timelineOrientation, setTimelineOrientation] = useState('vertical');
   const [reviewAfterWrite, setReviewAfterWrite] = useState(false);
   const [confirmBeforeWrite, setConfirmBeforeWrite] = useState(false);
+  const [confirmTip, setConfirmTip] = useState(null);
   const [reviewTip, setReviewTip] = useState(null);
   const [trash, setTrash] = useState([]);
   const [toasts, setToasts] = useState([]);
@@ -265,9 +266,23 @@ export default function SettingsPage() {
                   <button
                     className={confirmBeforeWrite ? 'active' : ''}
                     onClick={() => { setConfirmBeforeWrite(true); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, timelineOrientation, thinkingForWriting, reviewAfterWrite, true); }}
+                    onMouseEnter={(event) => setConfirmTip({ x: event.clientX, y: event.clientY })}
+                    onMouseMove={(event) => setConfirmTip({ x: event.clientX, y: event.clientY })}
+                    onMouseLeave={() => setConfirmTip(null)}
                   >
                     开启
                   </button>
+                  {confirmTip && (
+                    <div
+                      className="chat-date-tooltip"
+                      style={{
+                        left: Math.min(confirmTip.x + 14, window.innerWidth - 270),
+                        top: Math.min(confirmTip.y + 16, window.innerHeight - 90)
+                      }}
+                    >
+                      开启后，在新建/改写/删除/批量修改/事件背景修改等写操作执行前，AI 会先在对话中向你确认，回复“确认”后才真正执行。
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="settings-group">
