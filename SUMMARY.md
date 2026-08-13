@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-- 当前版本：0.8.2（0.8.1 系列 + 0.8.2 写正文上下文与 token 预算、时间线事件约束）
+- 当前版本：0.8.3（0.8.2 系列 + 0.8.3 写正文提示词公共化与长度约束统一）
 - 当前分支：Develop
 - 技术栈：React 18 + Vite 5，Express 4，Node.js 18+，JSON 本地持久化
 - 大模型：DeepSeek，模型默认 `deepseek-v4-flash`
@@ -1327,3 +1327,13 @@ npm start
 - 版本号升级到 0.8.2（根/server/client 同步）；单元测试 57/57（新增 normalizeChapterEvents 用例）；真实验证（沙箱外）：副本“再写一章”26s 正常完成、卡片定位新章；本地提交未推送（按协作规矩）。
 
 完成结果：续写/改写/构思生成的写正文调用能同时看到“当天+本条”聊天上下文与章节上下文；“再写一章”时间线粒度收敛为每章 ≤3 事件、单背景的干净分段。
+
+### 2026-08-13 v0.8.3 写正文提示词公共化与长度约束统一
+
+更新内容：
+- 新增 `lib/writingPrompts.js`：`writingSystem` / `PARAGRAPH_RULE` / `chatContextRef` / `storySummaryRef`，create/rewrite/ensure 三处写正文 prompt 统一走公共构造，消除重复拼装漂移；
+- `chapterUtils.trimChapterToLimit` 纯函数（目标 105% 完整句截断，找不到完整句硬切），create/rewrite 首轮输出与 ensure 补写后统一应用“上限截断”；
+- `ensureChapterLength` 补写上下文有界节选：只注入开头 300 字 + 结尾 1500 字，不再把整章全文塞进 prompt；
+- 版本号升级到 0.8.3（根/server/client 同步）；单元测试 58/58（新增 trimChapterToLimit 用例）；本地提交未推送（按协作规矩）。
+
+完成结果：写正文三类调用的提示词构造、长度约束、上下文注入规则收敛为公共模块与纯函数，行为统一、可单测。

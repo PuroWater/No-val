@@ -1,8 +1,8 @@
 【项目目标】
 在当前开发环境下（已安装 VSCode、Node.js），生成一个可直接运行的**小说创作平台 Web 应用**。项目不连接任何数据库，后端数据使用本地 JSON 文件持久化。前端为 React 单页应用（SPA），后端为 Express，调用 DeepSeek 大模型辅助创作。
 
-当前版本：0.8.2  
-最近更新：2026-08-13 0.8.2 写正文上下文与 token 预算、时间线事件约束
+当前版本：0.8.3  
+最近更新：2026-08-13 0.8.3 写正文提示词公共化与长度约束统一
 
 【文档职责】
 - `TARGET.md`：每次更新的目标文件。每次更新前先修改本文档，按“日期 + 版本”划分，写明待更新说明、待更新功能；开发完成后记录实际完成内容。
@@ -1557,6 +1557,22 @@ Novel Agent/
 - maintenanceService 新增并导出 normalizeChapterEvents（≤3 事件 + 多数 context[0] 统一），接入维护内核与新书初始化；维护/初始化 prompt 落实“大背景非地名、场景可为地名并体现推进、单背景、事件≤3”语义；
 - 《仙路逆鳞》迁移完成：14 章全部 ≤3 事件、单背景；时间线 家族(1-3) → 北境矿脉之行(4-8) → 家族(9-12) → 北境矿脉之行(13-14)；
 - 单元测试 57/57（新增 normalizeChapterEvents 用例）；真实验证（沙箱外）：副本“再写一章”26s 正常完成、卡片定位新章；版本号统一 0.8.2（根/server/client）；本地提交未推送（按协作规矩）。
+
+### 2026-08-13 v0.8.3 写正文提示词公共化与长度约束统一
+
+待更新说明：
+- ensureChapterLength 输入无界：补写把整章全文塞进 prompt；
+- 105% 上限截断只在补写路径，create/rewrite 首轮输出超长无统一收束；
+- create/rewrite/ensure 三处写正文 prompt 重复拼装，易漂移。
+
+待更新功能：
+- 新增 `lib/writingPrompts.js`：`writingSystem` / `PARAGRAPH_RULE` / `chatContextRef` / `storySummaryRef` 公共构造；
+- `chapterUtils` 新增 `trimChapterToLimit` 纯函数（目标 105% 完整句截断），create/rewrite/ensure 统一应用；
+- ensureChapterLength 补写上下文有界节选（开头 300 字 + 结尾 1500 字）。
+
+完成内容：
+- 三处写正文 prompt 统一走公共构造；create/rewrite 首轮输出统一走 `trimChapterToLimit`；补写输入有界化；
+- 单元测试 58/58（新增 trimChapterToLimit 用例）；版本号统一 0.8.3（根/server/client）；本地提交未推送（按协作规矩）。
 
 ### 2026-08-13 v0.8.0 Agent 工作流重构（规划）
 

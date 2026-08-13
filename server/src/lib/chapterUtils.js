@@ -63,6 +63,17 @@ export function normalizeChapterTarget(text) {
   return t;
 }
 
+// 章节总长上限截断：目标 105% 内保留；超出按完整句截断（找不到完整句则硬切）。
+// 纯函数，create/rewrite/ensure 统一应用“上限截断”约束。
+export function trimChapterToLimit(content, targetWords) {
+  const cap = Math.round(Number(targetWords) * 1.05);
+  const text = String(content || '');
+  if (!Number.isFinite(cap) || text.length <= cap) return text;
+  const slice = text.slice(0, cap);
+  const cut = Math.max(slice.lastIndexOf('。'), slice.lastIndexOf('！'), slice.lastIndexOf('？'), slice.lastIndexOf('\n'));
+  return cut > cap * 0.8 ? slice.slice(0, cut + 1) : slice;
+}
+
 export function intToChinese(number) {
   const digits = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
   const n = Math.max(1, Math.floor(number));

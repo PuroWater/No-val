@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { deleteChapters, validateBatchDelete } from '../src/services/bookService.js';
-import { renumberChapterPrefixes } from '../src/lib/chapterUtils.js';
+import { renumberChapterPrefixes, trimChapterToLimit } from '../src/lib/chapterUtils.js';
 
 test('validateBatchDelete enforces count range and keeps at least one chapter', () => {
   assert.equal(validateBatchDelete(3, 10), '');
@@ -54,6 +54,20 @@ test('deleteChapters removes middle chapter and renumbers standard prefixes', as
   assert.equal(result.book.pendingDeletes.length, 1);
   assert.equal(result.book.pendingDeletes[0].title, '第2章 冲突');
   assert.deepEqual(result.affectedIds, ['c2']);
+});
+
+test('trimChapterToLimit caps length with complete sentence and keeps short content', () => {
+  const short = '一段不超限的内容。';
+  assert.equal(trimChapterToLimit(short, 1000), short);
+  // 超限时按完整句截断：目标 1000 字，1050 内保留，超出则在 80% 之后找完整句
+  const long = '第一句。'.repeat(300); // 约 900+ 字
+  const trimmed = trimChapterToLimit(long, 100);
+  assert.ok(trimmed.length <= 105);
+  assert.ok(trimmed.endsWith('。'));
+  // 找不到完整句时硬切到上限
+  const noPunct = 'a'.repeat(200);
+  const hard = trimChapterToLimit(noPunct, 100);
+  assert.equal(hard.length, 105);
 });
 
 test('renumberChapterPrefixes only touches standard prefixed titles', () => {

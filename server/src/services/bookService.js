@@ -1,7 +1,8 @@
 import { readBookById, saveBook } from '../lib/store.js';
 import { nextChapterId } from '../lib/bookUtils.js';
-import { clampOutput, ensureChapterTitle, renumberChapterPrefixes } from '../lib/chapterUtils.js';
+import { clampOutput, ensureChapterTitle, renumberChapterPrefixes, trimChapterToLimit } from '../lib/chapterUtils.js';
 import { callModel, maxTokensForWords } from '../lib/modelCall.js';
+import { writingSystem, PARAGRAPH_RULE, chatContextRef, storySummaryRef } from '../lib/writingPrompts.js';
 import { maintainChapterMeta } from './maintenanceService.js';
 
 export const MAX_BATCH_DELETE = 50;
@@ -69,19 +70,22 @@ async function ensureChapterLength(book, chapterIndex, targetWords, settings = {
   let content = String(chapter.content || '');
   for (let round = 0; round < 2 && content.length < target; round += 1) {
     const remaining = Math.max(500, Math.round(Number(targetWords)) - content.length);
+    // 有界上下文：只节选开头 300 字 + 结尾 1500 字作为衔接依据，控制输入成本
+    const contentHead = content.slice(0, 300);
+    const contentTail = content.slice(-1500);
     try {
       const result = await callModel(
         () => ({
-          system: '你是小说续写助手。只返回 JSON，不要包含 Markdown。',
+          system: writingSystem('续写'),
           user: [
-            `全书概况：${book.storySummary || '暂无'}`,
+            storySummaryRef(book.storySummary),
             `章节标题：《${chapter.title}》`,
-            chatContext ? `近期创作对话（当天+本条，供理解构思与写作方向）：\n${String(chatContext).slice(-1500)}` : '',
+            chatContextRef(chatContext, 1500),
             `本章已写约 ${content.length} 字，目标约 ${targetWords} 字，请直接衔接章节结尾继续书写约 ${remaining} 字的情节。`,
             `要求：保持人物、设定与情节连贯，不要重复已有内容，不要提前收尾；本章总长控制在约 ${targetWords} 字，不要大幅超出。`,
-            '正文按情节自然分段，段落之间用空行分隔。',
+            PARAGRAPH_RULE,
             nextText,
-            `本章已写全文（衔接与上下文依据）：\n${content}`,
+            `本章已写内容（衔接依据，节选开头 300 字 + 结尾 1500 字）：\n${contentHead}\n……\n${contentTail}`,
             '返回 JSON：{"content":"续写正文"}。'
           ].filter(Boolean).join('\n'),
           maxTokens: maxTokensForWords(remaining),
@@ -90,13 +94,7 @@ async function ensureChapterLength(book, chapterIndex, targetWords, settings = {
         (r) => r && typeof r.content === 'string' && r.content.trim().length > 0
       );
       content = `${content}${String(result.content).trim()}`;
-      // 总长上限：目标 105% 内保留，超出则按完整句截断（避免补过头）
-      const cap = Math.round(Number(targetWords) * 1.05);
-      if (content.length > cap) {
-        const slice = content.slice(0, cap);
-        const cut = Math.max(slice.lastIndexOf('。'), slice.lastIndexOf('！'), slice.lastIndexOf('？'), slice.lastIndexOf('\n'));
-        content = cut > cap * 0.8 ? slice.slice(0, cut + 1) : slice;
-      }
+      content = trimChapterToLimit(content, targetWords);
       chapter.content = content;
     } catch (err) {
       console.error('[length] 章节补写失败，保留已写内容:', err.message);
@@ -125,13 +123,10 @@ export async function createChapter(book, { anchorIndex, title, instruction, set
     next ? `下一章摘要：${next.summary || `${next.title}\n${next.content.slice(0, 500)}`}` : '',
     `现有关系网：${JSON.stringify(book.relations || { nodes: [], edges: [] })}`
   ].filter(Boolean).join('\n');
-  const chatRef = chatContext
-    ? `\n近期创作对话（当天+本条，供理解构思与写作方向，只做参考不要复述）：\n${String(chatContext).slice(-2000)}`
-    : '';
   const result = await callModel(
     () => ({
-      system: '你是小说创作助手。始终只返回 JSON，不要包含 Markdown。',
-      user: `创作新章节（插入为第 ${insertAt + 1} 章），本章约 ${chapterWords} 字。${ratioText}\n章节标题统一为“第X章 + 标题”格式；正文按情节自然分段，段落之间用空行分隔。\n返回 JSON：{"title":"章节标题","content":"章节正文"}。\n用户指令：${instruction || '继续创作'}${chatRef}\n${context}`,
+      system: writingSystem('创作'),
+      user: `创作新章节（插入为第 ${insertAt + 1} 章），本章约 ${chapterWords} 字。${ratioText}\n章节标题统一为“第X章 + 标题”格式；${PARAGRAPH_RULE}\n返回 JSON：{"title":"章节标题","content":"章节正文"}。\n用户指令：${instruction || '继续创作'}${chatContextRef(chatContext)}\n${context}`,
       maxTokens: maxTokensForWords(chapterWords),
       thinkingType: settings.thinkingForWriting ? 'enabled' : 'disabled'
     }),
@@ -144,7 +139,7 @@ export async function createChapter(book, { anchorIndex, title, instruction, set
   const chapter = {
     id: nextChapterId(book),
     title: ensureChapterTitle(insertAt, cleanedTitle),
-    content: String(result.content).trim(),
+    content: trimChapterToLimit(String(result.content).trim(), chapterWords),
     summary: '',
     events: [],
     createdAt: now,
@@ -186,20 +181,17 @@ export async function rewriteChapter(book, chapterIndex, instruction, settings =
     next ? `下一章开头（节选）：${next.content.slice(0, 400)}` : '',
     `现有关系网：${JSON.stringify(book.relations || { nodes: [], edges: [] })}`
   ].filter(Boolean).join('\n');
-  const chatRef = chatContext
-    ? `\n近期创作对话（当天+本条，供理解修改意图，只做参考不要复述）：\n${String(chatContext).slice(-2000)}`
-    : '';
   const result = await callModel(
     () => ({
-      system: '你是小说改写助手。始终只返回 JSON，不要包含 Markdown。',
-      user: `根据修改意见改写章节，本章约 ${chapterWords} 字。正文按情节自然分段，段落之间用空行分隔。返回 JSON：{"title":"章节标题","content":"新内容"}。\n原章节：\n${target.title}\n${target.content}\n修改意见：${instruction}${chatRef}\n全书概况：${book.storySummary || '暂无'}\n附近章节语境：\n${context}`,
+      system: writingSystem('改写'),
+      user: `根据修改意见改写章节，本章约 ${chapterWords} 字。${PARAGRAPH_RULE}返回 JSON：{"title":"章节标题","content":"新内容"}。\n原章节：\n${target.title}\n${target.content}\n修改意见：${instruction}${chatContextRef(chatContext)}\n${storySummaryRef(book.storySummary)}\n附近章节语境：\n${context}`,
       maxTokens: maxTokensForWords(chapterWords),
       thinkingType: settings.thinkingForWriting ? 'enabled' : 'disabled'
     }),
     (result) => result && typeof result.content === 'string' && result.content.trim().length > 0
   );
   target.title = String(result.title || target.title).trim();
-  target.content = String(result.content).trim();
+  target.content = trimChapterToLimit(String(result.content).trim(), chapterWords);
   await ensureChapterLength(book, chapterIndex, chapterWords, settings, settings.signal, chatContext);
   if (settings.reviewAfterWrite) {
     try {
