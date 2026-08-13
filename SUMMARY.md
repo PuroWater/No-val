@@ -60,7 +60,7 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 - 手动编辑章节正文后不会自动调用模型，可在关系网栏位点击“重新生成关系网”更新。
 - 关系网以主角为中心分层布局，节点大小按重要度区分，支持缩放和平移。
 - 编辑章节后失焦只保存、不触发 AI；真正编辑完成（切换标签、关闭面板、返回导航）时自动维护该章摘要、章节事件与全书概况；关系网仅在用户主动点击“重新生成关系网”时生成。
-- 章节事件（`chapter.events`）按章节序派生为“章节事迹轴”发展线（0.8.6 前称时间线），零 AI 成本，供详情页发展线标签展示。
+- 章节事件（`chapter.events`）按章节序派生为“章节事迹轴”发展线（0.8.6 前称时间线），零 AI 成本，供详情页发展线标签展示；发展线按 `context[0]` 主线背景（一章一个，参考前后章）→ `context[1]` 场景（实际地点；离开背景地理时用「大背景/地点」拼合模板，如“家族/藏书阁”）分层。
 - 续写、改写、提问全部通过自然语言触发；改写会先询问章节，再询问修改部分。
 - 聊天面板高度固定，对话内容不影响页面整体大小，消息在聊天区内滚动。
 - 生成与续写按设置中的“每次输出章节数 × 每章字数”占全书目标总字数的比例安排剧情；续写一次输出设置的章节数。
@@ -136,7 +136,11 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
   - `src/services/providers/deepseek.js`：DeepSeek 模型适配器（第一个 provider，实现统一 client 接口）。
   - `src/lib/modelConfig.js`：模型提供方配置（provider 选择，`DEEPSEEK_*` 兼容保留）。
   - `src/services/intentPlans.js`：意图 → 任务单（工具白名单 + 步骤 + 完成条件）。
-  - `src/services/toolkit.js`：意图路由 runRouter + 任务执行器 runTask（原生工具循环 + 状态机 + 双端 schema 校验）。
+  - `src/services/router.js`：意图路由（runRouter / prefilterDraftIntent）。
+  - `src/services/executor.js`：任务执行器 runTask + 状态机（原生工具循环、完成条件、幂等去重、防绕圈）。
+  - `src/services/toolRegistry.js`：工具注册表（register/get/list/call/toApiTools）。
+  - `src/lib/toolArgs.js` / `src/lib/toolOutcome.js`：工具输入校验/章节归一化 与 标准结果校验。
+  - `src/lib/writingPrompts.js` / `src/lib/settingsDefaults.js`：写正文公共提示词与章节上下文、设置默认值单一来源。
   - `src/services/tools.js`：已生成图书工具定义（按 read/edit/navigate 分组，供意图预筛加载）。
   - `src/lib/chapterUtils.js`：章节定位、标题前缀、中文数字转换等通用工具函数。
   - `src/lib/store.js`：JSON 读写（users/settings 单文件；书籍按 `data/books/` 与 `data/drafts/` 分目录、每书一文件，软删归档 `.archived.json`）。
