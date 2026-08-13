@@ -1,4 +1,4 @@
-import { chatCompletion } from '../services/deepseek.js';
+import { chatCompletion } from '../services/modelClient.js';
 
 // 写正文调用的输出预算：字数 × 2.2，上限 32768（deepseek-v4-flash 实测能力，覆盖 10000 字章节 + 推理余量）。
 export function maxTokensForWords(chapterWords) {

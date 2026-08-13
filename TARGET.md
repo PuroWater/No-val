@@ -1,8 +1,8 @@
 【项目目标】
 在当前开发环境下（已安装 VSCode、Node.js），生成一个可直接运行的**小说创作平台 Web 应用**。项目不连接任何数据库，后端数据使用本地 JSON 文件持久化。前端为 React 单页应用（SPA），后端为 Express，调用 DeepSeek 大模型辅助创作。
 
-当前版本：0.7.15  
-最近更新：2026-08-13 0.7.15 卡片请求识别与回复、工具循环守卫、输入框等待文案
+当前版本：0.8.0  
+最近更新：2026-08-13 0.8.0 Agent 工作流重构（路由 + 任务单 + 状态机 + 原生 function calling + 模型层抽象）
 
 【文档职责】
 - `TARGET.md`：每次更新的目标文件。每次更新前先修改本文档，按“日期 + 版本”划分，写明待更新说明、待更新功能；开发完成后记录实际完成内容。
@@ -1490,3 +1490,38 @@ Novel Agent/
 - 输入框占位符按 waiting 状态切换，样式/结构干净（无多余提示条）；
 - 卡片请求确定性识别 + 预筛示例 + 重复调用守卫三层防护；“发一个卡片”真实验证直接返回书籍卡片消息；
 - 单元测试 55/55（新增卡片意图识别与重复卡片工具收尾用例）；前端构建通过；服务冒烟验证（沙箱外）通过；版本号统一 0.7.15（根/server/client）；本地提交未推送（按协作规矩）。
+
+### 2026-08-13 v0.8.0 Agent 工作流重构
+
+待更新说明：
+- 意图识别靠正则硬补丁（detectReadyToolIntent、卡片意图、newIntentRef/batchNew），执行器没有任务单、每步重新解读原始用户消息，导致“发个卡片”被当闲聊/空转、“再写一章”反复生成；ReAct 走文本 JSON 协议，存在解析失败与多余延迟；maxNewChapters、重复卡片守卫等补丁在输出层补救而非流程层解决。
+- 设计目标：单一路由器（模型 + schema）产出结构化任务单（intent/参数/完成条件），执行器按任务单执行与汇报；确定性状态机负责“做到没有”，标准结果 effect 负责“做对没有”；硬补丁只作安全兜底。
+
+待更新功能：
+- 0.8.0a 结构化路由与任务单：runRouter 输出 { mode, intent, output, target }；intentPlans 生成任务单注入执行器；删除 detectReadyToolIntent。
+- 0.8.0b 原生 function calling：providers/deepseek 支持 tools/tool_calls，runTask 原生工具循环 + role=tool 回填。
+- 0.8.0c 状态机与标准工具结果：完成条件（counted/single/signal/none）、写后拦截、validateOutcome、全部工具改 ToolResult；移除 maxNewChapters/followUp/批量特判。
+- 0.8.0d 清理与文档：SUMMARY 重写「Agent 与工具调用约定」（设计理念 + 工具开发规范）；docs 新增教学文档。
+- 第 0 步 模型层抽象：modelConfig / modelClient / providers/deepseek，DEEPSEEK_* 兼容。
+
+完成内容：
+- 模型层抽象落地：lib/modelConfig.js、services/modelClient.js、services/providers/deepseek.js；删除 services/deepseek.js。
+- 路由/任务单/执行器落地：runRouter（intent 枚举 + schema 校验）、intentPlans（任务单）、runTask（原生 function calling + 状态机 + 双端校验）；移除 detectReadyToolIntent、maxNewChapters、followUp、批量新建特判、重复卡片守卫。
+- 工具结果标准化：全部 ready 工具与 confirm_draft 改标准 ToolResult（ok/data/retryable/effect/card）+ validateOutcome。
+- 真实验证（沙箱外）：再写一章 14→15 恰好 1 章、进度可见、模型总结 + 卡片定位第 15 章；发一个卡片约 3 秒；改写第一章正常；原生 function calling 实测可用。
+- 单元测试 51/51（重写为路由/执行器/状态机/标准结果用例）；SUMMARY「Agent 与工具调用约定」重写为设计理念 + 工具开发规范；docs 新增 Agent 设计教学文档；版本号统一 0.8.0（根/server/client）；本地提交未推送（按协作规矩）。
+
+### 2026-08-13 v0.8.0 Agent 工作流重构（规划）
+
+待更新说明：
+- 现状问题：意图识别靠正则硬补丁（detectReadyToolIntent、卡片意图、newIntentRef/batchNew 分类），执行器没有任务单、每步重新解读原始用户消息，导致“发个卡片”被当闲聊/空转超步数、“再写一章”被反复生成、“改写三章”被当新建；ReAct 走文本 JSON 协议，存在解析失败、修复调用与多余延迟；maxNewChapters、重复卡片守卫、兜底文案等补丁在输出层补救而非流程层解决，系统臃肿且难以泛化。
+- 设计目标：单一路由器（模型 + schema 校验）产出结构化任务单（intent + 参数 + 完成条件），执行器只按任务单执行与汇报；确定性状态机负责“做到没有”，写后校验负责“做对没有”，提示词负责“做什么”；硬补丁只作安全兜底，不承载业务决策。
+
+待更新功能（分步实施，每步独立验证）：
+- 0.8.0a 结构化路由与任务单：prefilter 返回 `{ mode, intent, groups, output, target }`（intent 枚举：navigate / read / create_append / create_insert / rewrite / delete / batch_edit / meta / outline / target_words / context_edit 等）；chatService 按 intent 模板组装“步骤 + 完成条件”注入执行器 system，执行器不再重新解读用户消息；navigate 意图直达（跳过“选工具”调用）；移除 detectReadyToolIntent 正则层（保留 normalizeOutputScale 边界校验）。
+- 0.8.0b 原生 function calling：deepseek.js 支持 `tools`/`message.tool_calls`，runToolDecision 改为原生工具循环（执行后以 role=tool 回填），退役文本 JSON 工具协议与 JSON 修复调用；路由/聊天仍走 json_object。
+- 0.8.0c 任务状态机与写后校验：按 intent 定义完成条件（create_append 按章数计数，完成即强制收尾；rewrite/delete/meta 单步后收尾；navigate 卡片展示后收尾），替换 maxNewChapters、重复卡片守卫与 batchNew 分类；写工具执行后确定性校验（章数增量/前缀重排/目标字数）并入状态机，校验失败自动修复或回传模型。
+- 0.8.0d 清理补丁与提示词语义：删除 scaleHint“不要擅自新建”“必须调用 open_book_widget”等补丁式表述，改为任务单承载；兜底文案统一为“执行器按工具结果收尾”的通用规则；SUMMARY「Agent 与工具调用约定」重写为“路由器-执行器-状态机”设计理念（职责分离：提示词定意图、状态机定进度、校验定正确性）。
+
+完成内容：
+- 待实施后填写。

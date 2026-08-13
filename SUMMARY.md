@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-- 当前版本：0.7.15（0.7.14 系列 + 0.7.15 卡片请求识别与回复、工具循环守卫、输入框等待文案）
+- 当前版本：0.8.0（Agent 工作流重构：路由 + 任务单 + 状态机 + 原生 function calling + 模型层抽象）
 - 当前分支：Develop
 - 技术栈：React 18 + Vite 5，Express 4，Node.js 18+，JSON 本地持久化
 - 大模型：DeepSeek，模型默认 `deepseek-v4-flash`
@@ -132,8 +132,11 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
   - `src/services/bookService.js`：已生成图书生命周期与章节编排（`createChapter` / `rewriteChapter` / `deleteChapters` / `updateOutline` / `reviewChapter`）。
   - `src/services/maintenanceService.js`：统一维护内核（`maintainChapterMeta` 单章维护、`initializeBookMeta` 新书一次性初始化）。
   - `src/services/storyMetaService.js`：故事元数据（关系网增量/分块生成与清洗、章节事迹轴派生视图 `buildTimeline`）。
-  - `src/services/deepseek.js`：DeepSeek API 调用与 JSON 解析。
-  - `src/services/toolkit.js`：Agent 工具协议层（schema 校验、ReAct 多步循环调用与失败重试）。
+  - `src/services/modelClient.js`：统一模型调用门面（chatCompletion JSON 模式 / chatTools 原生 function calling / parseJson）。
+  - `src/services/providers/deepseek.js`：DeepSeek 模型适配器（第一个 provider，实现统一 client 接口）。
+  - `src/lib/modelConfig.js`：模型提供方配置（provider 选择，`DEEPSEEK_*` 兼容保留）。
+  - `src/services/intentPlans.js`：意图 → 任务单（工具白名单 + 步骤 + 完成条件）。
+  - `src/services/toolkit.js`：意图路由 runRouter + 任务执行器 runTask（原生工具循环 + 状态机 + 双端 schema 校验）。
   - `src/services/tools.js`：已生成图书工具定义（按 read/edit/navigate 分组，供意图预筛加载）。
   - `src/lib/chapterUtils.js`：章节定位、标题前缀、中文数字转换等通用工具函数。
   - `src/lib/store.js`：JSON 读写（users/settings 单文件；书籍按 `data/books/` 与 `data/drafts/` 分目录、每书一文件，软删归档 `.archived.json`）。
@@ -308,11 +311,23 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 
 ### Agent 与工具调用约定
 
-- 项目标准定位为 Agent：适合由 AI 决策的工具类功能/接口必须采用 function calling 模式，由 AI 返回标准工具名与参数，后端校验后执行。
-- 工具调用必须带硬约束（hard constraints）：工具白名单、参数 schema 校验、越权或非法参数直接拒绝。
-- 模型解析失败、参数不合法或工具执行出错时，自动把错误信息回传模型并重试（设置上限，如 2-3 次）；不得用写死的 if/else 替代工具决策，重试仍失败才回退到澄清提问。
-- 前端展示仍通过消息 `kind`（如 `book`）协议驱动，function calling 只决定“后端调用哪个工具、怎么调”，不改变前端渲染协议。
-- 批量/机械类小工具统一使用 `batch_` 前缀命名（如 `batch_fix_chapter_prefixes`、`batch_replace_text`），后续同类工具遵循。
+#### 设计理念：路由器 - 执行器 - 状态机（0.8 起）
+
+- 职责分离：**提示词定“做什么”（意图路由 → 任务单），状态机定“做到没有”（完成条件），校验定“做对没有”（工具标准结果 effect）**。
+- 单一路由器：用户消息 → 一次模型调用输出结构化 `{ mode, intent, output, target }`（schema 校验 + 重试，失败回退澄清提问）。意图是枚举（navigate/read/create_append/create_insert/rewrite/delete/batch_edit/meta/outline/target_words/context_edit），不再用正则猜意图。
+- 任务单交接：编排器按 intent 生成任务单（工具白名单 + 步骤 + 完成条件）注入执行器；执行器不再重新解读用户消息，只执行与汇报——这是根治“预筛和执行模型理解不一致”的关键。
+- 原生 function calling：工具循环走 `tools`/`tool_calls` + `role:"tool"` 回填，退役文本 JSON 工具协议；路由/聊天/正文生成仍走 JSON 模式。
+- 状态机：完成条件分 counted（计数达标）/ single（主工具成功）/ signal（卡片信号）/ none（模型回复即结束）；工具执行后确定性转移；写类工具在任务完成后被拦截，展示信号允许执行以携带卡片。
+- 失败语义：工具失败/参数不合规/结果不合规统一回传模型修正（重试上限 3），达上限走确定性兜底（安全回复、不产生脏数据）。
+- 硬补丁只作安全层：`normalizeOutputScale` 等纯参数边界校验保留；意图判断、次数控制、收尾判断全部收敛到路由/状态机，禁止再堆正则或针对单工具的 if/else 补丁。
+
+#### 工具开发规范（新增工具必须遵循）
+
+- 新工具 = 工具名 + 描述 + 参数 schema + handler，**不得**自造返回形态。
+- handler 必须返回标准 `ToolResult`：`{ ok, data, retryable?, effect?, card? }`，由 `validateOutcome` 校验。
+- `effect` 为结构化变更描述（`{ type: 'chapters'|'text'|'meta'|'outline'|'target'|'confirm'|'none', delta?, ids?, count? }`），状态机据此做“做对没有”校验与进度转移。
+- 工具不产出最终用户文案：`data` 只给模型看，`card` 只做前端渲染信号，最终回复由执行器按任务单统一产出。
+- 写类工具必须按慢写/快写分类走队列；参数一律 schema 校验；批量机械类工具统一 `batch_` 前缀。
 
 ### 长小说与全书聚合操作注意事项
 
@@ -1278,3 +1293,16 @@ npm start
 - 版本号升级到 0.7.15（根/server/client 同步）；单元测试 55/55（新增卡片意图识别与重复卡片工具收尾用例）；前端构建通过；“发一个卡片”真实验证直接返回书籍卡片消息；本地提交未推送（按协作规矩）。
 
 完成结果：“发个卡片”类请求稳定进入展示工具并返回卡片消息，不再被当闲聊或空转超步数；输入框等待时直接显示“请等待回复完成或中断”。
+
+### 2026-08-13 v0.8.0 Agent 工作流重构
+
+更新内容：
+- 模型层抽象：新增 `lib/modelConfig.js`（provider 选择，`DEEPSEEK_*` 兼容保留）、`services/modelClient.js`（统一门面：chatCompletion JSON / chatTools 原生 function calling / parseJson）、`services/providers/deepseek.js`（第一个适配器）；删除 `services/deepseek.js`，业务代码统一走 modelClient。
+- 结构化路由：`runRouter` 一次调用输出 `{ mode, intent, output, target }`（intent 枚举 + schema 校验 + 重试回退）；删除 `detectReadyToolIntent` 正则层。
+- 任务单：新增 `services/intentPlans.js`，intent → 工具白名单 + 步骤 + 完成条件（counted/single/signal/none），注入执行器，执行器不再重新解读用户消息。
+- 状态机执行器：`runTask` 原生 function calling 循环 + 确定性状态转移；写类工具在任务完成后拦截，展示信号允许执行并携带卡片；失败统一回传模型修正（上限 3）；退役重复卡片守卫等单工具补丁。
+- 工具结果标准化：全部 ready 工具与 confirm_draft 改为标准 `ToolResult`（ok/data/retryable/effect/card），新增 `validateOutcome` 双端校验；移除 `maxNewChapters`、`followUp` 协议标记、批量新建特判循环。
+- 真实验证（沙箱外起服务）：副本“再写一章”14→15 章恰好 1 章、进度可见、最终为模型总结且卡片定位第 15 章；“发一个卡片”约 3 秒返回卡片；“改写第一章”正常完成；原生 function calling 实测可用（tool_calls 结构化返回）。
+- 版本号升级到 0.8.0（根/server/client 同步）；单元测试 51/51（重写为路由/执行器/状态机/标准结果用例）；本地提交未推送（按协作规矩）。
+
+完成结果：意图判断收敛为单一路由器，执行器按任务单执行、状态机定收尾、标准结果做校验，正则与单工具补丁退役；长书续写、卡片展示、改写等路径真实验证通过。设计理念与工具开发规范已写入本文档「Agent 与工具调用约定」。

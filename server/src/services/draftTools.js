@@ -16,8 +16,9 @@ export function defineDraftTools(book) {
         book.draft.summary = String(summary || '').trim();
         book.draft.targetWords = Number.isInteger(Number(targetWords)) && Number(targetWords) > 0 ? Number(targetWords) : 0;
         return {
-          content: `构思已整合：\n${book.draft.summary}\n\n是否需要修改？回复“确认”开始生成，或直接提出修改意见。`,
-          kind: 'confirm'
+          ok: true,
+          data: `构思已整合：\n${book.draft.summary}\n\n是否需要修改？回复“确认”开始生成，或直接提出修改意见。`,
+          effect: { type: 'confirm' }
         };
       }
     }

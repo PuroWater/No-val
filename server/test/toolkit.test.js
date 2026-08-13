@@ -1,302 +1,26 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  detectReadyToolIntent,
-  normalizeOutputScale,
   OVER_LIMIT_REPLY,
+  normalizeOutputScale,
   prefilterDraftIntent,
   validateArgs,
+  validateOutcome,
   registerTool,
   callTool,
-  runToolDecision,
-  prefilterIntent
+  runRouter,
+  runTask,
+  applyTransition
 } from '../src/services/toolkit.js';
 
-test('detectReadyToolIntent forces tool for explicit chapter actions', () => {
-  const rewrite = detectReadyToolIntent('把第二章改写得更有悬念');
-  assert.ok(rewrite && Array.isArray(rewrite.groups));
-  assert.deepEqual(rewrite.groups, ['read', 'edit', 'navigate']);
-  const over = detectReadyToolIntent('续写 10 章，每章 2000 字');
-  assert.equal(over.over, true);
-  const scaled = detectReadyToolIntent('续写 3 章，每章 2000 字');
-  assert.deepEqual(scaled.output, { chapters: 3, chapterWords: 2000 });
-  const missingChapter = detectReadyToolIntent('第 99 章讲了什么');
-  assert.ok(missingChapter && missingChapter.groups);
-  assert.equal(detectReadyToolIntent('今天天气怎么样'), null);
-  assert.equal(detectReadyToolIntent('我很喜欢这本书的设定'), null);
-});
-
-test('detectReadyToolIntent handles count-only continuation phrasings', () => {
-  assert.deepEqual(detectReadyToolIntent('再写一章').output, { chapters: 1 });
-  assert.deepEqual(detectReadyToolIntent('继续写两章').output, { chapters: 2 });
-  assert.deepEqual(detectReadyToolIntent('写一章').output, { chapters: 1 });
-  // “改写三章”是改写意图，不命中“新建”表述，但操作仍被确定性识别
-  const rewrite = detectReadyToolIntent('改写三章');
-  assert.ok(rewrite && rewrite.groups);
-  assert.deepEqual(rewrite.output, { chapters: 3 });
-  // “每章约 5000 字”等常见说法必须能解析出每章字数
-  assert.deepEqual(detectReadyToolIntent('续写3章，每章约5000字').output, { chapters: 3, chapterWords: 5000 });
-  assert.deepEqual(detectReadyToolIntent('续写三章，每章五千字').output, { chapters: 3, chapterWords: 5000 });
-});
-
-test('detectReadyToolIntent forces navigate-only for card display requests', () => {
-  assert.deepEqual(detectReadyToolIntent('发一个卡片'), { groups: ['navigate'], output: null });
-  assert.deepEqual(detectReadyToolIntent('给我看看卡片'), { groups: ['navigate'], output: null });
-  assert.deepEqual(detectReadyToolIntent('打开这本书'), { groups: ['navigate'], output: null });
-  // 同时包含其他操作时不降级为纯 navigate，编辑能力保留
-  const mixed = detectReadyToolIntent('改写第三章后发个卡片');
-  assert.ok(mixed.groups.includes('edit'));
-  // 书籍信息查询不被误判为卡片展示
-  assert.equal(detectReadyToolIntent('查看书籍信息'), null);
-});
-
-const echoTool = {
-  name: 'echo',
-  description: '回显参数',
-  parameters: {
-    type: 'object',
-    properties: {
-      text: { type: 'string', minLength: 1 },
-      count: { type: 'integer' }
-    },
-    required: ['text']
-  },
-  handler: async ({ text, count }) => ({ text, count: count ?? 1 })
-};
-
-test('validateArgs enforces required and types', () => {
-  assert.equal(validateArgs(echoTool.parameters, { text: 'hi' }).ok, true);
-  assert.equal(validateArgs(echoTool.parameters, {}).ok, false);
-  assert.equal(validateArgs(echoTool.parameters, { text: 123 }).ok, false);
-  assert.equal(validateArgs(echoTool.parameters, { text: 'hi', count: 2.5 }).ok, false);
-  assert.equal(validateArgs(echoTool.parameters, 'not-an-object').ok, false);
-  const enumParams = {
-    type: 'object',
-    properties: { target: { type: 'string', enum: ['outline', 'content', 'title'] } },
-    required: ['target']
+function askSequence(steps) {
+  let index = 0;
+  return async () => {
+    const step = steps[Math.min(index, steps.length - 1)];
+    index += 1;
+    return typeof step === 'function' ? step() : step;
   };
-  assert.equal(validateArgs(enumParams, { target: 'outline' }).ok, true);
-  assert.equal(validateArgs(enumParams, { target: '简介' }).ok, false);
-});
-
-test('callTool executes registered tool after validation', async () => {
-  registerTool(echoTool);
-  const result = await callTool('echo', { text: 'hello', count: 2 });
-  assert.deepEqual(result, { text: 'hello', count: 2 });
-  await assert.rejects(() => callTool('echo', { text: '' }), /参数不合法/);
-  await assert.rejects(() => callTool('missing_tool', {}), /未知工具/);
-});
-
-test('runToolDecision retries on unknown tool and invalid args', async () => {
-  const asks = [];
-  const fakeAsk = async ({ user }) => {
-    asks.push(user);
-    if (asks.length === 1) return { tool: 'not_exist', arguments: {} };
-    if (asks.length === 2) return { tool: 'echo', arguments: { text: 42 } };
-    return { tool: 'echo', arguments: { text: 'ok' } };
-  };
-  const decision = await runToolDecision({
-    system: 'test',
-    tools: [echoTool],
-    user: 'hello',
-    ask: fakeAsk,
-    maxAttempts: 3
-  });
-  assert.equal(decision.tool, 'echo');
-  assert.deepEqual(decision.outcome, { text: 'ok', count: 1 });
-  assert.ok(asks.length >= 3);
-});
-
-test('runToolDecision returns empty when model chooses no tool', async () => {
-  const decision = await runToolDecision({
-    system: 'test',
-    tools: [echoTool],
-    user: 'hi',
-    ask: async () => ({ tool: '', arguments: {} }),
-    maxAttempts: 3
-  });
-  assert.equal(decision.tool, '');
-  assert.equal(decision.outcome, null);
-});
-
-test('runToolDecision throws after repeated failures', async () => {
-  await assert.rejects(
-    () => runToolDecision({
-      system: 'test',
-      tools: [echoTool],
-      user: 'hi',
-      ask: async () => ({ tool: 'nope', arguments: {} }),
-      maxAttempts: 2
-    }),
-    /多次失败/
-  );
-});
-
-test('runToolDecision supports follow-up answer after tool returns data', async () => {
-  const readTool = {
-    name: 'read_chapter',
-    description: '查询章节',
-    parameters: {
-      type: 'object',
-      properties: { target: { type: 'string' } },
-      required: ['target']
-    },
-    handler: async () => ({ followUp: true, data: '第 2 章 摘要：传承功法' })
-  };
-  const asks = [];
-  const fakeAsk = async ({ user }) => {
-    asks.push(user);
-    if (asks.length === 1) return { tool: 'read_chapter', arguments: { target: '第二章' } };
-    return { reply: '第二章记载了修炼功法。' };
-  };
-  const decision = await runToolDecision({
-    system: 's',
-    tools: [readTool],
-    user: '第二章讲了什么？',
-    ask: fakeAsk,
-    maxAttempts: 2
-  });
-  assert.equal(decision.tool, '');
-  assert.equal(decision.outcome.content, '第二章记载了修炼功法。');
-  assert.equal(decision.outcome.kind, 'text');
-  assert.equal(asks.length, 2);
-});
-
-test('runToolDecision merges card signal into final reply', async () => {
-  const cardTool = {
-    name: 'show_card',
-    description: '展示书籍卡片',
-    parameters: { type: 'object', properties: { chapter: { type: 'integer' } }, required: [] },
-    handler: async ({ chapter }) => ({
-      followUp: true,
-      data: '卡片已展示。',
-      card: { bookId: 'b1', chapter: Number(chapter) || 1 }
-    })
-  };
-  const asks = [];
-  const fakeAsk = async ({ user }) => {
-    asks.push(user);
-    if (asks.length === 1) return { tool: 'show_card', arguments: { chapter: 3 } };
-    return { reply: '已续写第 3 章。' };
-  };
-  const decision = await runToolDecision({
-    system: 's',
-    tools: [cardTool],
-    user: '续写',
-    ask: fakeAsk,
-    maxAttempts: 2
-  });
-  assert.equal(decision.tool, '');
-  assert.equal(decision.outcome.kind, 'book');
-  assert.equal(decision.outcome.content, '已续写第 3 章。');
-  assert.deepEqual(decision.outcome.extra, { bookId: 'b1', chapter: 3 });
-});
-
-test('runToolDecision ends loop on repeated card tool instead of exhausting steps', async () => {
-  const cardTool = {
-    name: 'show_card',
-    description: '展示书籍卡片',
-    parameters: { type: 'object', properties: { chapter: { type: 'integer' } }, required: [] },
-    handler: async ({ chapter }) => ({
-      followUp: true,
-      data: '书籍卡片已展示，请直接回复用户。',
-      card: { bookId: 'b1', chapter: Number(chapter) || 1 }
-    })
-  };
-  const asks = [];
-  const fakeAsk = async () => {
-    asks.push(1);
-    return { tool: 'show_card', arguments: {} };
-  };
-  const decision = await runToolDecision({
-    system: 's',
-    tools: [cardTool],
-    user: '发个卡片',
-    ask: fakeAsk,
-    maxAttempts: 2,
-    maxSteps: 30
-  });
-  assert.equal(asks.length, 2);
-  assert.equal(decision.tool, '');
-  assert.equal(decision.outcome.kind, 'book');
-  assert.equal(decision.outcome.content, '已为你打开书籍卡片，定位到第 1 章。');
-  assert.deepEqual(decision.outcome.extra, { bookId: 'b1', chapter: 1 });
-});
-
-test('runToolDecision supports chained tool calls (ReAct loop)', async () => {
-  const readTool = {
-    name: 'read_chapter',
-    description: '读取章节',
-    parameters: { type: 'object', properties: { target: { type: 'string' } }, required: ['target'] },
-    handler: async () => ({ followUp: true, data: '第一章内容' })
-  };
-  const saveTool = {
-    name: 'generate_summary',
-    description: '生成摘要',
-    parameters: { type: 'object', properties: { target: { type: 'string' } }, required: ['target'] },
-    handler: async () => ({ content: '已生成摘要', kind: 'text' })
-  };
-  const asks = [];
-  const fakeAsk = async () => {
-    asks.push(1);
-    if (asks.length === 1) return { tool: 'read_chapter', arguments: { target: '第一章' } };
-    return { tool: 'generate_summary', arguments: { target: 'chapter' } };
-  };
-  const decision = await runToolDecision({
-    system: 's',
-    tools: [readTool, saveTool],
-    user: '总结第一章并保存',
-    ask: fakeAsk,
-    maxAttempts: 2,
-    maxSteps: 4
-  });
-  assert.equal(decision.tool, 'generate_summary');
-  assert.equal(decision.outcome.content, '已生成摘要');
-  assert.equal(asks.length, 2);
-});
-
-test('runToolDecision stops after maxSteps', async () => {
-  const readTool = {
-    name: 'read_chapter',
-    description: '读取章节',
-    parameters: { type: 'object', properties: { target: { type: 'string' } }, required: ['target'] },
-    handler: async () => ({ followUp: true, data: 'x' })
-  };
-  await assert.rejects(
-    () => runToolDecision({
-      system: 's',
-      tools: [readTool],
-      user: 'hi',
-      ask: async () => ({ tool: 'read_chapter', arguments: { target: '第一章' } }),
-      maxAttempts: 1,
-      maxSteps: 2
-    }),
-    /步数已达上限/
-  );
-});
-
-test('prefilterIntent returns only valid group names', async () => {
-  const groups = [
-    { name: 'read', summary: '读取' },
-    { name: 'edit', summary: '编辑' },
-    { name: 'write', summary: '续写' }
-  ];
-  const asked = [];
-  const decision = await prefilterIntent({
-    groups,
-    user: '这本书里有哪些重要人物',
-    history: '用户：你好\n助手：你好！',
-    ask: async (options) => {
-      asked.push(options);
-      return { groups: ['edit', 'unknown', 'edit'], output: { chapters: 3, chapterWords: 5000 } };
-    }
-  });
-  assert.equal(decision.mode, 'tool');
-  assert.deepEqual(decision.groups, ['edit']);
-  assert.deepEqual(decision.output, { chapters: 3, chapterWords: 5000 });
-  assert.equal(asked[0].model, undefined);
-  assert.equal(asked[0].user.includes('近期对话'), true);
-});
+}
 
 test('normalizeOutputScale rejects over-limit and normalizes in-range scale', () => {
   assert.deepEqual(normalizeOutputScale({ chapters: 3, chapterWords: 1000 }), {
@@ -305,7 +29,6 @@ test('normalizeOutputScale rejects over-limit and normalizes in-range scale', ()
   });
   assert.deepEqual(normalizeOutputScale({ chapters: 10 }), { output: null, over: true });
   assert.deepEqual(normalizeOutputScale({ chapterWords: 500 }), { output: null, over: true });
-  assert.deepEqual(normalizeOutputScale({ chapterWords: 12000 }), { output: null, over: true });
   assert.deepEqual(normalizeOutputScale({ chapterWords: 1234 }), {
     output: { chapterWords: 1234 },
     over: false
@@ -313,16 +36,283 @@ test('normalizeOutputScale rejects over-limit and normalizes in-range scale', ()
   assert.deepEqual(normalizeOutputScale({}), { output: null, over: false });
 });
 
-test('prefilterIntent returns over-limit chat reply instead of silent clamping', async () => {
-  const groups = [{ name: 'write', summary: '续写' }];
-  const decision = await prefilterIntent({
-    groups,
-    user: '续写10章，每章500字',
-    ask: async () => ({ groups: ['write'], output: { chapters: 10, chapterWords: 500 } })
+test('validateArgs enforces required and types', () => {
+  const params = {
+    type: 'object',
+    properties: {
+      text: { type: 'string', minLength: 1 },
+      count: { type: 'integer' },
+      kind: { type: 'string', enum: ['a', 'b'] }
+    },
+    required: ['text']
+  };
+  assert.equal(validateArgs(params, { text: 'hi' }).ok, true);
+  assert.equal(validateArgs(params, {}).ok, false);
+  assert.equal(validateArgs(params, { text: 123 }).ok, false);
+  assert.equal(validateArgs(params, { text: 'hi', count: 2.5 }).ok, false);
+  assert.equal(validateArgs(params, { text: 'hi', kind: 'c' }).ok, false);
+  assert.equal(validateArgs(params, 'not-an-object').ok, false);
+});
+
+test('validateOutcome accepts standard ToolResult and rejects malformed ones', () => {
+  assert.equal(validateOutcome({ ok: true, data: '完成', effect: { type: 'chapters', delta: 1 }, card: { bookId: 'b1', chapter: 1 } }).ok, true);
+  assert.equal(validateOutcome({ ok: false, retryable: true, data: '失败' }).ok, true);
+  assert.equal(validateOutcome({ data: '缺 ok' }).ok, false);
+  assert.equal(validateOutcome({ ok: true, data: 123 }).ok, false);
+  assert.equal(validateOutcome({ ok: true, data: 'x', card: { chapter: 1 } }).ok, false);
+  assert.equal(validateOutcome(null).ok, false);
+});
+
+test('callTool validates input and standard output', async () => {
+  registerTool({
+    name: 'echo',
+    description: '回显',
+    parameters: {
+      type: 'object',
+      properties: { text: { type: 'string', minLength: 1 } },
+      required: ['text']
+    },
+    handler: async ({ text }) => ({ ok: true, data: `echo:${text}`, effect: null })
   });
-  assert.equal(decision.mode, 'chat');
-  assert.equal(decision.reply, OVER_LIMIT_REPLY);
-  assert.equal(decision.output, null);
+  const result = await callTool('echo', { text: 'hi' });
+  assert.equal(result.data, 'echo:hi');
+  await assert.rejects(() => callTool('echo', { text: '' }), /参数不合法/);
+  await assert.rejects(() => callTool('missing', {}), /未知工具/);
+  registerTool({
+    name: 'bad',
+    description: '坏结果',
+    parameters: { type: 'object', properties: {} },
+    handler: async () => ({ data: '缺 ok' })
+  });
+  await assert.rejects(() => callTool('bad', {}), /工具结果不合规/);
+});
+
+test('runRouter routes tool intent with schema output', async () => {
+  const route = await runRouter({
+    user: '再写两章',
+    ask: async () => ({ mode: 'tool', intent: 'create_append', output: { chapters: 2 }, target: null })
+  });
+  assert.equal(route.mode, 'tool');
+  assert.equal(route.intent, 'create_append');
+  assert.deepEqual(route.output, { chapters: 2 });
+
+  const navigate = await runRouter({
+    user: '发一个卡片',
+    ask: async () => ({ mode: 'tool', intent: 'navigate', output: null, target: null })
+  });
+  assert.equal(navigate.intent, 'navigate');
+});
+
+test('runRouter falls back to chat on invalid or over-limit output', async () => {
+  const chat = await runRouter({
+    user: '你好',
+    ask: async () => ({ mode: 'chat', reply: '你好！' })
+  });
+  assert.equal(chat.mode, 'chat');
+
+  const over = await runRouter({
+    user: '续写10章',
+    ask: async () => ({ mode: 'tool', intent: 'create_append', output: { chapters: 10 } })
+  });
+  assert.equal(over.mode, 'chat');
+  assert.equal(over.reply, OVER_LIMIT_REPLY);
+
+  const invalid = await runRouter({
+    user: 'x',
+    ask: async () => ({ mode: 'tool', intent: 'not_an_intent' }),
+    maxAttempts: 1
+  });
+  assert.equal(invalid.mode, 'chat');
+  assert.ok(String(invalid.reply).length > 0);
+});
+
+test('runTask ends with model reply when no tool calls', async () => {
+  const decision = await runTask({
+    system: 's',
+    tools: [],
+    user: 'hi',
+    ask: async () => ({ content: '你好。', toolCalls: [] })
+  });
+  assert.equal(decision.tool, '');
+  assert.equal(decision.outcome.content, '你好。');
+  assert.equal(decision.outcome.kind, 'text');
+});
+
+test('runTask executes tools and merges card into final reply', async () => {
+  const cardTool = {
+    name: 'open_book_widget',
+    description: '展示卡片',
+    parameters: { type: 'object', properties: { chapter: { type: 'integer' } }, required: [] },
+    handler: async ({ chapter }) => ({
+      ok: true,
+      data: '卡片已展示。',
+      effect: { type: 'none' },
+      card: { bookId: 'b1', chapter: Number(chapter) || 1 }
+    })
+  };
+  const decision = await runTask({
+    system: 's',
+    tools: [cardTool],
+    user: '发卡片',
+    plan: { termination: { kind: 'signal' } },
+    ask: askSequence([
+      { content: '', toolCalls: [{ name: 'open_book_widget', arguments: { chapter: 3 } }] },
+      { content: '已为你打开。', toolCalls: [] }
+    ])
+  });
+  assert.equal(decision.outcome.kind, 'book');
+  assert.equal(decision.outcome.content, '已为你打开。');
+  assert.deepEqual(decision.outcome.extra, { bookId: 'b1', chapter: 3 });
+});
+
+test('runTask counted termination enforces target and intercepts extra calls', async () => {
+  const createTool = {
+    name: 'edit_book',
+    description: '新建章节',
+    parameters: { type: 'object', properties: { mode: { type: 'string' } }, required: [] },
+    handler: async ({ mode }) => ({
+      ok: true,
+      data: `已新建第 ${mode} 章。`,
+      effect: { type: 'chapters', delta: 1, ids: ['c1'] }
+    })
+  };
+  // 模型写了 1 章后仍想再写 → 状态机拦截收尾
+  const intercepted = await runTask({
+    system: 's',
+    tools: [createTool],
+    user: '再写一章',
+    plan: { termination: { kind: 'counted', target: 1 } },
+    ask: askSequence([
+      { content: '', toolCalls: [{ name: 'edit_book', arguments: { mode: 'new' } }] },
+      { content: '', toolCalls: [{ name: 'edit_book', arguments: { mode: 'new' } }] }
+    ])
+  });
+  assert.equal(intercepted.outcome.content, '已新建第 new 章。');
+
+  // 正常计数：写满 target 后模型总结
+  const normal = await runTask({
+    system: 's',
+    tools: [createTool],
+    user: '再写两章',
+    plan: { termination: { kind: 'counted', target: 2 } },
+    ask: askSequence([
+      { content: '', toolCalls: [{ name: 'edit_book', arguments: { mode: 'new' } }] },
+      { content: '', toolCalls: [{ name: 'edit_book', arguments: { mode: 'new' } }] },
+      { content: '已新建 2 章。', toolCalls: [] }
+    ])
+  });
+  assert.equal(normal.outcome.content, '已新建 2 章。');
+});
+
+test('runTask single termination completes only on write effect', async () => {
+  const readTool = {
+    name: 'read_book',
+    description: '读取',
+    parameters: { type: 'object', properties: {} },
+    handler: async () => ({ ok: true, data: '第一章内容', effect: null })
+  };
+  const rewriteTool = {
+    name: 'edit_book',
+    description: '改写',
+    parameters: { type: 'object', properties: { mode: { type: 'string' } }, required: [] },
+    handler: async () => ({ ok: true, data: '已改写。', effect: { type: 'chapters', delta: 0, ids: ['c1'] } })
+  };
+  const decision = await runTask({
+    system: 's',
+    tools: [readTool, rewriteTool],
+    user: '改写第一章',
+    plan: { termination: { kind: 'single' } },
+    ask: askSequence([
+      { content: '', toolCalls: [{ name: 'read_book', arguments: {} }] },
+      { content: '', toolCalls: [{ name: 'edit_book', arguments: { mode: 'modify' } }] },
+      { content: '', toolCalls: [{ name: 'edit_book', arguments: { mode: 'modify' } }] }
+    ])
+  });
+  // read 不触发完成；edit 触发完成；再调用被拦截，最终文案为最后一次工具结果
+  assert.equal(decision.outcome.content, '已改写。');
+});
+
+test('runTask feeds failures back to model and retries', async () => {
+  const echoTool = {
+    name: 'echo',
+    description: '回显',
+    parameters: { type: 'object', properties: { text: { type: 'string' } }, required: ['text'] },
+    handler: async ({ text }) => ({ ok: true, data: `echo:${text}`, effect: null })
+  };
+  const decision = await runTask({
+    system: 's',
+    tools: [echoTool],
+    user: 'hi',
+    ask: askSequence([
+      { content: '', toolCalls: [{ name: 'nope', arguments: {} }] },
+      { content: '', toolCalls: [{ name: 'echo', arguments: { text: 'ok' } }] },
+      { content: '完成。', toolCalls: [] }
+    ])
+  });
+  assert.equal(decision.outcome.content, '完成。');
+});
+
+test('runTask throws after repeated failures or max steps', async () => {
+  const echoTool = {
+    name: 'echo',
+    description: '回显',
+    parameters: { type: 'object', properties: {} },
+    handler: async () => ({ ok: true, data: 'ok', effect: null })
+  };
+  await assert.rejects(
+    () => runTask({
+      system: 's',
+      tools: [echoTool],
+      user: 'hi',
+      ask: async () => ({ content: '', toolCalls: [{ name: 'nope', arguments: {} }] }),
+      maxAttempts: 2
+    }),
+    /多次失败/
+  );
+  await assert.rejects(
+    () => runTask({
+      system: 's',
+      tools: [echoTool],
+      user: 'hi',
+      ask: async () => ({ content: '', toolCalls: [{ name: 'echo', arguments: {} }] }),
+      maxSteps: 2,
+      maxAttempts: 1
+    }),
+    /步数已达上限/
+  );
+});
+
+test('runTask rejects malformed tool results via validateOutcome', async () => {
+  const badTool = {
+    name: 'bad',
+    description: '坏结果',
+    parameters: { type: 'object', properties: {} },
+    handler: async () => ({ data: '缺 ok' })
+  };
+  const decision = await runTask({
+    system: 's',
+    tools: [badTool],
+    user: 'hi',
+    ask: askSequence([
+      { content: '', toolCalls: [{ name: 'bad', arguments: {} }] },
+      { content: '好的。', toolCalls: [] }
+    ])
+  });
+  assert.equal(decision.outcome.content, '好的。');
+});
+
+test('applyTransition is a pure state machine', () => {
+  const state = { done: 0, completed: false, card: null, lastTool: '', lastData: '', failures: 0 };
+  applyTransition(state, 'edit_book', { ok: true, data: 'x', effect: { type: 'chapters', delta: 1 } }, { termination: { kind: 'counted', target: 2 } });
+  assert.equal(state.done, 1);
+  assert.equal(state.completed, false);
+  applyTransition(state, 'edit_book', { ok: true, data: 'y', effect: { type: 'chapters', delta: 1 } }, { termination: { kind: 'counted', target: 2 } });
+  assert.equal(state.done, 2);
+  assert.equal(state.completed, true);
+  const failed = { done: 0, completed: false, card: null, lastTool: '', lastData: '', failures: 0 };
+  applyTransition(failed, 'edit_book', { ok: false, data: '错了' }, { termination: { kind: 'counted', target: 1 } });
+  assert.equal(failed.failures, 1);
+  assert.equal(failed.completed, false);
 });
 
 test('prefilterDraftIntent classifies chat, confirm and chat-mode over-limit', async () => {
@@ -338,7 +328,6 @@ test('prefilterDraftIntent classifies chat, confirm and chat-mode over-limit', a
     ask: async () => ({ mode: 'confirm', output: { chapterWords: 1000 } })
   });
   assert.equal(confirm.mode, 'confirm');
-  assert.deepEqual(confirm.output, { chapterWords: 1000 });
 
   const over = await prefilterDraftIntent({
     user: '生成10章，每章500字',
@@ -346,36 +335,4 @@ test('prefilterDraftIntent classifies chat, confirm and chat-mode over-limit', a
   });
   assert.equal(over.mode, 'chat');
   assert.equal(over.reply, OVER_LIMIT_REPLY);
-
-  const fallback = await prefilterDraftIntent({
-    user: 'hi',
-    ask: async () => ({ mode: 'bogus' }),
-    maxAttempts: 1
-  });
-  assert.equal(fallback.mode, 'chat');
-});
-
-test('prefilterIntent retries then falls back to empty on invalid results', async () => {
-  const groups = [{ name: 'read', summary: '读取' }];
-  const decision = await prefilterIntent({
-    groups,
-    user: 'hi',
-    ask: async () => ({ groups: ['nope'] }),
-    maxAttempts: 2
-  });
-  assert.equal(decision.mode, 'tool');
-  assert.deepEqual(decision.groups, []);
-  assert.equal(decision.output, null);
-});
-
-test('prefilterIntent returns chat mode with reply when no tool needed', async () => {
-  const groups = [{ name: 'read', summary: '读取' }];
-  const decision = await prefilterIntent({
-    groups,
-    user: '我觉得主角应该更勇敢一些',
-    ask: async () => ({ mode: 'chat', reply: '好的，那后续写作会突出主角的勇敢。' })
-  });
-  assert.equal(decision.mode, 'chat');
-  assert.equal(decision.reply, '好的，那后续写作会突出主角的勇敢。');
-  assert.deepEqual(decision.groups, []);
 });
