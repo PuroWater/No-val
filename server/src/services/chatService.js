@@ -6,7 +6,7 @@ import { runTask } from './executor.js';
 import { buildPlan } from './intentPlans.js';
 import { defineReadyTools } from './tools.js';
 import { defineDraftTools } from './draftTools.js';
-import { PLOT_FACT_RULE, WRITE_EXECUTION_RULE, CHAPTER_NUM_RULE } from '../lib/agentRules.js';
+import { PLOT_FACT_RULE, WRITE_EXECUTION_RULE, CHAPTER_NUM_RULE, TOOL_AVAILABILITY_RULE } from '../lib/agentRules.js';
 
 const activeJobs = new Map();
 
@@ -419,6 +419,7 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
       PLOT_FACT_RULE,
       WRITE_EXECUTION_RULE,
       CHAPTER_NUM_RULE,
+      TOOL_AVAILABILITY_RULE,
       `全书摘要：${book.storySummary || '暂无'}`,
       `最近章节摘要：${last?.summary || last?.title || '暂无'}`
     ].join('\n'),
@@ -453,7 +454,11 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
       }
     }
   });
-  const outcome = decision.outcome || {};
+  let outcome = decision.outcome || {};
+  // 写意图完成后确定性补卡：即使模型未调用 open_book_widget，也强制展示书籍卡片并定位变更章
+  if (WRITE_INTENTS.has(route.intent) && outcome.kind !== 'book') {
+    outcome = { ...outcome, kind: 'book' };
+  }
   const extra = finalOutcomeExtra(book, outcome, changeLog);
   if (outcome.kind === 'book' && counted && !extra.chapter) extra.chapter = book.chapters.length;
   book.pendingAction = null;

@@ -1951,6 +1951,19 @@ Novel Agent/
 完成内容：
 - 代码/提示词/测试/注释全部清理，数据无 pendingAction 残留（事件 context 字段保留，仅不再有直接修改工具）；单元测试 69/69；版本号统一 0.8.30（根/server/client）；本地提交未推送（按协作规矩）。
 
+### 2026-08-14 v0.8.31 防旧工具名幻觉 + 写操作完成确定性补卡
+
+待更新说明：
+- 工具删除后，模型仍在回复文本中提及 `update_events_context`——当天对话历史里旧回复提到过该名字，历史注入后被模型复述（纯文本幻觉，未真调用）；
+- rewrite 完成后模型未调用 open_book_widget，用户没看到卡片（任务单要求但依赖模型自觉）。
+
+待更新功能：
+- agentRules 新增 `TOOL_AVAILABILITY_RULE`：只能使用任务单提供的工具，不得提及不存在的工具名或声称受其限制，注入执行器 system；
+- chatService 编排层：写意图完成后若结果不是卡片，强制补发书籍卡片并定位变更章（不再依赖模型调 open_book_widget）。
+
+完成内容：
+- `agentRules.js` 新增规则并注入执行器 system；`handleReadyMessage` 写意图完成强制 `kind=book` + `finalOutcomeExtra` 定位；单元测试 69/69；版本号统一 0.8.31（根/server/client）；本地提交未推送（按协作规矩）。
+
 ### 后续建议方向（交接快照 2026-08-13）
 
 - 0.8.7-0.8.19 待办已全部完成（幂等 call.id/跨消息、golden eval、写前确认、多 provider、乐观锁、规模信任守卫、背景/场景语义修正、P1 拆分、P2 统一记账、P3 抽公共、场景拼合模板、工具白名单、卡片打开语义、发送白屏修复）。

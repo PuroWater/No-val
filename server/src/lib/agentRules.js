@@ -16,3 +16,8 @@ export const WRITE_EXECUTION_RULE =
 export const CHAPTER_NUM_RULE =
   '编辑类工具参数一律传阿拉伯数字序号（从 1 开始）；' +
   '仅当用户以标题指代且不确定序号时才先 read_book(field=chapters) 查目录。';
+
+// 工具可用性：只能使用当前提供的工具，不得提及不存在的工具名或声称受其限制（防历史对话污染）。
+export const TOOL_AVAILABILITY_RULE =
+  '只能使用当前任务单提供的工具；不得提及、引用或声称受不存在的工具（如已删除的 update_events_context）限制，' +
+  '工具列表以任务单为准，权限不足时直接说明“当前任务未授权该操作”，不要编造工具名。';
