@@ -4,7 +4,7 @@ import { finalizeDraftBook } from './draftService.js';
 import { prefilterDraftIntent, runRouter } from './router.js';
 import { runTask } from './executor.js';
 import { buildPlan } from './intentPlans.js';
-import { defineReadyTools } from './tools.js';
+import { defineReadyTools, toolBrief } from './tools.js';
 import { defineDraftTools } from './draftTools.js';
 import { PLOT_FACT_RULE, WRITE_EXECUTION_RULE, CHAPTER_NUM_RULE, TOOL_AVAILABILITY_RULE } from '../lib/agentRules.js';
 
@@ -378,6 +378,7 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
       user: content,
       history: buildTodayHistory(book),
       signal,
+      tools: toolBrief(book, settings, signal),
       system: [
         '你是小说创作平台的意图路由 Agent。',
         PLOT_FACT_RULE,

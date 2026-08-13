@@ -350,3 +350,11 @@ export function defineReadyTools(book, settings, signal) {
     }
   ];
 }
+
+// 路由用工具精简清单：从 defineReadyTools 单一来源生成（名称 + 职责首句），
+// 让路由按“工具能干什么”判断意图，避免路由与工具描述两套漂移导致意图误判。
+export function toolBrief(book, settings, signal) {
+  return defineReadyTools(book, settings, signal)
+    .map((tool) => `- ${tool.name}：${String(tool.description || '').split('\n')[0].trim().slice(0, 140)}`)
+    .join('\n');
+}

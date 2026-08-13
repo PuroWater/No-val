@@ -66,6 +66,7 @@ export async function runRouter({
   signal,
   ask = chatCompletion,
   system = '你是意图路由 Agent。',
+  tools = '',
   maxAttempts = 2,
   maxTokens = 16384
 }) {
@@ -74,6 +75,7 @@ export async function runRouter({
     '你是小说创作平台的意图路由 Agent。根据用户消息与近期对话判断是否需要调用工具，并输出结构化 JSON。',
     '输出格式：{"mode":"chat|tool","intent":"<枚举>","output":{"chapters":N,"chapterWords":N},"target":{"chapter":N,"position":"before|after"}}；chat 模式返回 {"mode":"chat","reply":"回答文本"}。',
     `intent 枚举（mode=tool 时必填）：${intentNames}`,
+    `当前可用工具（意图应与工具职责对应，用户请求匹配哪个工具就选对应意图）：\n${tools || '（无）'}`,
     '- navigate：仅当用户明确要求展示/打开书籍卡片或打开指定章节时调用（如“发个卡片”“打开第一章”，target.chapter 填章节号）',
     '- read：仅当用户明确询问书籍信息/章节目录/章节内容/发展线时调用',
     '- create_append：仅当用户明确要求续写/新建章节（追加末尾）时调用；用户明确给出章数/字数时 output 如实填写',
