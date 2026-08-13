@@ -1830,6 +1830,22 @@ Novel Agent/
 - `creationContextRef` 加“上一章结尾/下一章开头（各 400 字节选）”，`generateBookContent` 第 N 章加“上一章结尾（400 字节选）”；新建/新书生成的写正文上下文与改写对齐（上下章首尾正文齐备）；
 - 单元测试 69/69（readBook 用例改为单章全文/scope=summary/范围拒绝/不存在的章，intentPlans 增加禁止范围断言）；前端构建通过；版本号统一 0.8.21（根/server/client）；本地提交未推送（按协作规矩）。
 
+### 2026-08-13 v0.8.22 字数收敛泛化 + 新书走新建章流程
+
+待更新说明：
+- 新建章（createChapter）与新书生成（generateBookContent）两套写链路不统一：新书缺字数截断/写不满补写/审校，每章 summary 生成时一次产出、维护不重算；
+- 改写/新建首轮输出超 105% 会被 `trimChapterToLimit` 硬切，可能砍掉用户要求的结尾（如“改结尾”被截断）。
+
+待更新功能：
+- 字数收敛泛化（create/rewrite 共用）：首轮产出后字数不在目标 80%-120% 先做一次“收敛重写”（不足扩写、超出压缩，保留用户要求与完整结尾）；收敛后仍超 150% 才走 `trimChapterToLimit` 兜底（cap 从 105% 调到 150%，参数化 `capRatio`）；仍不足由 `ensureChapterLength` 补写；
+- 新书走新建章流程：`finalizeDraftBook` 先一次调用产出书名/简介，再逐章 `createChapter`（内部统一字数收敛/补写/审校 + `maintainChapterMeta` 自动维护 summary/events/全书概况）；删除 `generateBookContent`/`buildStorySummary`；
+- `book.targetWords` 在逐章生成前设置，新书生成也能按全书目标比例推进剧情。
+
+完成内容：
+- `trimChapterToLimit` 上限参数化（默认 1.5）；`bookService` 新增 `convergeChapterLength`（80%-120% 收敛、150% 截断兜底）并接入 createChapter/rewriteChapter；
+- `draftService.finalizeDraftBook` 重构：书名/简介一次产出 + 逐章 createChapter；summary/events/概况统一由维护自动调用，新书与新建章链路一致；
+- 单元测试 69/69（trimChapterToLimit cap 用例更新为 150%）；版本号统一 0.8.22（根/server/client）；本地提交未推送（按协作规矩）。
+
 ### 后续建议方向（交接快照 2026-08-13）
 
 - 0.8.7-0.8.19 待办已全部完成（幂等 call.id/跨消息、golden eval、写前确认、多 provider、乐观锁、规模信任守卫、背景/场景语义修正、P1 拆分、P2 统一记账、P3 抽公共、场景拼合模板、工具白名单、卡片打开语义、发送白屏修复）。

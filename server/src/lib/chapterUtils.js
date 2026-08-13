@@ -63,10 +63,10 @@ export function normalizeChapterTarget(text) {
   return t;
 }
 
-// 章节总长上限截断：目标 105% 内保留；超出按完整句截断（找不到完整句则硬切）。
+// 章节总长上限截断：目标 capRatio（默认 1.5 = 150%）内保留；超出按完整句截断（找不到完整句则硬切）。
 // 纯函数，create/rewrite/ensure 统一应用“上限截断”约束。
-export function trimChapterToLimit(content, targetWords) {
-  const cap = Math.round(Number(targetWords) * 1.05);
+export function trimChapterToLimit(content, targetWords, capRatio = 1.5) {
+  const cap = Math.round(Number(targetWords) * Number(capRatio));
   const text = String(content || '');
   if (!Number.isFinite(cap) || text.length <= cap) return text;
   const slice = text.slice(0, cap);

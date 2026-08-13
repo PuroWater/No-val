@@ -103,6 +103,57 @@ async function ensureChapterLength(book, chapterIndex, targetWords, settings = {
   }
 }
 
+// 首轮产出后字数收敛：正文不在目标 80%-120% 内时做一次“收敛重写”（不足扩写、超出压缩），
+// 保留用户要求与完整结尾；调用失败降级保留原内容，由外层 trim/ensure 兜底。
+// create/rewrite/ensure 共用同一套字数约束理念：先收敛、再兜底。
+async function convergeChapterLength(content, {
+  chapterWords,
+  title = '',
+  instruction = '',
+  chatContext = '',
+  storySummary = '',
+  prevTail = '',
+  nextHead = '',
+  settings = {},
+  signal,
+  role = '创作'
+} = {}) {
+  const target = Math.round(Number(chapterWords) || 0);
+  const text = String(content || '');
+  if (!Number.isFinite(target) || target <= 0) return text;
+  const ratio = text.length / target;
+  if (ratio >= 0.8 && ratio <= 1.2) return text;
+  const direction = ratio < 1 ? '扩写' : '压缩';
+  try {
+    const result = await callModel(
+      () => ({
+        system: writingSystem('收敛'),
+        user: [
+          `当前章节正文约 ${text.length} 字，目标约 ${target} 字（可接受 80%-120%），请${direction}至该范围。`,
+          direction === '压缩'
+            ? '要求：保留核心情节、用户修改要求与完整结尾，删除冗余描写、重复段落与拖沓过渡，不要使用省略号或截断。'
+            : '要求：在保持已有情节连贯与结尾不变的前提下，补充细节、环境、对话与剧情推进，不要重复已有句子，不要提前收尾。',
+          instruction ? `写作/修改要求：${instruction}` : '',
+          `章节标题：《${title || '本章'}》`,
+          storySummary ? `全书概况：${storySummary}` : '',
+          prevTail ? `上一章结尾（衔接参考）：${prevTail}` : '',
+          nextHead ? `下一章开头（衔接参考）：${nextHead}` : '',
+          chatContextRef(chatContext, 1000),
+          `当前章节全文：\n${text}`,
+          '返回 JSON：{"content":"收敛后的完整章节正文"}。'
+        ].filter(Boolean).join('\n'),
+        maxTokens: maxTokensForWords(Math.max(target, text.length)),
+        thinkingType: settings.thinkingForWriting ? 'enabled' : 'disabled'
+      }),
+      (r) => r && typeof r.content === 'string' && r.content.trim().length > 0
+    );
+    return String(result.content).trim();
+  } catch (err) {
+    console.error('[length] 字数收敛失败，保留原内容:', err.message);
+    return text;
+  }
+}
+
 // 新建章节（AI 工具/续写兼容入口）：可追加末尾或插入锚点章后。
 // 内部一次写正文调用（开思考、大预算，只产 title/content），写后自动维护章节元数据并重排受影响前缀。
 export async function createChapter(book, { anchorIndex, title, instruction, settings = {}, signal, position = 'after', chatContext = '' } = {}) {
@@ -131,10 +182,23 @@ export async function createChapter(book, { anchorIndex, title, instruction, set
   // 新章标题强制按当前位置编号：去掉 AI 可能携带的任意“第N章”前缀再按位置补齐
   const rawTitle = String(result.title || title || '').trim() || '';
   const cleanedTitle = rawTitle.replace(/^第\s*[0-9零一二两三四五六七八九十百千]+\s*章[\s:：]*/, '');
+  // 字数收敛：不在 80%-120% 内先收敛一次，再按 150% 上限截断兜底
+  const content = await convergeChapterLength(String(result.content || '').trim(), {
+    chapterWords,
+    title: cleanedTitle,
+    instruction,
+    chatContext,
+    storySummary: book.storySummary,
+    prevTail: prev?.content?.slice(-300),
+    nextHead: next?.content?.slice(0, 300),
+    settings,
+    signal,
+    role: '创作'
+  });
   const chapter = {
     id: nextChapterId(book),
     title: ensureChapterTitle(insertAt, cleanedTitle),
-    content: trimChapterToLimit(String(result.content).trim(), chapterWords),
+    content: trimChapterToLimit(content, chapterWords),
     summary: '',
     events: [],
     createdAt: now,
@@ -179,8 +243,20 @@ export async function rewriteChapter(book, chapterIndex, instruction, settings =
     }),
     (result) => result && typeof result.content === 'string' && result.content.trim().length > 0
   );
+  const content = await convergeChapterLength(String(result.content || '').trim(), {
+    chapterWords,
+    title: target.title,
+    instruction,
+    chatContext,
+    storySummary: book.storySummary,
+    prevTail: prev?.content?.slice(-300),
+    nextHead: next?.content?.slice(0, 300),
+    settings,
+    signal: settings.signal,
+    role: '改写'
+  });
   target.title = String(result.title || target.title).trim();
-  target.content = trimChapterToLimit(String(result.content).trim(), chapterWords);
+  target.content = trimChapterToLimit(content, chapterWords);
   await ensureChapterLength(book, chapterIndex, chapterWords, settings, settings.signal, chatContext);
   if (settings.reviewAfterWrite) {
     try {

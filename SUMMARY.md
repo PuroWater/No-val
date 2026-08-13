@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-- 当前版本：0.8.21（0.8.19 意图级工具白名单 + 卡片语义/展示修正；0.8.20 read_book 单章默认全文 + 改写指令携带衔接建议 + 严格触发条件；0.8.21 彻底禁止范围读取 + 工具调用日志 + 移除前端重试按钮）
+- 当前版本：0.8.22（0.8.19 意图级工具白名单 + 卡片语义/展示修正；0.8.20 read_book 单章默认全文 + 改写指令携带衔接建议 + 严格触发条件；0.8.21 彻底禁止范围读取 + 工具调用日志 + 移除前端重试按钮；0.8.22 字数收敛泛化 + 新书走新建章流程）
 - 当前分支：Develop
 - 技术栈：React 18 + Vite 5，Express 4，Node.js 18+，JSON 本地持久化
 - 大模型：DeepSeek，模型默认 `deepseek-v4-flash`
@@ -1527,3 +1527,12 @@ npm start
 - 版本号升级到 0.8.21（根/server/client 同步）；单元测试 69/69（readBook 改为单章全文/scope=summary/范围拒绝/不存在的章，intentPlans 增加禁止范围断言）、前端构建通过；本地提交未推送（按协作规矩）。
 
 完成结果：范围读取从参数层彻底移除（模型无法再拿摘要冒充正文）；工具调用全程留痕可实证；前端不再提供重试按钮，失败自然收尾由用户重问。
+
+### 2026-08-13 v0.8.22 字数收敛泛化 + 新书走新建章流程
+
+更新内容：
+- 字数收敛泛化（createChapter/rewriteChapter 共用 `convergeChapterLength`）：首轮产出后字数不在目标 80%-120% 先做一次“收敛重写”（不足扩写、超出压缩，保留用户要求与完整结尾）；收敛后仍超 150% 才走 `trimChapterToLimit` 兜底（上限 105%→150%，`capRatio` 参数化）；仍不足由 `ensureChapterLength` 补写；
+- 新书走新建章流程：`finalizeDraftBook` 先一次调用产出书名/简介，再逐章 `createChapter`——字数收敛/补写/审校与 `maintainChapterMeta` 自动维护 summary/events/全书概况统一生效，删除 `generateBookContent`/`buildStorySummary`；`targetWords` 在逐章生成前设置，新书也按全书目标比例推进；
+- 版本号升级到 0.8.22（根/server/client 同步）；单元测试 69/69（trimChapterToLimit cap 用例更新为 150%）；本地提交未推送（按协作规矩）。
+
+完成结果：新建/改写/新书三条写链路统一“收敛→兜底→维护”机制；新书 summary/events/概况不再一次产出后不重算，全部自动维护；改写超长先收敛再截断，不再硬切用户要求的结尾。
