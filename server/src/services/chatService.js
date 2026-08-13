@@ -357,6 +357,7 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
       signal,
       system: [
         '你是小说创作平台的意图路由 Agent。',
+        '只负责判断用户意图，不要判断章节内容是否正确或连贯：剧情对错必须由执行阶段 read_book 实证，路由阶段看到的概况/摘要仅供参考定位，不得据此直接回复用户或下结论。',
         'read_book 可读取图书最新数据（书名、简介、元数据、章节目录、章节内容、概况、发展线等）；用户询问任何书籍信息时意图为 read。',
         `全书概况：${book.storySummary || '暂无'}`,
         `最近章节摘要：${last?.summary || last?.title || '暂无'}`
