@@ -10,6 +10,10 @@ export function validateOutcome(outcome) {
   if (outcome.effect != null) {
     if (typeof outcome.effect !== 'object' || Array.isArray(outcome.effect)) errors.push('effect 必须是对象');
     else if (typeof outcome.effect.type !== 'string') errors.push('effect.type 必须是字符串');
+    else {
+      if (outcome.effect.ids != null && !Array.isArray(outcome.effect.ids)) errors.push('effect.ids 必须是数组');
+      if (outcome.effect.renamedIds != null && !Array.isArray(outcome.effect.renamedIds)) errors.push('effect.renamedIds 必须是数组');
+    }
   }
   if (outcome.card != null) {
     if (typeof outcome.card !== 'object' || Array.isArray(outcome.card) || typeof outcome.card.bookId !== 'string') {

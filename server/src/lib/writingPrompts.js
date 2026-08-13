@@ -17,3 +17,24 @@ export function chatContextRef(chatContext, limit = 2000) {
 export function storySummaryRef(storySummary) {
   return `全书概况：${storySummary || '暂无'}`;
 }
+
+// 创作新章节的章节上下文（有界）：概况 + 前后章摘要 + 关系网
+export function creationContextRef(book, prev, next) {
+  return [
+    storySummaryRef(book.storySummary),
+    prev ? `上一章摘要：${prev.summary || `${prev.title}\n${prev.content.slice(0, 500)}`}` : '',
+    next ? `下一章摘要：${next.summary || `${next.title}\n${next.content.slice(0, 500)}`}` : '',
+    `现有关系网：${JSON.stringify(book.relations || { nodes: [], edges: [] })}`
+  ].filter(Boolean).join('\n');
+}
+
+// 改写的附近章节语境（有界）：前后章摘要 + 结尾/开头节选 + 关系网
+export function rewriteContextRef(book, prev, next) {
+  return [
+    `上一章摘要：${prev?.summary || '无'}`,
+    prev ? `上一章结尾（节选）：${prev.content.slice(-400)}` : '',
+    `下一章摘要：${next?.summary || '无'}`,
+    next ? `下一章开头（节选）：${next.content.slice(0, 400)}` : '',
+    `现有关系网：${JSON.stringify(book.relations || { nodes: [], edges: [] })}`
+  ].filter(Boolean).join('\n');
+}

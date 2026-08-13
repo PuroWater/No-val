@@ -4,7 +4,8 @@ import { fixChapterPrefixes, replaceTextInBook, isLastChapter } from '../src/lib
 import {
   isConfirmation,
   mergeBookState,
-  buildTodayHistory
+  buildTodayHistory,
+  syncChangeLogFromEffect
 } from '../src/services/chatService.js';
 
 test('isConfirmation recognizes confirmation phrases', () => {
@@ -164,4 +165,20 @@ test('mergeBookState syncs pendingAction (interrupt state)', () => {
   const mutated = { chapters: [], chat: [], pendingAction: null };
   mergeBookState(latest, mutated, new Set(), new Set());
   assert.equal(latest.pendingAction, null);
+});
+
+test('syncChangeLogFromEffect unifies bookkeeping from tool effect', () => {
+  const changeLog = { chapterIds: new Set(), deletedChapterIds: new Set() };
+  const book = { chapters: [{ id: 'c1', title: '第1章' }, { id: 'c2', title: '第2章' }] };
+  // 新建：ids 进 chapterIds，定位到新章
+  book.chapters.push({ id: 'c3', title: '第3章' });
+  syncChangeLogFromEffect(changeLog, book, { ok: true, data: 'x', effect: { type: 'chapters', delta: 1, ids: ['c3'] } });
+  assert.equal(changeLog.chapterIds.has('c3'), true);
+  assert.equal(changeLog.lastEditedIndex, 2);
+  // 删除：ids 进 deletedChapterIds，renamedIds 进 chapterIds，定位重排后的章
+  book.chapters.splice(0, 1);
+  syncChangeLogFromEffect(changeLog, book, { ok: true, data: 'x', effect: { type: 'chapters', delta: -1, ids: ['c1'], renamedIds: ['c2'] } });
+  assert.equal(changeLog.deletedChapterIds.has('c1'), true);
+  assert.equal(changeLog.chapterIds.has('c2'), true);
+  assert.equal(changeLog.lastEditedIndex, 0);
 });

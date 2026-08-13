@@ -9,7 +9,7 @@ export const READY_TOOL_GROUPS = [
   { name: 'navigate', summary: '打开并列查看/详情，展示书籍卡片', tools: ['open_book_widget'] }
 ];
 
-export function defineReadyTools(book, settings, signal, changeLog) {
+export function defineReadyTools(book, settings, signal) {
   return [
     {
       group: 'edit',
@@ -24,14 +24,14 @@ export function defineReadyTools(book, settings, signal, changeLog) {
       },
       handler: async ({ format }) => {
         const fmt = format === 'chinese' ? 'chinese' : 'arabic';
-        const count = fixChapterPrefixes(book, fmt, changeLog.chapterIds);
-        if (count > 0) changeLog.lastEditedIndex = book.chapters.length - 1;
+        const ids = new Set();
+        const count = fixChapterPrefixes(book, fmt, ids);
         return {
           ok: true,
           data: count > 0
             ? `已统一处理 ${count} 个章节标题前缀（${fmt === 'chinese' ? '汉字' : '阿拉伯数字'}标号）。`
             : '章节标题前缀已是目标格式，无需修改。',
-          effect: { type: 'text', count, ids: [...changeLog.chapterIds] }
+          effect: { type: 'text', count, ids: [...ids] }
         };
       }
     },
@@ -48,14 +48,14 @@ export function defineReadyTools(book, settings, signal, changeLog) {
         required: ['from']
       },
       handler: async ({ from, to }) => {
-        const count = replaceTextInBook(book, from, to, changeLog.chapterIds);
-        if (count > 0) changeLog.lastEditedIndex = book.chapters.length - 1;
+        const ids = new Set();
+        const count = replaceTextInBook(book, from, to, ids);
         return {
           ok: true,
           data: count > 0
             ? `已批量替换 ${count} 处（${from} → ${to ?? ''}）。`
             : `未找到可替换的“${from}”。`,
-          effect: { type: 'text', count, ids: [...changeLog.chapterIds] }
+          effect: { type: 'text', count, ids: [...ids] }
         };
       }
     },
@@ -72,13 +72,11 @@ export function defineReadyTools(book, settings, signal, changeLog) {
       },
       handler: async ({ count }) => {
         const deleted = book.chapters.slice(-count);
-        deleted.forEach((chapter) => changeLog.deletedChapterIds.add(chapter.id));
         await deleteChapters(book, { count });
-        changeLog.lastEditedIndex = book.chapters.length - 1;
         return {
           ok: true,
           data: `已删除末尾 ${count} 章（不可恢复），当前共 ${book.chapters.length} 章。删除造成的概况残留会在后续改写任意章时自动修复，也可调用 refresh_chapter_meta 立即刷新。`,
-          effect: { type: 'chapters', delta: -count, ids: deleted.map((chapter) => chapter.id) }
+          effect: { type: 'chapters', delta: -count, ids: deleted.map((chapter) => chapter.id), renamedIds: [] }
         };
       }
     },
@@ -107,14 +105,11 @@ export function defineReadyTools(book, settings, signal, changeLog) {
           const index = chapter - 1;
           const removedTitle = book.chapters[index].title;
           const removedId = book.chapters[index].id;
-          changeLog.deletedChapterIds.add(removedId);
           const { affectedIds = [] } = await deleteChapters(book, { index });
-          affectedIds.forEach((id) => changeLog.chapterIds.add(id));
-          changeLog.lastEditedIndex = Math.min(index, book.chapters.length - 1);
           return {
             ok: true,
             data: `已删除第 ${index + 1} 章《${removedTitle}》（不可恢复）。删除造成的剧情断层与概况残留会在后续改写任意章时自动修复，也可调用 refresh_chapter_meta 立即刷新。`,
-            effect: { type: 'chapters', delta: -1, ids: [removedId] }
+            effect: { type: 'chapters', delta: -1, ids: [removedId], renamedIds: affectedIds }
           };
         }
         if (mode === 'new') {
@@ -127,9 +122,6 @@ export function defineReadyTools(book, settings, signal, changeLog) {
           }
           const pos = position === 'before' ? 'before' : 'after';
           const { chapter: created, affectedIds = [] } = await createChapter(book, { anchorIndex, title, instruction, settings, signal, position: pos, chatContext });
-          changeLog.chapterIds.add(created.id);
-          affectedIds.forEach((id) => changeLog.chapterIds.add(id));
-          changeLog.lastEditedIndex = book.chapters.indexOf(created);
           return {
             ok: true,
             data: `已新建第 ${book.chapters.indexOf(created) + 1} 章《${created.title}》，可打开并列窗口查看。`,
@@ -142,8 +134,6 @@ export function defineReadyTools(book, settings, signal, changeLog) {
         const index = chapter - 1;
         const rewrittenId = book.chapters[index].id;
         await rewriteChapter(book, index, String(instruction || '').trim() || '请按用户意图润色重写本章', { ...settings, signal }, chatContext);
-        changeLog.chapterIds.add(rewrittenId);
-        changeLog.lastEditedIndex = index;
         return {
           ok: true,
           data: `已修改第 ${index + 1} 章《${book.chapters[index]?.title || '本章'}》。`,
@@ -215,19 +205,19 @@ export function defineReadyTools(book, settings, signal, changeLog) {
           ? context.map(String).map((item) => item.trim()).filter(Boolean).slice(0, 2)
           : [];
         const now = new Date().toISOString();
+        const affectedIds = [];
         for (let i = s - 1; i <= e - 1; i += 1) {
           const chapter = book.chapters[i];
           if (!chapter) continue;
           (chapter.events || []).forEach((item) => { item.context = [...ctx]; });
           chapter.updatedAt = now;
-          changeLog.chapterIds.add(chapter.id);
+          affectedIds.push(chapter.id);
         }
-        changeLog.lastEditedIndex = e - 1;
         book.updatedAt = now;
         return {
           ok: true,
           data: `已将第 ${s}-${e} 章的事件背景统一为${ctx.length > 0 ? `：${ctx.join('/')}` : '空（清除背景）'}，发展线已同步。`,
-          effect: { type: 'meta', ids: [...changeLog.chapterIds] }
+          effect: { type: 'meta', ids: affectedIds }
         };
       }
     },
@@ -246,9 +236,6 @@ export function defineReadyTools(book, settings, signal, changeLog) {
         }
         const index = chapter - 1;
         await maintainChapterMeta(book, { chapterIndex: index, mode: 'modify', signal });
-        // 必须记入 changeLog，否则 mergeBookState 写回时该章 summary/events/updatedAt 会被丢弃
-        changeLog.chapterIds.add(book.chapters[index].id);
-        changeLog.lastEditedIndex = index;
         return {
           ok: true,
           data: `已重新维护第 ${index + 1} 章《${book.chapters[index].title}》的摘要、事件与全书概况。`,

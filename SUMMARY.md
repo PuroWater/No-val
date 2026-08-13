@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-- 当前版本：0.8.14（0.8.13 系列 + 0.8.14 P1 结构拆分）
+- 当前版本：0.8.15（0.8.14 系列 + 0.8.15 P2 效果统一记账 + P3 抽公共）
 - 当前分支：Develop
 - 技术栈：React 18 + Vite 5，Express 4，Node.js 18+，JSON 本地持久化
 - 大模型：DeepSeek，模型默认 `deepseek-v4-flash`
@@ -1447,3 +1447,13 @@ npm start
 - 版本号升级到 0.8.14（根/server/client 同步）；本地提交未推送（按协作规矩）。
 
 完成结果：路由、执行器、状态机、校验、注册表各居其位，与职责分离理念一致；后续新增模块按同构拆分。
+
+### 2026-08-13 v0.8.15 P2 效果统一记账 + P3 抽公共
+
+更新内容：
+- P2：工具 handler 只返回 `effect`（删除场景以 `renamedIds` 标记重排章），编排层 `syncChangeLogFromEffect` 从 effect 统一同步 changeLog（chapterIds/deletedChapterIds/lastEditedIndex），消除双轨记账；
+- P3：`writingPrompts` 新增 `creationContextRef` / `rewriteContextRef` 统一章节上下文拼装；新增 `lib/settingsDefaults.js` 单一默认值来源（routes/settings 与 settingsService 共用）；`validateOutcome` 校验 effect.ids/renamedIds；
+- 单元测试 62/62（新增 syncChangeLogFromEffect 用例）、前端构建通过、golden eval 3/3 全过；
+- 版本号升级到 0.8.15（根/server/client 同步）；本地提交未推送（按协作规矩）。
+
+完成结果：“工具改了什么”只有 effect 一个真相，写回/状态机/卡片定位同源推导；章节上下文与设置默认值单一来源，后续维护只改一处。

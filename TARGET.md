@@ -1731,3 +1731,18 @@ Novel Agent/
 完成内容：
 - 5 个新文件落地、toolkit.js 删除、引用全部更新（chatService/tests），行为零变化；
 - 单元测试 61/61、前端构建通过、golden eval 3/3 全过；版本号统一 0.8.14（根/server/client）；本地提交未推送（按协作规矩）。
+
+### 2026-08-13 v0.8.15 P2 效果统一记账 + P3 抽公共
+
+待更新说明：
+- 工具“改了什么”双轨记账（handler 直改 changeLog + 返回 effect），易漂移；
+- 章节上下文拼装与设置默认值多处重复。
+
+待更新功能：
+- P2：handler 只返回 effect（删除场景用 `renamedIds` 标记重排章）；编排层 `syncChangeLogFromEffect` 从 effect 统一同步 changeLog（单一真相）；
+- P3：`writingPrompts` 新增 `creationContextRef`/`rewriteContextRef` 统一章节上下文；新增 `lib/settingsDefaults.js` 单一默认值来源（routes/settings 与 settingsService 共用）；`validateOutcome` 校验 effect.ids/renamedIds。
+
+完成内容：
+- tools.js 移除全部 changeLog 直改（effect 携带 ids/renamedIds）；chatService.onStep 统一同步 changeLog；
+- 章节上下文（create/rewrite）与设置默认值单一来源；effect 数组字段校验；
+- 单元测试 62/62（新增 syncChangeLogFromEffect 用例）、前端构建通过、golden eval 3/3 全过；版本号统一 0.8.15（根/server/client）；本地提交未推送（按协作规矩）。

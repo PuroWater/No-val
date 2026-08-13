@@ -2,7 +2,7 @@ import { readBookById, saveBook } from '../lib/store.js';
 import { nextChapterId } from '../lib/bookUtils.js';
 import { clampOutput, ensureChapterTitle, renumberChapterPrefixes, trimChapterToLimit } from '../lib/chapterUtils.js';
 import { callModel, maxTokensForWords } from '../lib/modelCall.js';
-import { writingSystem, PARAGRAPH_RULE, chatContextRef, storySummaryRef } from '../lib/writingPrompts.js';
+import { writingSystem, PARAGRAPH_RULE, chatContextRef, storySummaryRef, creationContextRef, rewriteContextRef } from '../lib/writingPrompts.js';
 import { maintainChapterMeta } from './maintenanceService.js';
 
 export const MAX_BATCH_DELETE = 50;
@@ -117,12 +117,7 @@ export async function createChapter(book, { anchorIndex, title, instruction, set
   const ratioText = targetWords > 0
     ? `全书目标约 ${targetWords} 字，当前已写约 ${writtenWords} 字（约 ${Math.round((writtenWords / targetWords) * 100)}%）。${writtenWords >= targetWords ? '全书已达到目标字数：除非用户明确要求继续，本章应收束故事、作为完结收尾，不要再展开新主线。' : '请按剩余篇幅推进剧情：未接近全书尾声时不得提前大结局，也不要拖沓。'}`
     : '请稳步推进剧情，不要在单章内仓促完结大事件。';
-  const context = [
-    `全书概况：${book.storySummary || '暂无'}`,
-    prev ? `上一章摘要：${prev.summary || `${prev.title}\n${prev.content.slice(0, 500)}`}` : '',
-    next ? `下一章摘要：${next.summary || `${next.title}\n${next.content.slice(0, 500)}`}` : '',
-    `现有关系网：${JSON.stringify(book.relations || { nodes: [], edges: [] })}`
-  ].filter(Boolean).join('\n');
+  const context = creationContextRef(book, prev, next);
   const result = await callModel(
     () => ({
       system: writingSystem('创作'),
@@ -174,13 +169,7 @@ export async function rewriteChapter(book, chapterIndex, instruction, settings =
   const chapterWords = clampOutput(settings.chapterWords, 1000, 10000, 2000);
   const prev = chapterIndex > 0 ? book.chapters[chapterIndex - 1] : null;
   const next = chapterIndex < book.chapters.length - 1 ? book.chapters[chapterIndex + 1] : null;
-  const context = [
-    `上一章摘要：${prev?.summary || '无'}`,
-    prev ? `上一章结尾（节选）：${prev.content.slice(-400)}` : '',
-    `下一章摘要：${next?.summary || '无'}`,
-    next ? `下一章开头（节选）：${next.content.slice(0, 400)}` : '',
-    `现有关系网：${JSON.stringify(book.relations || { nodes: [], edges: [] })}`
-  ].filter(Boolean).join('\n');
+  const context = rewriteContextRef(book, prev, next);
   const result = await callModel(
     () => ({
       system: writingSystem('改写'),

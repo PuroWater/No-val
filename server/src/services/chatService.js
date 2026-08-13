@@ -39,6 +39,34 @@ export function hasPending(book) {
   return book.chat.some((message) => message.kind === 'processing');
 }
 
+// P2：工具效果统一记账——handler 只返回 effect（声明改了什么），
+// 写回所需的 changeLog（chapterIds/deletedChapterIds/lastEditedIndex）由编排层从 effect 同步，单一真相。
+export function syncChangeLogFromEffect(changeLog, book, outcome) {
+  const effect = outcome?.effect;
+  if (!effect || typeof effect !== 'object') return changeLog;
+  const ids = Array.isArray(effect.ids) ? effect.ids : [];
+  const renamedIds = Array.isArray(effect.renamedIds) ? effect.renamedIds : [];
+  if (effect.type === 'chapters' && Number(effect.delta) < 0) {
+    ids.forEach((id) => changeLog.deletedChapterIds.add(id));
+  } else {
+    ids.forEach((id) => changeLog.chapterIds.add(id));
+  }
+  renamedIds.forEach((id) => changeLog.chapterIds.add(id));
+  // 最后变更章定位（卡片默认定位用）：删除场景用重排后仍存在的章，创建/改写用变更章
+  const candidates = [...renamedIds, ...ids];
+  let lastIndex = -1;
+  for (const id of candidates) {
+    const idx = book.chapters.findIndex((chapter) => chapter.id === id);
+    if (idx !== -1) lastIndex = idx;
+  }
+  if (lastIndex !== -1) {
+    changeLog.lastEditedIndex = lastIndex;
+  } else if (Number(effect.delta) < 0) {
+    changeLog.lastEditedIndex = Math.max(0, book.chapters.length - 1);
+  }
+  return changeLog;
+}
+
 // 最终回复的渲染附加信息：卡片未指定 chapter 时，用本轮最后一个变更章补齐定位。
 // 属于协议层默认（open_book_widget 只发信号），模型显式传 chapter 时以其为准。
 function finalOutcomeExtra(book, outcome, changeLog) {
@@ -347,7 +375,7 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
     ? { ...settings, chapterWords: safeOutput.chapterWords }
     : settings;
   const allowed = new Set(plan.groups);
-  const tools = defineReadyTools(book, effectiveSettings, signal, changeLog).filter((tool) => allowed.has(tool.group));
+  const tools = defineReadyTools(book, effectiveSettings, signal).filter((tool) => allowed.has(tool.group));
   const counted = plan.termination.kind === 'counted';
   const totalChapters = counted ? plan.termination.target : 0;
   job.progress.total = totalChapters;
@@ -368,6 +396,7 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
     signal,
     plan,
     onStep: (toolName, outcome, args, state) => {
+      syncChangeLogFromEffect(changeLog, book, outcome);
       if (counted) {
         job.progress = {
           total: totalChapters,

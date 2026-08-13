@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { readJson, writeJson, SETTINGS_FILE } from '../lib/store.js';
 import { requireAuth } from '../middleware/auth.js';
+import { defaultSettings } from '../lib/settingsDefaults.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -11,18 +12,7 @@ const CHAPTER_RANGE = [1, 2, 3, 4, 5];
 
 router.get('/', (req, res) => {
   const settings = readJson(SETTINGS_FILE, []);
-  const current = settings.find((item) => item.userId === req.user.id) || {
-    userId: req.user.id,
-    theme: 'paper',
-    fontSize: 'medium',
-    chaptersPerOutput: 3,
-    chapterWords: 2000,
-    enterToSend: true,
-    thinkingForWriting: false,
-    developmentLineOrientation: 'vertical',
-    reviewAfterWrite: false,
-    confirmBeforeWrite: false
-  };
+  const current = settings.find((item) => item.userId === req.user.id) || defaultSettings(req.user.id);
   res.json({ settings: current });
 });
 
