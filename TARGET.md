@@ -1964,6 +1964,19 @@ Novel Agent/
 完成内容：
 - `agentRules.js` 新增规则并注入执行器 system；`handleReadyMessage` 写意图完成强制 `kind=book` + `finalOutcomeExtra` 定位；单元测试 69/69；版本号统一 0.8.31（根/server/client）；本地提交未推送（按协作规矩）。
 
+### 2026-08-14 v0.8.32 标题修复路由 + 改写标题前缀规范化
+
+待更新说明：
+- 用户反馈第15章标题缺“第15章”前缀，但“修标题”被路由判成 meta/read，任务单未暴露写工具，模型只能回“没有修改标题的工具”；
+- 根因：改写章节时 `rewriteChapter` 直接用模型返回的 title 覆盖，未做前缀规范化（`createChapter` 有 `ensureChapterTitle`，改写没有）——第15章前缀在之前某次改写下被覆盖丢失。
+
+待更新功能：
+- 路由：用户指出章节标题缺失前缀/编号格式不对并要求修复 → `batch_edit`（batch_fix_chapter_prefixes），不是 read/meta；
+- `rewriteChapter` 标题按当前位置 `ensureChapterTitle` 规范化，防止改写后丢“第N章”前缀。
+
+完成内容：
+- router.js `batch_edit` 描述覆盖“修复标题格式”；bookService `rewriteChapter` 标题规范化；单元测试 69/69；版本号统一 0.8.32（根/server/client）；本地提交未推送（按协作规矩）。
+
 ### 后续建议方向（交接快照 2026-08-13）
 
 - 0.8.7-0.8.19 待办已全部完成（幂等 call.id/跨消息、golden eval、写前确认、多 provider、乐观锁、规模信任守卫、背景/场景语义修正、P1 拆分、P2 统一记账、P3 抽公共、场景拼合模板、工具白名单、卡片打开语义、发送白屏修复）。

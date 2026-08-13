@@ -80,7 +80,7 @@ export async function runRouter({
     '- create_insert：仅当用户明确要求在指定章节前/后插入新章时调用（target.chapter + target.position）',
     '- rewrite：仅当用户明确要求修改指定章的正文内容（改结尾/开头/段落、润色、重写）时调用（target.chapter）',
     '- delete：仅当用户明确要求删除指定章时调用（target.chapter）',
-    '- batch_edit：仅当用户明确要求批量操作（全书替换文本/统一标题前缀/删除末尾章节）时调用',
+    '- batch_edit：仅当用户明确要求批量操作（全书替换文本/统一标题前缀/修复标题格式/删除末尾章节）时调用；用户指出章节标题缺失前缀、编号格式不对并要求修复时属于本意图（不是 read 或 meta）',
     '- meta：仅当用户明确要求重新维护/刷新章节摘要、事件、概况时调用（target.chapter）',
     '- outline：仅当用户明确要求修改整书简介时调用',
     '- target_words：仅当用户明确要求调整全书目标字数时调用',

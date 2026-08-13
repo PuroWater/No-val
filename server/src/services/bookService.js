@@ -255,7 +255,8 @@ export async function rewriteChapter(book, chapterIndex, instruction, settings =
     signal: settings.signal,
     role: '改写'
   });
-  target.title = String(result.title || target.title).trim();
+  // 标题按当前位置规范化（与 createChapter 一致），防止模型返回无“第N章”前缀的标题覆盖后丢失格式
+  target.title = ensureChapterTitle(chapterIndex, String(result.title || target.title).trim());
   target.content = trimChapterToLimit(content, chapterWords);
   await ensureChapterLength(book, chapterIndex, chapterWords, settings, settings.signal, chatContext);
   if (settings.reviewAfterWrite) {
