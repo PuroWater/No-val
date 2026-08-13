@@ -4,19 +4,11 @@ export default function ChapterEditor({ chapter, onSave, onCommit, onDirtyChange
   const [title, setTitle] = useState(chapter.title);
   const [content, setContent] = useState(chapter.content);
   const [dirty, setDirty] = useState(false);
-  const [savedToast, setSavedToast] = useState(false);
   const first = useRef(true);
-  const savedTimerRef = useRef(null);
   const editedRef = useRef(false);
   const committedRef = useRef(false);
   const dirtyRef = useRef(false);
   const latestRef = useRef({ title: chapter.title, content: chapter.content });
-
-  function showSavedToast() {
-    setSavedToast(true);
-    clearTimeout(savedTimerRef.current);
-    savedTimerRef.current = setTimeout(() => setSavedToast(false), 1000);
-  }
 
   useEffect(() => {
     if (first.current) {
@@ -28,7 +20,6 @@ export default function ChapterEditor({ chapter, onSave, onCommit, onDirtyChange
         await onSave({ title, content });
         dirtyRef.current = false;
         setDirty(false);
-        showSavedToast();
       } catch {
         // 保存失败保持 dirty，下次失焦或改动时重试
       }
@@ -87,11 +78,6 @@ export default function ChapterEditor({ chapter, onSave, onCommit, onDirtyChange
         onBlur={handleBlur}
         placeholder={content ? '正文内容' : '还没有内容，可键入章节构思'}
       />
-      {savedToast && (
-        <div className="toast-layer">
-          <div className="saved-toast">已保存</div>
-        </div>
-      )}
     </div>
   );
 }
