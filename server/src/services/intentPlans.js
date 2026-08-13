@@ -42,7 +42,7 @@ export function buildPlan(intent, { output = null, target = null, settings = {} 
       return {
         tools: ['read_book', 'open_book_widget'],
         termination: { kind: 'none' },
-        text: '用 read_book 读取用户需要的书籍信息或章节内容，再根据真实数据回答；不要凭对话历史或猜测作答。'
+        text: '用 read_book 读取用户需要的书籍信息或章节内容，再根据真实数据回答。'
       };
     case 'create_append': {
       const count = clampChapters(output?.chapters, settings.chaptersPerOutput || 1);

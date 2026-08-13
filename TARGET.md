@@ -1861,6 +1861,20 @@ Novel Agent/
 完成内容：
 - router.js 提示词收紧（剧情相关必须 read_book 实证、禁止历史对话判断剧情）+ chatService 路由 system 约束 + `[router]` 决策日志；单元测试 69/69；版本号统一 0.8.23（根/server/client）；本地提交未推送（按协作规矩）。
 
+### 2026-08-14 v0.8.24 行为约束单一来源（agentRules）
+
+待更新说明：
+- “剧情必须 read_book 实证、禁止历史对话判断”约束此前手写在 4 处（路由/执行器/任务单/工具描述），表述不一，且执行器 system 的“写操作直接执行不反问”约束曾丢失（只在 rewrite 任务单残留）——约束分散导致漏层即失效；
+- 维护 prompt 事件规则一段超长、read_book 描述含过时表述（“可读除全部章节全文…”已与单章全文语义冲突）。
+
+待更新功能：
+- 新增 `lib/agentRules.js` 单一来源：`PLOT_FACT_RULE`（剧情必须 read_book 实证、禁止历史对话/旧摘要/自身判断下结论）、`WRITE_EXECUTION_RULE`（写操作直接执行不反问）、`CHAPTER_NUM_RULE`（编辑参数阿拉伯数字）；
+- router 判断总规则、chatService 路由 system 与执行器 system、tools `read_book` 描述统一引用公共规则；补回执行器 system 的写操作执行约束；read 任务单去重（公共规则已覆盖）；
+- `read_book` 描述清理过时表述；维护 prompt 事件规则保守精简（保留全部语义要点）。
+
+完成内容：
+- `lib/agentRules.js` 落地并接入 router/chatService/intentPlans/tools；执行器 system 补回写操作执行约束；read_book 描述与维护 prompt 精简；单元测试 69/69；版本号统一 0.8.24（根/server/client）；本地提交未推送（按协作规矩）。
+
 ### 后续建议方向（交接快照 2026-08-13）
 
 - 0.8.7-0.8.19 待办已全部完成（幂等 call.id/跨消息、golden eval、写前确认、多 provider、乐观锁、规模信任守卫、背景/场景语义修正、P1 拆分、P2 统一记账、P3 抽公共、场景拼合模板、工具白名单、卡片打开语义、发送白屏修复）。

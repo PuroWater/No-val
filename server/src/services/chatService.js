@@ -6,6 +6,7 @@ import { runTask } from './executor.js';
 import { buildPlan } from './intentPlans.js';
 import { defineReadyTools } from './tools.js';
 import { defineDraftTools } from './draftTools.js';
+import { PLOT_FACT_RULE, WRITE_EXECUTION_RULE, CHAPTER_NUM_RULE } from '../lib/agentRules.js';
 
 const activeJobs = new Map();
 
@@ -357,7 +358,7 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
       signal,
       system: [
         '你是小说创作平台的意图路由 Agent。',
-        '只负责判断用户意图，不要判断章节内容是否正确或连贯：剧情对错必须由执行阶段 read_book 实证，路由阶段看到的概况/摘要仅供参考定位，不得据此直接回复用户或下结论。',
+        PLOT_FACT_RULE,
         'read_book 可读取图书最新数据（书名、简介、元数据、章节目录、章节内容、概况、发展线等）；用户询问任何书籍信息时意图为 read。',
         `全书概况：${book.storySummary || '暂无'}`,
         `最近章节摘要：${last?.summary || last?.title || '暂无'}`
@@ -393,8 +394,9 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
       '你是小说协作 Agent，按任务单执行，不要自行扩展或缩减任务。',
       `任务单：${plan.text}`,
       '只能使用任务单允许的工具；完成条件由系统强制，达到后立即用自己的话总结回复用户（不要复述工具返回文本，不要重复调用已完成步骤的工具）。',
-      '回答具体章节的内容、摘要或细节问题前，必须使用 read_book 读取最新真实数据，以工具返回为准；不要凭记忆猜测，也不要沿用或复述对话历史中的旧结论/旧摘要（包括此前模型的分析），数据冲突时一律以 read_book 最新返回为准。',
-      '编辑类工具参数一律传阿拉伯数字序号（从 1 开始）；仅当用户以标题指代且不确定序号时才先 read_book(field=chapters) 查目录。',
+      PLOT_FACT_RULE,
+      WRITE_EXECUTION_RULE,
+      CHAPTER_NUM_RULE,
       `全书摘要：${book.storySummary || '暂无'}`,
       `最近章节摘要：${last?.summary || last?.title || '暂无'}`
     ].join('\n'),
