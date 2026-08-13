@@ -202,7 +202,7 @@ export default function WorkspacePage() {
           {selectedBookId && selectedBookId !== NEW_SESSION && (
             <div
               className={sideBookId ? 'workspace-split' : 'workspace-chat'}
-              style={sideBookId ? { '--side-width': `${leftWidth}px` } : undefined}
+              style={sideBookId ? { gridTemplateColumns: `${leftWidth}px 6px minmax(0, 1fr)` } : undefined}
             >
               {sideBookId ? (
                 <>

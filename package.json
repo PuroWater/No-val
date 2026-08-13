@@ -1,6 +1,6 @@
 {
   "name": "novel-agent",
-  "version": "0.8.36",
+  "version": "0.8.37",
   "private": true,
   "scripts": {
     "start": "npm --prefix server start",
