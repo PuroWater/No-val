@@ -147,7 +147,7 @@ export default function TimelineView({
                 onToggleScene(scene.label);
               }}
               onMouseEnter={(event) => showHover(event, {
-                title: `${scene.label || '未细分'}：${rangeText(scene.chapterStart ?? group.chapterStart, scene.chapterEnd ?? group.chapterEnd)}`
+                title: `${scene.label || '未细分'}：${rangeText(scene.chapterStart ?? expandedGroupData.chapterStart, scene.chapterEnd ?? expandedGroupData.chapterEnd)}`
               })}
               onMouseMove={(event) => setHover((prev) => (prev ? { ...prev, x: event.clientX, y: event.clientY } : prev))}
               onMouseLeave={() => setHover(null)}
