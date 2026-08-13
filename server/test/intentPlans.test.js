@@ -8,6 +8,8 @@ test('buildPlan rewrite whitelist excludes background editing tools', () => {
   assert.ok(!plan.tools.includes('update_events_context'));
   assert.ok(!plan.tools.includes('batch_replace_text'));
   assert.deepEqual(plan.tools, ['edit_book', 'read_book', 'open_book_widget']);
+  assert.ok(plan.text.includes('instruction'));
+  assert.ok(plan.text.includes('不要只传“请改写”这类空泛指令'));
 });
 
 test('buildPlan exposes only intent-relevant tools', () => {

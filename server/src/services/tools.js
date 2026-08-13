@@ -14,7 +14,7 @@ export function defineReadyTools(book, settings, signal) {
     {
       group: 'edit',
       name: 'batch_fix_chapter_prefixes',
-      description: '批量格式化/修复全部章节标题的“第X章”前缀与序号，一次性处理，无需逐章调用。format 为 arabic（阿拉伯数字，如 第1章）或 chinese（汉字，如 第一章），省略时默认 arabic；不规范或缺失的前缀会被后端正则统一规范。',
+      description: '仅当用户完全明确要求统一/修复章节标题前缀时才调用。批量格式化/修复全部章节标题的“第X章”前缀与序号，一次性处理，无需逐章调用。format 为 arabic（阿拉伯数字，如 第1章）或 chinese（汉字，如 第一章），省略时默认 arabic；不规范或缺失的前缀会被后端正则统一规范。',
       parameters: {
         type: 'object',
         properties: {
@@ -38,7 +38,7 @@ export function defineReadyTools(book, settings, signal) {
     {
       group: 'edit',
       name: 'batch_replace_text',
-      description: '批量替换全书章节文本中的词句（如人物名、地名），一次处理全部章节。from 为被替换的原文，to 为替换后的文本（可为空字符串表示删除）。',
+      description: '仅当用户完全明确要求批量替换章节文本（如人物名、地名）时才调用。批量替换全书章节文本中的词句，一次处理全部章节。from 为被替换的原文，to 为替换后的文本（可为空字符串表示删除）。',
       parameters: {
         type: 'object',
         properties: {
@@ -62,7 +62,7 @@ export function defineReadyTools(book, settings, signal) {
     {
       group: 'edit',
       name: 'batch_delete_last_chapters',
-      description: '批量删除末尾章节（不可恢复，不会进入回收站）：从最后一章开始向前删除 count 章，至少保留 1 章。删除不维护书中已断层的内容，概况残留需在后续改写任意章时自动清除，或调用 refresh_chapter_meta 立即刷新。请确认用户明确要求删除后再调用。',
+      description: '仅当用户完全明确要求删除末尾章节时才调用（删除不可恢复）。批量删除末尾章节（不会进入回收站）：从最后一章开始向前删除 count 章，至少保留 1 章。删除不维护书中已断层的内容，概况残留需在后续改写任意章时自动清除，或调用 refresh_chapter_meta 立即刷新。',
       parameters: {
         type: 'object',
         properties: {
@@ -83,7 +83,7 @@ export function defineReadyTools(book, settings, signal) {
     {
       group: 'edit',
       name: 'edit_book',
-      description: '新建/改写/删除章节（正文由后端创作调用生成，不经过工具参数）。mode 为 new（新建：缺省追加末尾，chapter 指定时插入该章之后）/ modify（按 instruction 改写指定章）/ delete（删除指定章，不可恢复、不进入回收站；删除会造成剧情断层，概况残留不会立即清理，需在改写后自动修复，或调用 refresh_chapter_meta 立即刷新，请谨慎使用）。instruction 为写作方向或修改意见；title 仅 new 时可选预置标题。',
+      description: '仅当路由已确认用户明确要求新建/改写/删除章节时调用，不得自行猜测或越权使用。新建/改写/删除章节（正文由后端创作调用生成，不经过工具参数）。mode 为 new（新建：缺省追加末尾，chapter 指定时插入该章之后）/ modify（按 instruction 改写指定章，改写前先读目标章全文，并把读章发现的衔接问题/保留元素写进 instruction）/ delete（删除指定章，不可恢复、不进入回收站；删除会造成剧情断层，概况残留不会立即清理，需在改写后自动修复，或调用 refresh_chapter_meta 立即刷新，请谨慎使用）。instruction 为写作方向（new）或具体改写指令（modify：须含用户核心要求与关键衔接/保留元素，避免空泛）；title 仅 new 时可选预置标题。',
       parameters: {
         type: 'object',
         properties: {
@@ -91,7 +91,7 @@ export function defineReadyTools(book, settings, signal) {
           chapter: { type: 'integer', minimum: 1, description: '章节序号（从 1 开始）。用户以标题或“第X章”指代时，请先调用 read_book(field=chapters) 获取目录再转换为数字序号；new 模式为插入锚点序号（缺省追加末尾）' },
           position: { type: 'string', enum: ['before', 'after'], description: 'new 模式插入位置：before=锚点章之前 / after=锚点章之后（默认 after）' },
           title: { type: 'string', description: '新章标题（仅 mode=new 可选，缺省由创作调用生成）' },
-          instruction: { type: 'string', description: '写作方向（new）或修改意见（modify）' }
+          instruction: { type: 'string', description: '写作方向（new）或具体改写指令（modify：须含用户核心要求与读章发现的关键衔接/保留元素，供写正文 AI 执行，避免空泛）' }
         },
         required: []
       },
@@ -144,7 +144,7 @@ export function defineReadyTools(book, settings, signal) {
     {
       group: 'edit',
       name: 'update_outline',
-      description: '编辑整书简介（outline）。纯写字段，不主动调用、不触发任何维护。',
+      description: '仅当用户完全明确要求修改整书简介时才调用。编辑整书简介（outline）。纯写字段，不主动调用、不触发任何维护。',
       parameters: {
         type: 'object',
         properties: { value: { type: 'string', minLength: 1, description: '新的整书简介' } },
@@ -162,7 +162,7 @@ export function defineReadyTools(book, settings, signal) {
     {
       group: 'edit',
       name: 'update_book_target',
-      description: '根据用户意图调整全书目标总字数（如用户说“改成20万字”，将 value 转换为阿拉伯数字 200000）。value 为目标字数（阿拉伯数字，0 表示取消目标限制）。不会影响已有章节内容。',
+      description: '仅当用户完全明确要求调整全书目标字数时才调用。根据用户意图调整全书目标总字数（如用户说“改成20万字”，将 value 转换为阿拉伯数字 200000）。value 为目标字数（阿拉伯数字，0 表示取消目标限制）。不会影响已有章节内容。',
       parameters: {
         type: 'object',
         properties: { value: { type: 'integer', minimum: 0, description: '新的全书目标字数（阿拉伯数字，如 200000；0 表示取消目标限制）' } },
@@ -185,7 +185,7 @@ export function defineReadyTools(book, settings, signal) {
     {
       group: 'edit',
       name: 'update_events_context',
-      description: '主动修改章节事件的大背景（context）：将指定章节范围内所有事件的 context 统一替换为用户指定的背景路径，并即时同步发展线（发展线按 context 分组）。\n详细说明：用户以自然语言描述章节范围与背景（如“把第3到8章的背景改成家族”“第2-5章归入北境矿脉之行”）时，由 AI 分析并转换为数字范围与背景数组传入；start/end 为阿拉伯数字章节号（从 1 开始、end 不小于 start）；context 为背景路径数组（从大到小最多 2 层：大背景 + 场景，如 ["家族","藏书阁"]，空数组 [] 表示清除该范围背景）。本工具只修改 context 字段，不重算 summary/events/foreshadow，不调用维护 AI；修改后前端发展线自动刷新。',
+      description: '仅当用户完全明确提及需要修改发展线/章节事件的背景字段时才调用（如“把第3到8章的背景改成家族”“第2-5章归入北境矿脉之行”）；正文改写、剧情修改、场景描述调整都不属于本工具。主动修改章节事件的大背景（context）：将指定章节范围内所有事件的 context 统一替换为用户指定的背景路径，并即时同步发展线（发展线按 context 分组）。\n详细说明：用户以自然语言描述章节范围与背景时，由 AI 分析并转换为数字范围与背景数组传入；start/end 为阿拉伯数字章节号（从 1 开始、end 不小于 start）；context 为背景路径数组（从大到小最多 2 层：大背景 + 场景，如 ["家族","藏书阁"]，空数组 [] 表示清除该范围背景）。本工具只修改 context 字段，不重算 summary/events/foreshadow，不调用维护 AI；修改后前端发展线自动刷新。',
       parameters: {
         type: 'object',
         properties: {
@@ -224,7 +224,7 @@ export function defineReadyTools(book, settings, signal) {
     {
       group: 'edit',
       name: 'refresh_chapter_meta',
-      description: '唤起后端对指定章节的一次主动维护：重算该章 summary/events 并更新全书概况（含清理已删除章节残留）。不修改正文；聊天 AI 不能直接改 summary，需通过本工具维护。用户以标题或“第X章”指代章节时，先调用 read_book(field=chapters) 获取目录，chapter 传数字序号（从 1 开始）。',
+      description: '仅当用户完全明确要求重新维护/刷新章节摘要、事件或全书概况时才调用。唤起后端对指定章节的一次主动维护：重算该章 summary/events 并更新全书概况（含清理已删除章节残留）。不修改正文；聊天 AI 不能直接改 summary，需通过本工具维护。用户以标题或“第X章”指代章节时，先调用 read_book(field=chapters) 获取目录，chapter 传数字序号（从 1 开始）。',
       parameters: {
         type: 'object',
         properties: { chapter: { type: 'integer', minimum: 1, description: '章节序号（从 1 开始）' } },
@@ -246,20 +246,33 @@ export function defineReadyTools(book, settings, signal) {
     {
       group: 'read',
       name: 'read_book',
-      description: '查询书籍信息（只读，可读除“全部章节全文”与“关系网全量数据”外的所有书籍字段）。field 为 info（书名/简介/章节数/进度/目标字数/构思设定）、meta（完整书籍元数据：状态/目标字数/构思设定与概念/草稿输出规模/关系网概要/时间等）、overview（当前全书概况）、chapters（章节目录，支持 start/count 分页）、chapter（按数字序号或范围读取章节的标题/摘要/事件/正文节选）、development_line（全书分层发展线：重大事件→场景→章节；旧值 timeline 仍兼容）；用户以数字指代章节（如“第十章”“第5到15章”）时直接传序号/范围，不必先读目录；仅当用户以标题指代且不确定序号时才先读 field=chapters；回答书籍信息前必须先调用本工具读取，不要凭摘要或对话历史猜测；正文过长时用 maxChars 控制节选长度。',
+      description: '查询书籍信息（只读，可读除“全部章节全文”与“关系网全量数据”外的所有书籍字段）。field 为 info（书名/简介/章节数/进度/目标字数/构思设定）、meta（完整书籍元数据：状态/目标字数/构思设定与概念/草稿输出规模/关系网概要/时间等）、overview（当前全书概况）、chapters（章节目录，支持 start/count 分页）、chapter（读取章节：target 传单个数字序号返回该章标题/摘要/事件/正文全文；传范围（如 "5-15"）只返回各章标题/摘要/事件、不含正文、最多 10 章）、development_line（全书分层发展线：重大事件→场景→章节；旧值 timeline 仍兼容）；用户以数字指代章节（如“第十章”“第5到15章”）时直接传序号/范围，不必先读目录；仅当用户以标题指代且不确定序号时才先读 field=chapters；回答书籍信息前必须先调用本工具读取，不要凭摘要或对话历史猜测。需要多章正文细节时不要传范围（范围不含正文且最多 10 章），请分次调用本工具、每次 target 传单个章节号读取全文。',
       parameters: {
         type: 'object',
         properties: {
           field: { type: 'string', description: 'info | meta | overview | chapters | chapter | development_line' },
-          target: { type: 'string', xChapterRef: true, description: '章节序号（纯阿拉伯数字，如 "10"）或范围（纯阿拉伯数字且从小到大，如 "5-15"，不得 "15-5"），field=chapter 时必填；用户以数字指代时直接填，仅标题指代且不确定序号时才先读 chapters' },
+          target: { type: 'string', xChapterRef: true, description: 'field=chapter 时必填：单个章节序号（如 "14"，返回该章标题/摘要/事件/正文全文）或范围（如 "5-15"，只返回各章标题/摘要/事件、不含正文、最多 10 章）；用户以数字指代时直接填，仅标题指代且不确定序号时才先读 chapters' },
           start: { type: 'integer', minimum: 1, description: '目录分页起始章节号（从 1 开始，默认 1），仅 field=chapters 生效' },
-          count: { type: 'integer', minimum: 1, maximum: 500, description: '目录分页数量（默认 200、上限 500），仅 field=chapters 生效' },
-          scope: { type: 'string', description: 'summary 或 content，field=chapter 时生效' },
-          maxChars: { type: 'integer', minimum: 100, maximum: 8000, description: '正文节选最大字数，默认 3000、上限 8000（仅 field=chapter 且 scope=content 时生效）' }
+          count: { type: 'integer', minimum: 1, maximum: 500, description: '目录分页数量（默认 200、上限 500），仅 field=chapters 生效' }
         },
         required: ['field']
       },
-      handler: async ({ field, target, start, count, scope, maxChars }) => {
+      handler: async ({ field, target, start, count }) => {
+        const formatEvents = (item) => (Array.isArray(item.events) && item.events.length > 0
+          ? item.events.map((event, eventIndex) => {
+              const ctx = Array.isArray(event.context) && event.context.length > 0 ? `（${event.context.join('/')}）` : '';
+              const fw = event.foreshadow ? `[伏笔：${event.foreshadow === 'setup' ? '铺设' : '回收'}]` : '';
+              return `${eventIndex + 1}. ${event.event}${ctx}${fw}${event.time ? `（${event.time}）` : ''}`;
+            }).join('\n')
+          : '');
+        // 单章/范围章节块统一格式化：标题 → 摘要 → 事件 →（可选）正文全文
+        const chapterBlock = (item, chapterNo, { content = false } = {}) => {
+          const parts = [`第 ${chapterNo} 章《${item.title}》`, `摘要：${item.summary || '无'}`];
+          const events = formatEvents(item);
+          if (events) parts.push(`事件：\n${events}`);
+          if (content && item.content) parts.push(`正文：\n${item.content}`);
+          return parts.join('\n');
+        };
         if (field === 'overview') {
           return {
             ok: true,
@@ -346,12 +359,10 @@ export function defineReadyTools(book, settings, signal) {
             return { ok: false, retryable: true, data: `章节范围无效：本书共 ${book.chapters.length} 章，请确认范围（如 "5-15"）。` };
           }
           const chapters = book.chapters.slice(from - 1, to);
-          const lines = chapters.map((item, offset) => {
-            const ctx = Array.isArray(item.events) && item.events.length > 0
-              ? `事件：${item.events.map((e) => e.event).join('；')}`
-              : '';
-            return `第 ${from + offset} 章《${item.title}》\n摘要：${item.summary || '无'}${ctx ? `\n${ctx}` : ''}`;
-          });
+          if (chapters.length > 10) {
+            return { ok: false, retryable: true, data: `范围最多 10 章：当前 ${chapters.length} 章超出上限，请缩小范围；需要多章正文细节时请分次调用本工具，每次 target 传单个章节号读取全文。` };
+          }
+          const lines = chapters.map((item, offset) => chapterBlock(item, from + offset));
           return { ok: true, data: `第 ${from}-${to} 章：\n${lines.join('\n\n')}`, effect: null };
         }
         const num = Number(targetText);
@@ -363,22 +374,7 @@ export function defineReadyTools(book, settings, signal) {
         }
         const index = num - 1;
         const chapter = book.chapters[index];
-        const useContent = String(scope || '') === 'content';
-        const limit = Math.min(Math.max(Number(maxChars) || 3000, 100), 8000);
-        const excerpt = useContent && chapter.content ? chapter.content.slice(0, limit) : '';
-        const data = [
-          `第 ${index + 1} 章《${chapter.title}》`,
-          `摘要：${chapter.summary || '无'}`,
-          excerpt ? `正文节选（${excerpt.length} 字）：\n${excerpt}` : '',
-          Array.isArray(chapter.events) && chapter.events.length > 0
-            ? `事件：\n${chapter.events.map((item, eventIndex) => {
-                const ctx = Array.isArray(item.context) && item.context.length > 0 ? `（${item.context.join('/')}）` : '';
-                const fw = item.foreshadow ? `[伏笔：${item.foreshadow === 'setup' ? '铺设' : '回收'}]` : '';
-                return `${eventIndex + 1}. ${item.event}${ctx}${fw}${item.time ? `（${item.time}）` : ''}`;
-              }).join('\n')}`
-            : ''
-        ].filter(Boolean).join('\n');
-        return { ok: true, data, effect: null };
+        return { ok: true, data: chapterBlock(chapter, index + 1, { content: true }), effect: null };
       }
     },
     {
