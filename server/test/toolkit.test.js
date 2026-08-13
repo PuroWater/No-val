@@ -39,6 +39,17 @@ test('detectReadyToolIntent handles count-only continuation phrasings', () => {
   assert.deepEqual(detectReadyToolIntent('续写三章，每章五千字').output, { chapters: 3, chapterWords: 5000 });
 });
 
+test('detectReadyToolIntent forces navigate-only for card display requests', () => {
+  assert.deepEqual(detectReadyToolIntent('发一个卡片'), { groups: ['navigate'], output: null });
+  assert.deepEqual(detectReadyToolIntent('给我看看卡片'), { groups: ['navigate'], output: null });
+  assert.deepEqual(detectReadyToolIntent('打开这本书'), { groups: ['navigate'], output: null });
+  // 同时包含其他操作时不降级为纯 navigate，编辑能力保留
+  const mixed = detectReadyToolIntent('改写第三章后发个卡片');
+  assert.ok(mixed.groups.includes('edit'));
+  // 书籍信息查询不被误判为卡片展示
+  assert.equal(detectReadyToolIntent('查看书籍信息'), null);
+});
+
 const echoTool = {
   name: 'echo',
   description: '回显参数',
@@ -179,6 +190,37 @@ test('runToolDecision merges card signal into final reply', async () => {
   assert.equal(decision.outcome.kind, 'book');
   assert.equal(decision.outcome.content, '已续写第 3 章。');
   assert.deepEqual(decision.outcome.extra, { bookId: 'b1', chapter: 3 });
+});
+
+test('runToolDecision ends loop on repeated card tool instead of exhausting steps', async () => {
+  const cardTool = {
+    name: 'show_card',
+    description: '展示书籍卡片',
+    parameters: { type: 'object', properties: { chapter: { type: 'integer' } }, required: [] },
+    handler: async ({ chapter }) => ({
+      followUp: true,
+      data: '书籍卡片已展示，请直接回复用户。',
+      card: { bookId: 'b1', chapter: Number(chapter) || 1 }
+    })
+  };
+  const asks = [];
+  const fakeAsk = async () => {
+    asks.push(1);
+    return { tool: 'show_card', arguments: {} };
+  };
+  const decision = await runToolDecision({
+    system: 's',
+    tools: [cardTool],
+    user: '发个卡片',
+    ask: fakeAsk,
+    maxAttempts: 2,
+    maxSteps: 30
+  });
+  assert.equal(asks.length, 2);
+  assert.equal(decision.tool, '');
+  assert.equal(decision.outcome.kind, 'book');
+  assert.equal(decision.outcome.content, '已为你打开书籍卡片，定位到第 1 章。');
+  assert.deepEqual(decision.outcome.extra, { bookId: 'b1', chapter: 1 });
 });
 
 test('runToolDecision supports chained tool calls (ReAct loop)', async () => {

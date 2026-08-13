@@ -388,8 +388,8 @@ export function defineReadyTools(book, settings, signal, changeLog) {
       handler: async ({ chapter }) => ({
         followUp: true,
         data: Number.isInteger(chapter) && chapter > 0
-          ? `书籍卡片已定位到第 ${chapter} 章。`
-          : '书籍卡片已展示。',
+          ? `书籍卡片已定位到第 ${chapter} 章并展示，请直接回复用户。`
+          : '书籍卡片已展示，请直接回复用户。',
         // 未传 chapter 时不默认 1，由协议层按本轮最后一个变更章补齐定位
         card: {
           bookId: book.id,

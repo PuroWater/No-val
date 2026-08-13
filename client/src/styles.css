@@ -1748,13 +1748,6 @@ button, input, textarea, select {
   transition: width 0.4s ease;
 }
 
-.chat-progress-inline {
-  font-size: 12px;
-  color: var(--muted);
-  padding-bottom: 4px;
-  text-align: center;
-}
-
 .modal-message {
   white-space: pre-line;
 }

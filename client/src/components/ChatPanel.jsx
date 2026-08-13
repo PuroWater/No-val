@@ -402,16 +402,13 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
         })}
       </div>
       <div className="chat-input">
-        {waiting && (
-          <div className="chat-progress-inline">请等待回复完成或中断</div>
-        )}
         <textarea
           value={input}
           onChange={(e) => {
             setInput(e.target.value);
             sessionStorage.setItem(draftKey, e.target.value);
           }}
-          placeholder={viewOnly ? '该日期仅可查看，不可输入' : isNew || book.status === 'draft' ? '谈谈你的想法…' : '输入续写、修改或剧情问题…'}
+          placeholder={waiting ? '请等待回复完成或中断' : viewOnly ? '该日期仅可查看，不可输入' : isNew || book.status === 'draft' ? '谈谈你的想法…' : '输入续写、修改或剧情问题…'}
           disabled={sending || hasProcessing || viewOnly}
           onKeyDown={(e) => {
             if (e.key !== 'Enter' || e.shiftKey || e.altKey || e.metaKey) return;
