@@ -9,6 +9,7 @@ import authRouter from './routes/auth.js';
 import booksRouter from './routes/books.js';
 import chatRouter from './routes/chat.js';
 import settingsRouter from './routes/settings.js';
+import { recoverStaleProcessing } from './services/chatService.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: ENV_PATH });
@@ -36,6 +37,7 @@ app.use((req, res) => res.status(404).json({ error: `接口不存在: ${req.meth
 
 const port = Number(process.env.PORT || 3001);
 await ensureInitialData();
+recoverStaleProcessing();
 const server = app.listen(port, () => {
   console.log(`Novel Agent server listening on http://localhost:${port}`);
 });

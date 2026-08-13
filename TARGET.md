@@ -1875,6 +1875,19 @@ Novel Agent/
 完成内容：
 - `lib/agentRules.js` 落地并接入 router/chatService/intentPlans/tools；执行器 system 补回写操作执行约束；read_book 描述与维护 prompt 精简；单元测试 69/69；版本号统一 0.8.24（根/server/client）；本地提交未推送（按协作规矩）。
 
+### 2026-08-14 v0.8.25 watch 稳定性 + 启动自愈清理残留 processing
+
+待更新说明：
+- Windows 上 `node --watch` 监控范围过大（data/ 写入触发重启），重启时机不可控，多次在用户请求处理中重启掐断请求 → processing 残留、前端永久卡“处理中”（多次复现）；
+- 重启后无自动恢复，残留 processing 只能手动清。
+
+待更新功能：
+- dev 脚本改 `node --watch-path=src`：只监控源码目录，data/ 写入不再触发重启；
+- 后端启动时 `recoverStaleProcessing`：扫描所有书，把残留 processing 标记为 error（“处理中断（服务重启），请重新发送”），服务重启后自愈。
+
+完成内容：
+- `server/package.json` dev 脚本 `--watch-path=src`；`chatService.recoverStaleProcessing` + `index.js` 启动调用；实测 data 写入不触发重启、src 修改正常重启；残留 processing 自动清理；版本号统一 0.8.25（根/server/client）；本地提交未推送（按协作规矩）。
+
 ### 后续建议方向（交接快照 2026-08-13）
 
 - 0.8.7-0.8.19 待办已全部完成（幂等 call.id/跨消息、golden eval、写前确认、多 provider、乐观锁、规模信任守卫、背景/场景语义修正、P1 拆分、P2 统一记账、P3 抽公共、场景拼合模板、工具白名单、卡片打开语义、发送白屏修复）。

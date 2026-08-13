@@ -40,6 +40,30 @@ export function hasPending(book) {
   return book.chat.some((message) => message.kind === 'processing');
 }
 
+// 启动时恢复：上次进程可能被中断/重启，残留 processing 消息会让前端永久卡在“处理中”。
+// 统一标记为 error 并提示重新发送（每本书只处理最新一条），保证服务重启后自愈。
+export function recoverStaleProcessing() {
+  let recovered = 0;
+  for (const book of listBooks()) {
+    let touched = false;
+    for (let i = book.chat.length - 1; i >= 0; i -= 1) {
+      const message = book.chat[i];
+      if (message.kind === 'processing') {
+        message.kind = 'error';
+        message.content = '处理中断（服务重启），请重新发送。';
+        message.createdAt = new Date().toISOString();
+        book.updatedAt = message.createdAt;
+        touched = true;
+        recovered += 1;
+        break;
+      }
+    }
+    if (touched) saveBook(book);
+  }
+  if (recovered > 0) console.log(`[recover] 已清理 ${recovered} 条残留 processing 消息`);
+  return recovered;
+}
+
 // P2：工具效果统一记账——handler 只返回 effect（声明改了什么），
 // 写回所需的 changeLog（chapterIds/deletedChapterIds/lastEditedIndex）由编排层从 effect 同步，单一真相。
 export function syncChangeLogFromEffect(changeLog, book, outcome) {
