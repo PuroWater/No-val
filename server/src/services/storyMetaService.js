@@ -136,8 +136,65 @@ function sortEventsByTime(events) {
   });
 }
 
+// 把有序章节索引切成“最大连续区间”列表（如 [1,2,3,8,9,10] → [[1,2,3],[8,9,10]]）
+function splitRuns(indexes) {
+  const runs = [];
+  let current = [];
+  for (const index of indexes) {
+    if (current.length > 0 && index > current[current.length - 1] + 1) {
+      runs.push(current);
+      current = [];
+    }
+    current.push(index);
+  }
+  if (current.length > 0) runs.push(current);
+  return runs;
+}
+
+// 由某个背景标签在“一段连续章节区间”内的数据构建一个时间线组。
+// 同一背景跨非连续章节时（家族 1-3 / 北境 4-9 / 家族 10-11）会形成多个同标签组，
+// 每个组用唯一 id（label + 区间）区分，避免全书合并成一个大组。
+function buildGroupFromRun(label, run, sceneMap) {
+  const runSet = new Set(run);
+  const rootScene = sceneMap.get('__root__');
+  const hasScenes = sceneMap.size > 1 || !rootScene;
+  const rootChapters = rootScene
+    ? [...rootScene.chapterMap.values()]
+        .filter((item) => runSet.has(item.chapterIndex))
+        .map((item) => ({ ...item, events: sortEventsByTime(item.events) }))
+    : [];
+  const sceneList = hasScenes
+    ? [...sceneMap.entries()]
+        .filter(([key]) => key !== '__root__')
+        .map(([, scene]) => {
+          const indexes = [...scene.chapterMap.keys()].filter((index) => runSet.has(index));
+          if (indexes.length === 0) return null;
+          return {
+            label: scene.label,
+            chapterStart: Math.min(...indexes),
+            chapterEnd: Math.max(...indexes),
+            chapters: indexes.map((index) => ({
+              ...scene.chapterMap.get(index),
+              events: sortEventsByTime(scene.chapterMap.get(index).events)
+            }))
+          };
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.chapterStart - b.chapterStart)
+    : [];
+  return {
+    id: `${label}#${run[0]}-${run[run.length - 1]}`,
+    label,
+    chapterStart: run[0],
+    chapterEnd: run[run.length - 1],
+    scenes: sceneList,
+    chapters: rootChapters
+  };
+}
+
 // 分层时间线（派生视图，零 AI 成本）：重大事件（context[0]）→ 场景（context[1]）→ 章节 → 事件。
-// 无背景事件归入“其他”组按章平铺；context 只有一层时组直接落到章节列。
+// 同一 context[0] 按“连续章节区间”切成多个组（家族 1-3、北境 4-9、家族 10-11 各自独立），
+// 组内按起始章排序；无背景事件归入“其他”组，同样按连续区间分段平铺。
 export function buildTimeline(book) {
   const chapters = book.chapters || [];
   const groupMap = new Map();
@@ -184,64 +241,29 @@ export function buildTimeline(book) {
     }
   });
 
-  const groups = [...groupMap.values()]
-    .map((group) => {
-      const rootScene = group.sceneMap.get('__root__');
-      const hasScenes = group.sceneMap.size > 1 || !rootScene;
-      const rootChapters = rootScene
-        ? [...rootScene.chapterMap.values()].map((item) => ({
-            ...item,
-            events: sortEventsByTime(item.events)
-          }))
-        : [];
-      const sceneList = hasScenes
-        ? [...group.sceneMap.entries()]
-            .filter(([key]) => key !== '__root__')
-            .map(([, scene]) => {
-              const indexes = [...scene.chapterMap.keys()];
-              return {
-                label: scene.label,
-                chapterStart: Math.min(...indexes),
-                chapterEnd: Math.max(...indexes),
-                chapters: [...scene.chapterMap.values()].map((item) => ({
-                  ...item,
-                  events: sortEventsByTime(item.events)
-                }))
-              };
-            })
-            .sort((a, b) => a.chapterStart - b.chapterStart)
-        : [];
-      const allIndexes = hasScenes
-        ? [...sceneList.flatMap((scene) => scene.chapters.map((item) => item.chapterIndex)), ...rootChapters.map((item) => item.chapterIndex)]
-        : [...rootScene.chapterMap.keys()];
-      return {
-        label: group.label,
-        chapterStart: Math.min(...allIndexes),
-        chapterEnd: Math.max(...allIndexes),
-        scenes: sceneList,
-        chapters: hasScenes ? rootChapters : [...rootScene.chapterMap.values()].map((item) => ({
-          ...item,
-          events: sortEventsByTime(item.events)
-        }))
-      };
-    })
-    .sort((a, b) => a.chapterStart - b.chapterStart);
-
-  const result = { groups };
-  if (otherChapters.length > 0) {
-    const indexes = otherChapters.map((item) => item.chapterIndex);
-    result.groups.push({
-      label: '其他',
-      chapterStart: Math.min(...indexes),
-      chapterEnd: Math.max(...indexes),
-      scenes: [],
-      chapters: otherChapters.map((item) => ({
-        ...item,
-        events: sortEventsByTime(item.events)
-      }))
-    });
+  const groups = [];
+  for (const [label, group] of groupMap) {
+    const allIndexes = new Set();
+    for (const scene of group.sceneMap.values()) {
+      for (const index of scene.chapterMap.keys()) allIndexes.add(index);
+    }
+    for (const run of splitRuns([...allIndexes].sort((a, b) => a - b))) {
+      groups.push(buildGroupFromRun(label, run, group.sceneMap));
+    }
   }
-  // 其他组（无背景章节）与 context 组统一按起始章排序，保证按章节序展示
-  result.groups.sort((a, b) => a.chapterStart - b.chapterStart);
-  return result;
+  if (otherChapters.length > 0) {
+    const byIndex = new Map(otherChapters.map((item) => [item.chapterIndex, item]));
+    for (const run of splitRuns([...byIndex.keys()].sort((a, b) => a - b))) {
+      groups.push({
+        id: `其他#${run[0]}-${run[run.length - 1]}`,
+        label: '其他',
+        chapterStart: run[0],
+        chapterEnd: run[run.length - 1],
+        scenes: [],
+        chapters: run.map((index) => ({ ...byIndex.get(index), events: sortEventsByTime(byIndex.get(index).events) }))
+      });
+    }
+  }
+  groups.sort((a, b) => a.chapterStart - b.chapterStart || (a.label < b.label ? -1 : a.label > b.label ? 1 : 0));
+  return { groups };
 }

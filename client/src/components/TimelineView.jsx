@@ -34,7 +34,8 @@ export default function TimelineView({
   const [groupAnchor, setGroupAnchor] = useState(null);
 
   const groups = Array.isArray(timeline?.groups) ? timeline.groups : [];
-  const expandedGroupData = groups.find((group) => group.label === expandedGroup) || null;
+  // 同一背景可能按连续章节区间拆成多个同标签组，展开状态用唯一 id（label#start-end）
+  const expandedGroupData = groups.find((group) => group.id === expandedGroup) || null;
   const vertical = orientation === 'vertical';
 
   function startDrag(event) {
@@ -70,10 +71,10 @@ export default function TimelineView({
     onViewChange({ ...view, scale: clampScale(view.scale * factor) });
   }
 
-  function handleGroupClick(label, event) {
+  function handleGroupClick(id, event) {
     if (dragRef.current?.moved) return;
-    onToggleGroup(label);
-    if (expandedGroup !== label) {
+    onToggleGroup(id);
+    if (expandedGroup !== id) {
       setGroupAnchor({ el: event.currentTarget });
     } else {
       setGroupAnchor(null);
@@ -180,15 +181,10 @@ export default function TimelineView({
         >
           {groups.length === 0 && <p className="muted">这本书还在构思中，生成章节后这里会按重大事件展示时间线。</p>}
           {groups.map((group) => (
-            <div key={group.label} className="timeline-group-block">
+            <div key={group.id} className="timeline-group-block">
               <button
-                className={`timeline-node timeline-group${expandedGroup === group.label ? ' active' : ''}`}
-                onClick={(event) => handleGroupClick(group.label, event)}
-                onMouseEnter={(event) => showHover(event, {
-                  title: `${group.label}：影响范围 ${rangeText(group.chapterStart, group.chapterEnd)}`
-                })}
-                onMouseMove={(event) => setHover((prev) => (prev ? { ...prev, x: event.clientX, y: event.clientY } : prev))}
-                onMouseLeave={() => setHover(null)}
+                className={`timeline-node timeline-group${expandedGroup === group.id ? ' active' : ''}`}
+                onClick={(event) => handleGroupClick(group.id, event)}
               >
                 <span className="timeline-node-label">{group.label}</span>
                 <span className="timeline-node-range">{rangeText(group.chapterStart, group.chapterEnd)}</span>
