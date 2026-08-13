@@ -1938,6 +1938,19 @@ Novel Agent/
 完成内容：
 - router.js `context_edit` 描述收紧；单元测试 69/69；版本号统一 0.8.29（根/server/client）；本地提交未推送（按协作规矩）。
 
+### 2026-08-14 v0.8.30 删除 context_edit 意图与 update_events_context 工具（所有痕迹）
+
+待更新说明：
+- `context_edit`/`update_events_context` 反复被路由误判（剧情衔接质疑被判成改背景），用户决定直接删除该工具与意图，避免模型再选错。
+
+待更新功能：
+- 删除 tools.js `update_events_context` 工具定义与 edit 组引用；
+- 删除 intentPlans.js `context_edit` 意图（INTENTS + buildPlan case）；router.js 移除 context_edit 描述、target.range 输出与解析；
+- chatService 写意图列表移除 context_edit、确认文案删对应分支；测试移除相关断言；前端无引用。
+
+完成内容：
+- 代码/提示词/测试/注释全部清理，数据无 pendingAction 残留（事件 context 字段保留，仅不再有直接修改工具）；单元测试 69/69；版本号统一 0.8.30（根/server/client）；本地提交未推送（按协作规矩）。
+
 ### 后续建议方向（交接快照 2026-08-13）
 
 - 0.8.7-0.8.19 待办已全部完成（幂等 call.id/跨消息、golden eval、写前确认、多 provider、乐观锁、规模信任守卫、背景/场景语义修正、P1 拆分、P2 统一记账、P3 抽公共、场景拼合模板、工具白名单、卡片打开语义、发送白屏修复）。

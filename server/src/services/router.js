@@ -55,7 +55,6 @@ function normalizeTarget(raw) {
   const chapter = Number(raw.chapter);
   if (Number.isInteger(chapter) && chapter >= 1) target.chapter = chapter;
   if (raw.position === 'before' || raw.position === 'after') target.position = raw.position;
-  if (typeof raw.range === 'string' && /^\d+\s*-\s*\d+$/.test(raw.range)) target.range = raw.range;
   return Object.keys(target).length > 0 ? target : null;
 }
 
@@ -73,7 +72,7 @@ export async function runRouter({
   const intentNames = INTENTS.join(' / ');
   const prompt = [
     '你是小说创作平台的意图路由 Agent。根据用户消息与近期对话判断是否需要调用工具，并输出结构化 JSON。',
-    '输出格式：{"mode":"chat|tool","intent":"<枚举>","output":{"chapters":N,"chapterWords":N},"target":{"chapter":N,"position":"before|after","range":"3-8"}}；chat 模式返回 {"mode":"chat","reply":"回答文本"}。',
+    '输出格式：{"mode":"chat|tool","intent":"<枚举>","output":{"chapters":N,"chapterWords":N},"target":{"chapter":N,"position":"before|after"}}；chat 模式返回 {"mode":"chat","reply":"回答文本"}。',
     `intent 枚举（mode=tool 时必填）：${intentNames}`,
     '- navigate：仅当用户明确要求展示/打开书籍卡片或打开指定章节时调用（如“发个卡片”“打开第一章”，target.chapter 填章节号）',
     '- read：仅当用户明确询问书籍信息/章节目录/章节内容/发展线时调用',
@@ -85,7 +84,6 @@ export async function runRouter({
     '- meta：仅当用户明确要求重新维护/刷新章节摘要、事件、概况时调用（target.chapter）',
     '- outline：仅当用户明确要求修改整书简介时调用',
     '- target_words：仅当用户明确要求调整全书目标字数时调用',
-    '- context_edit：仅当用户完全明确提及“把背景改成/归入 XX 背景”这类发展线背景字段修改指令时才调用（如“把第3到8章的背景改成家族”“第2-5章归入北境”，target.range 填范围）；剧情衔接、正文内容、章节描写的质疑或修改一律不是 context_edit（即使消息里出现“衔接”“场景”字样），那是 rewrite 或 read',
     `判断总规则：${PLOT_FACT_RULE} 剧情相关问题一律 mode=tool（read/rewrite 等）；只有与剧情/创作无关的闲聊或确实无法确定指令时才 mode=chat 澄清，禁止猜测调用工具。`,
     'mode=chat：纯聊天、构思类对话、与创作无关，或与剧情/章节内容无关的闲聊 → 返回 reply；涉及剧情、章节内容、正文的任何询问或修改（含质疑剧情逻辑）必须 mode=tool，不得 chat 直接分析或回答。',
     '输出规模边界：单次最多 5 章、每章 1000-10000 字；用户指定规模时如实填入 output，越界由系统校验。',

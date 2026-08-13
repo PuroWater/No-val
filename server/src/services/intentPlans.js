@@ -14,8 +14,7 @@ export const INTENTS = [
   'batch_edit',
   'meta',
   'outline',
-  'target_words',
-  'context_edit'
+  'target_words'
 ];
 
 function clampChapters(value, fallback) {
@@ -102,12 +101,6 @@ export function buildPlan(intent, { output = null, target = null, settings = {} 
         tools: ['update_book_target'],
         termination: { kind: 'single' },
         text: '调用 update_book_target 调整全书目标字数（value 为阿拉伯数字）；完成后总结结果。'
-      };
-    case 'context_edit':
-      return {
-        tools: ['update_events_context', 'read_book', 'open_book_widget'],
-        termination: { kind: 'single' },
-        text: '调用 update_events_context 修改指定章节范围的事件背景（start/end 数字、context 背景数组）；完成后调用 open_book_widget 并总结结果。'
       };
     default:
       return {

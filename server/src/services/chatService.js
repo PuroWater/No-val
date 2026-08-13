@@ -11,7 +11,7 @@ import { PLOT_FACT_RULE, WRITE_EXECUTION_RULE, CHAPTER_NUM_RULE } from '../lib/a
 const activeJobs = new Map();
 
 // 需要写前确认（系统级 interrupt）的写意图
-const WRITE_INTENTS = new Set(['create_append', 'create_insert', 'rewrite', 'delete', 'batch_edit', 'context_edit']);
+const WRITE_INTENTS = new Set(['create_append', 'create_insert', 'rewrite', 'delete', 'batch_edit']);
 
 function intentConfirmText(intent, output, target, settings) {
   switch (intent) {
@@ -25,8 +25,6 @@ function intentConfirmText(intent, output, target, settings) {
       return `将删除第 ${target?.chapter || '目标'} 章（不可恢复）。`;
     case 'batch_edit':
       return '将执行批量修改（替换文本 / 修复前缀 / 删除末尾章节）。';
-    case 'context_edit':
-      return '将修改指定章节范围的事件背景。';
     default:
       return '将执行章节操作。';
   }
@@ -406,7 +404,7 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
   const effectiveSettings = safeOutput?.chapterWords
     ? { ...settings, chapterWords: safeOutput.chapterWords }
     : settings;
-  // 任务单显式工具白名单：模型只能调用任务允许的工具（如改写意图不再暴露 update_events_context 等）
+  // 任务单显式工具白名单：模型只能调用任务允许的工具，避免越权选择其他意图的工具
   const allowedTools = new Set(plan.tools);
   const tools = defineReadyTools(book, effectiveSettings, signal).filter((tool) => allowedTools.has(tool.name));
   const counted = plan.termination.kind === 'counted';
