@@ -44,8 +44,8 @@ const api = {
   async saveBookFile(book) {
     fs.writeFileSync(path.join(ROOT, 'data/books', `${book.id}.json`), JSON.stringify(book, null, 2), 'utf8');
   },
-  async sendMessage(bookId, content, token) {
-    return request('/api/chat/message', { method: 'POST', body: { bookId, content }, token });
+  async sendMessage(bookId, content, token, messageId) {
+    return request('/api/chat/message', { method: 'POST', body: { bookId, content, messageId }, token });
   },
   async cleanup(bookId, token) {
     try {
@@ -78,14 +78,15 @@ async function main() {
     let detail = '';
     try {
       for (const step of scenario.steps) {
-        const data = await api.sendMessage(ctx.bookId, step.content, token);
+        const data = await api.sendMessage(ctx.bookId, step.content, token, step.messageId);
         const book = data.book;
         const lastMsg = book.chat[book.chat.length - 1];
-        const result = step.assert(book, lastMsg, ctx);
+        const result = step.assert ? step.assert(book, lastMsg, ctx) : { ok: true, detail: 'ok' };
         ok = result.ok;
         detail = result.detail;
         console.log(`  消息「${step.content}」 => ${ok ? 'PASS' : 'FAIL'} ${detail}`);
         if (!ok) break;
+        step.record?.(book, ctx);
       }
     } catch (err) {
       ok = false;

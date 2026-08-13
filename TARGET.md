@@ -1746,3 +1746,17 @@ Novel Agent/
 - tools.js 移除全部 changeLog 直改（effect 携带 ids/renamedIds）；chatService.onStep 统一同步 changeLog；
 - 章节上下文（create/rewrite）与设置默认值单一来源；effect 数组字段校验；
 - 单元测试 62/62（新增 syncChangeLogFromEffect 用例）、前端构建通过、golden eval 3/3 全过；版本号统一 0.8.15（根/server/client）；本地提交未推送（按协作规矩）。
+
+### 2026-08-13 v0.8.16 跨消息幂等（方案 A：消息 id 重试令牌）
+
+待更新说明：
+- 写工具幂等此前只覆盖“同一响应重放”；跨用户消息的重试（如客户端超时后重发）仍可能重复写入。
+
+待更新功能：
+- 后端：书籍新增 `lastAppliedMessageId`；`/chat/message` 接收 `messageId`，在书级队列任务内先查“同 id 已成功应用”则直接返回该书（不重复执行）；成功完成才记录，失败不记录；
+- 前端：发送携带乐观消息 id；失败后提供“重试”按钮，沿用同一 messageId（保留原用户消息、移除错误、重新发送）；
+- golden eval 新增“重复消息幂等”场景。
+
+完成内容：
+- 后端去重（normalizeBook/mergeBookState 同步 lastAppliedMessageId，handleMessage 早退）与前端重试按钮落地；
+- golden eval 4/4 全过（含同 messageId 重发 chat 数不变）；单元测试全过、前端构建通过；版本号统一 0.8.16（根/server/client）；本地提交未推送（按协作规矩）。

@@ -56,5 +56,28 @@ export const GOLDEN_SCENARIOS = [
         }
       }
     ]
+  },
+  {
+    name: '重复消息幂等（同一 messageId 不重复写入）',
+    async setup(api, token) {
+      return api.createBookCopy(REAL_BOOK_ID, token, '【golden】幂等副本');
+    },
+    steps: [
+      {
+        content: '发一个卡片',
+        messageId: 'golden_msg_dup',
+        record(book, ctx) {
+          ctx.afterFirst = book.chat.length;
+        }
+      },
+      {
+        content: '发一个卡片',
+        messageId: 'golden_msg_dup',
+        assert(book, lastMsg, ctx) {
+          const ok = book.chat.length === ctx.afterFirst && lastMsg.kind === 'book' && !/失败|上限/.test(String(lastMsg.content));
+          return { ok, detail: `chat=${book.chat.length}（首轮=${ctx.afterFirst}）` };
+        }
+      }
+    ]
   }
 ];

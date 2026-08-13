@@ -94,5 +94,7 @@ export function normalizeBook(book) {
   if (!Array.isArray(book.pendingDeletes)) book.pendingDeletes = [];
   // 写前确认（系统级 interrupt）：待确认的写意图，确认后执行、否则清除
   if (!book.pendingAction) book.pendingAction = null;
+  // 跨消息幂等：最近一次成功应用的客户端消息 id（重试令牌）
+  if (!book.lastAppliedMessageId) book.lastAppliedMessageId = '';
   return book;
 }

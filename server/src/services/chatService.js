@@ -160,6 +160,7 @@ export function mergeBookState(latest, mutated, changedChapterIds = new Set(), d
   latest.draft = mutated.draft;
   latest.pendingDeletes = mutated.pendingDeletes;
   latest.pendingAction = mutated.pendingAction;
+  latest.lastAppliedMessageId = mutated.lastAppliedMessageId;
   latest.updatedAt = mutated.updatedAt;
   const mutatedChapters = new Map(mutated.chapters.map((chapter) => [chapter.id, chapter]));
   const seen = new Set();
@@ -238,11 +239,13 @@ export function getJobProgress(userId, bookId = '') {
   return job?.progress || null;
 }
 
-export async function handleMessage(userId, bookId, content, settings = {}) {
+export async function handleMessage(userId, bookId, content, settings = {}, messageId = '') {
   let book = bookId ? readBookById(bookId) : null;
   let created = false;
   if (!book && !bookId) { book = buildDraft(userId); created = true; }
   if (!book || book.userId !== userId) throw new Error('书籍或创作会话不存在');
+  // 跨消息幂等：同一客户端消息 id 已成功应用过 → 直接返回该书，不再执行（防重试重复写入）
+  if (messageId && book.lastAppliedMessageId === messageId) return book;
   if (hasPending(book)) throw new Error('上一轮仍在处理中，请稍候');
 
   // 两阶段新书：前端先 /sessions 建空草稿再发首条消息，此时 chat 为空，仍按“首轮构思”命名
@@ -263,6 +266,7 @@ export async function handleMessage(userId, bookId, content, settings = {}) {
   const startChapterCount = book.chapters.length;
   const job = { controller, isNewDraft: created, progress: { total: 0, done: 0, text: '处理中…' } };
   activeJobs.set(jobKey, job);
+  let succeeded = false;
   try {
     if (book.status === 'draft') {
       job.progress.text = '正在整理构思…';
@@ -270,6 +274,7 @@ export async function handleMessage(userId, bookId, content, settings = {}) {
     } else {
       await handleReadyMessage(book, content, settings, controller.signal, changeLog, job);
     }
+    succeeded = true;
   } catch (err) {
     const message = String(err.message || '');
     const stillProcessing = book.chat.some((item) => item.kind === 'processing');
@@ -288,6 +293,7 @@ export async function handleMessage(userId, bookId, content, settings = {}) {
     }
   } finally {
     activeJobs.delete(jobKey);
+    if (succeeded && messageId) book.lastAppliedMessageId = messageId;
     writeMergedBook(userId, book, changeLog.chapterIds, changeLog.deletedChapterIds);
   }
   return book;
