@@ -67,7 +67,6 @@ export default function ChapterEditor({ chapter, onSave, onCommit, onDirtyChange
     setDirty(false);
     try {
       await onSave({ title, content });
-      showSavedToast();
     } catch {
       dirtyRef.current = true;
       setDirty(true);

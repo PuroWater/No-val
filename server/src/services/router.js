@@ -26,7 +26,10 @@ export async function prefilterDraftIntent({ user, history = '', signal, ask = c
     try {
       const result = await ask({ system: '你是小说构思阶段的意图筛选 Agent。', user: prompt, maxTokens, signal, thinkingType: 'disabled' });
       const { output, over } = normalizeOutputScale(result?.output);
-      if (over) return { mode: 'chat', reply: OVER_LIMIT_REPLY, output: null };
+      // 信任守卫（与 ready 路径一致）：用户消息未提及 章/字数/每章 时，忽略模型虚构/越界的 output，不报超限
+      if (over && /章|字数|每章/.test(String(user || ''))) {
+        return { mode: 'chat', reply: OVER_LIMIT_REPLY, output: null };
+      }
       const mode = String(result?.mode || '');
       if (mode === 'chat') {
         const reply = String(result?.reply || '').trim();
@@ -110,8 +113,10 @@ export async function runRouter({
           lastError = `未知 intent：${intent}`;
           continue;
         }
-      const { output, over } = normalizeOutputScale(result?.output);
-        if (over) return { mode: 'chat', reply: OVER_LIMIT_REPLY, intent: null, groups: [], output: null, target: null };
+        const { output, over } = normalizeOutputScale(result?.output);
+        if (over && /章|字数|每章/.test(String(user || ''))) {
+          return { mode: 'chat', reply: OVER_LIMIT_REPLY, intent: null, groups: [], output: null, target: null };
+        }
         const route = { mode: 'tool', intent, groups: [], output, target: normalizeTarget(result?.target) };
         console.log(`[router] tool intent=${intent} target=${JSON.stringify(route.target)} output=${JSON.stringify(output || {})}`);
         return route;
