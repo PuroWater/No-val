@@ -49,7 +49,7 @@ function readTool(book = sampleBook()) {
 }
 
 test('read_book single chapter returns full content without truncation', async () => {
-  const out = await readTool().handler({ field: 'chapter', target: '1' }, {});
+  const out = await readTool().handler({ field: 'chapter', target: 1 }, {});
   assert.equal(out.ok, true);
   assert.ok(out.data.includes('第 1 章《第1章 起始》'));
   assert.ok(out.data.includes('摘要：第一章摘要'));
@@ -62,46 +62,31 @@ test('read_book single chapter returns full content without truncation', async (
 });
 
 test('read_book single chapter without events still returns content', async () => {
-  const out = await readTool().handler({ field: 'chapter', target: '3' }, {});
+  const out = await readTool().handler({ field: 'chapter', target: 3 }, {});
   assert.equal(out.ok, true);
   assert.ok(out.data.includes('正文：'));
   assert.ok(out.data.includes('第三章正文内容。'));
   assert.ok(!out.data.includes('事件：'));
 });
 
-test('read_book range returns summary and events but no content', async () => {
-  const out = await readTool().handler({ field: 'chapter', target: '1-2' }, {});
+test('read_book scope=summary returns title, summary and events without content', async () => {
+  const out = await readTool().handler({ field: 'chapter', target: 1, scope: 'summary' }, {});
   assert.equal(out.ok, true);
-  assert.ok(out.data.includes('第 1 章《第1章 起始》'));
-  assert.ok(out.data.includes('第 2 章《第2章 发展》'));
   assert.ok(out.data.includes('摘要：第一章摘要'));
   assert.ok(out.data.includes('事件：'));
   assert.ok(!out.data.includes('正文：'));
   assert.ok(!out.data.includes('第一章正文开头。'));
-  assert.ok(!out.data.includes('第二章正文内容。'));
 });
 
-test('read_book range over 10 chapters is rejected with retryable error', async () => {
-  const book = sampleBook();
-  book.chapters = Array.from({ length: 12 }, (_, i) => ({
-    id: `c${i + 1}`,
-    title: `第${i + 1}章`,
-    content: `第${i + 1}章正文`,
-    summary: `第${i + 1}章摘要`,
-    events: []
-  }));
-  const out = await readTool(book).handler({ field: 'chapter', target: '1-12' }, {});
+test('read_book rejects range targets (single chapter only)', async () => {
+  const out = await readTool().handler({ field: 'chapter', target: '1-2' }, {});
   assert.equal(out.ok, false);
   assert.equal(out.retryable, true);
-  assert.ok(out.data.includes('最多 10 章'));
+  assert.ok(out.data.includes('只支持单章读取'));
 });
 
-test('read_book rejects invalid range and nonexistent chapter', async () => {
-  const out = await readTool().handler({ field: 'chapter', target: '2-1' }, {});
-  assert.equal(out.ok, false);
-  assert.equal(out.retryable, true);
-
-  const missing = await readTool().handler({ field: 'chapter', target: '99' }, {});
+test('read_book rejects nonexistent chapter', async () => {
+  const missing = await readTool().handler({ field: 'chapter', target: 99 }, {});
   assert.equal(missing.ok, false);
-  assert.ok(missing.data.includes('没有第 99 章'));
+  assert.ok(missing.data.includes('只支持单章读取'));
 });

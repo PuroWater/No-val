@@ -68,7 +68,7 @@ export function buildPlan(intent, { output = null, target = null, settings = {} 
       return {
         tools: ['edit_book', 'read_book', 'open_book_widget'],
         termination: { kind: 'single' },
-        text: `改写${anchor}。执行顺序：1) 先用 read_book(field=chapter, target=目标章序号) 读取该章正文全文（用户消息提到的其他章节也逐一单章读取，如“第14、15章”则先读14再读15；范围读取不含正文，只用于摘要/事件）；2) 调用 edit_book(mode=modify) 时，instruction 必须写成具体改写指令：包含用户的核心要求，以及你读章时发现的关键衔接问题（如本章结尾与下一章开头的衔接、必须保留的情节元素），给写正文 AI 明确方向，不要只传“请改写”这类空泛指令；3) 用户已明确要求改写时直接执行，不要只做分析、反问或列选项。改写完成后调用 open_book_widget 展示书籍卡片并总结结果。`
+        text: `改写${anchor}。执行顺序：1) 先用 read_book(field=chapter, target=目标章序号) 读取该章正文全文（用户消息提到的其他章节也逐一单章读取，如“第14、15章”则先读14再读15；read_book 只支持单章读取，禁止范围读取、禁止用范围代替正文）；2) 调用 edit_book(mode=modify) 时，instruction 必须写成具体改写指令：包含用户的核心要求，以及你读章时发现的关键衔接问题（如本章结尾与下一章开头的衔接、必须保留的情节元素），给写正文 AI 明确方向，不要只传“请改写”这类空泛指令；3) 用户已明确要求改写时直接执行，不要只做分析、反问或列选项。改写完成后调用 open_book_widget 展示书籍卡片并总结结果。`
       };
     }
     case 'delete': {

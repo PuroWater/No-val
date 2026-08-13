@@ -92,9 +92,14 @@ export async function runTask({
     { role: 'system', content: system },
     { role: 'user', content: context ? `近期对话：\n${context}\n\n用户消息：${user}` : `用户消息：${user}` }
   ];
+  const logArgs = (args) => {
+    const text = JSON.stringify(args || {});
+    return text.length > 200 ? `${text.slice(0, 200)}…(${text.length})` : text;
+  };
   const recordFailure = (call, reason) => {
     state.failures += 1;
     const id = call?.id || `call_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    console.log(`[tool-fail] ${call?.name || 'unknown'} ${logArgs(call?.arguments)} -> ${reason}`);
     messages.push({ role: 'assistant', tool_calls: [{ id, type: 'function', function: { name: call?.name || 'unknown', arguments: '{}' } }] });
     messages.push({ role: 'tool', tool_call_id: id, content: reason });
   };
@@ -141,6 +146,7 @@ export async function runTask({
     const callId = call.id || `call_${step}_${name}`;
     if (executed.has(callId)) {
       const cached = executed.get(callId);
+      console.log(`[tool] ${name} replay（同 call.id 缓存）args=${logArgs(normalizedArgs)}`);
       messages.push({
         role: 'assistant',
         tool_calls: [{ id: callId, type: 'function', function: { name, arguments: JSON.stringify(normalizedArgs || {}) } }]
@@ -163,6 +169,7 @@ export async function runTask({
       if (state.failures >= maxAttempts) throw new Error(`工具调用多次失败：${checked.errors.join('；')}`);
       continue;
     }
+    console.log(`[tool] ${name} args=${logArgs(normalizedArgs)} -> ok=${outcome.ok} len=${String(outcome.data || '').length}`);
     onStep?.(name, outcome, call.arguments, state);
     applyTransition(state, name, outcome, plan);
     if (outcome.ok) executed.set(callId, outcome);

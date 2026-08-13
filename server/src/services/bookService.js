@@ -173,7 +173,7 @@ export async function rewriteChapter(book, chapterIndex, instruction, settings =
   const result = await callModel(
     () => ({
       system: writingSystem('改写'),
-      user: `根据修改意见改写章节，本章约 ${chapterWords} 字。${PARAGRAPH_RULE}返回 JSON：{"title":"章节标题","content":"新内容"}。\n原章节：\n${target.title}\n${target.content}\n修改意见：${instruction}${chatContextRef(chatContext)}\n${storySummaryRef(book.storySummary)}\n附近章节语境：\n${context}`,
+      user: `根据修改意见改写章节，本章约 ${chapterWords} 字。${PARAGRAPH_RULE}返回 JSON：{"title":"章节标题","content":"新内容"}。\n原章节：\n${target.title}\n${target.content}\n本章摘要：${target.summary || '无'}\n修改意见：${instruction}${chatContextRef(chatContext)}\n${storySummaryRef(book.storySummary)}\n附近章节语境：\n${context}`,
       maxTokens: maxTokensForWords(chapterWords),
       thinkingType: settings.thinkingForWriting ? 'enabled' : 'disabled'
     }),

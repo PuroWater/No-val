@@ -63,7 +63,6 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState(null);
   const [error, setError] = useState('');
-  const [retry, setRetry] = useState(null);
   // 两阶段新书：首条消息先 /chat/sessions 拿 book.id，处理期间用它轮询进度
   const [activeBookId, setActiveBookId] = useState('');
   const messagesRef = useRef(null);
@@ -150,18 +149,16 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
     if (saved) setInput(saved);
   }, [draftKey]);
 
-  async function sendMessage(contentOverride, messageIdOverride, isRetry) {
+  async function sendMessage(contentOverride) {
     // 防御：onClick 直接传函数时首个参数是事件对象，必须回退到输入框内容
     const content = typeof contentOverride === 'string' && contentOverride.trim()
       ? contentOverride.trim()
       : input.trim();
     if (!content || sending || hasProcessing) return;
-    // 幂等重试：沿用首次消息 id（后端按 book.lastAppliedMessageId 去重），避免重复写入
-    const messageId = messageIdOverride || `local_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-    if (!isRetry) {
-      setInput('');
-      sessionStorage.removeItem(draftKey);
-    }
+    // 幂等键：后端按 book.lastAppliedMessageId 去重，防止网络重放造成重复写入
+    const messageId = `local_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    setInput('');
+    sessionStorage.removeItem(draftKey);
     setProgress(null);
     setSending(true);
     setError('');
@@ -174,10 +171,6 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
     };
     setBook((prev) => {
       if (!prev) return prev;
-      if (isRetry) {
-        // 重试：移除上一条错误消息、保留原用户消息，重新加“回复中”
-        return { ...prev, chat: [...(prev.chat || []).filter((message) => message.kind !== 'error'), typing] };
-      }
       const optimistic = { id: messageId, role: 'user', content, kind: 'text', createdAt: new Date().toISOString() };
       return { ...prev, chat: [...(prev.chat || []), optimistic, typing] };
     });
@@ -196,7 +189,6 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
       setBook(data.book);
       onBookChanged?.();
       if (isNew && onSessionCreated) onSessionCreated(data.book);
-      setRetry(null);
     } catch (err) {
       setError(err.message);
       setBook((prev) => (
@@ -215,7 +207,6 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
             }
           : prev
       ));
-      setRetry({ content, messageId });
     } finally {
       setSending(false);
     }
@@ -414,15 +405,6 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
         })}
       </div>
       <div className="chat-input">
-        {retry && !sending && (
-          <button
-            className="primary chat-retry"
-            onClick={() => sendMessage(retry.content, retry.messageId, true)}
-            title="重新发送上一条（同一消息 id，后端自动去重）"
-          >
-            重试
-          </button>
-        )}
         <textarea
           value={input}
           onChange={(e) => {

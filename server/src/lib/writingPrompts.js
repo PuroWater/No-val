@@ -18,12 +18,14 @@ export function storySummaryRef(storySummary) {
   return `全书概况：${storySummary || '暂无'}`;
 }
 
-// 创作新章节的章节上下文（有界）：概况 + 前后章摘要 + 关系网
+// 创作新章节的章节上下文（有界）：概况 + 前后章摘要 + 上章末尾/下章开头节选 + 关系网
 export function creationContextRef(book, prev, next) {
   return [
     storySummaryRef(book.storySummary),
     prev ? `上一章摘要：${prev.summary || `${prev.title}\n${prev.content.slice(0, 500)}`}` : '',
+    prev ? `上一章结尾（节选）：${prev.content.slice(-400)}` : '',
     next ? `下一章摘要：${next.summary || `${next.title}\n${next.content.slice(0, 500)}`}` : '',
+    next ? `下一章开头（节选）：${next.content.slice(0, 400)}` : '',
     `现有关系网：${JSON.stringify(book.relations || { nodes: [], edges: [] })}`
   ].filter(Boolean).join('\n');
 }

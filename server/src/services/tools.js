@@ -246,18 +246,20 @@ export function defineReadyTools(book, settings, signal) {
     {
       group: 'read',
       name: 'read_book',
-      description: '查询书籍信息（只读，可读除“全部章节全文”与“关系网全量数据”外的所有书籍字段）。field 为 info（书名/简介/章节数/进度/目标字数/构思设定）、meta（完整书籍元数据：状态/目标字数/构思设定与概念/草稿输出规模/关系网概要/时间等）、overview（当前全书概况）、chapters（章节目录，支持 start/count 分页）、chapter（读取章节：target 传单个数字序号返回该章标题/摘要/事件/正文全文；传范围（如 "5-15"）只返回各章标题/摘要/事件、不含正文、最多 10 章）、development_line（全书分层发展线：重大事件→场景→章节；旧值 timeline 仍兼容）；用户以数字指代章节（如“第十章”“第5到15章”）时直接传序号/范围，不必先读目录；仅当用户以标题指代且不确定序号时才先读 field=chapters；回答书籍信息前必须先调用本工具读取，不要凭摘要或对话历史猜测。需要多章正文细节时不要传范围（范围不含正文且最多 10 章），请分次调用本工具、每次 target 传单个章节号读取全文。',
+      description: '查询书籍信息（只读，可读除“全部章节全文”与“关系网全量数据”外的所有书籍字段）。field 为 info（书名/简介/章节数/进度/目标字数/构思设定）、meta（完整书籍元数据：状态/目标字数/构思设定与概念/草稿输出规模/关系网概要/时间等）、overview（当前全书概况）、chapters（章节目录，支持 start/count 分页）、chapter（读取单个章节：target 传单个章节序号，默认返回该章标题/摘要/事件/正文全文；scope=summary 可只看标题/摘要/事件、不含正文）、development_line（全书分层发展线：重大事件→场景→章节；旧值 timeline 仍兼容）。field=chapter 只支持单章，禁止范围读取：需要查看多章时请分次调用本工具、每次 target 传一个章节号；用户以数字或“第X章”指代章节时直接传序号，不必先读目录；仅当用户以标题指代且不确定序号时才先读 field=chapters；回答章节内容、摘要或细节问题前必须先调用本工具读取，以返回数据为准，不要凭摘要、对话历史或旧结论猜测。',
       parameters: {
         type: 'object',
         properties: {
           field: { type: 'string', description: 'info | meta | overview | chapters | chapter | development_line' },
-          target: { type: 'string', xChapterRef: true, description: 'field=chapter 时必填：单个章节序号（如 "14"，返回该章标题/摘要/事件/正文全文）或范围（如 "5-15"，只返回各章标题/摘要/事件、不含正文、最多 10 章）；用户以数字指代时直接填，仅标题指代且不确定序号时才先读 chapters' },
+          target: { type: 'integer', minimum: 1, description: 'field=chapter 时必填：单个章节序号（仅支持单章，禁止范围读取）；用户以数字或“第X章”指代时直接填，仅标题指代且不确定序号时才先读 chapters' },
+          scope: { type: 'string', enum: ['content', 'summary'], description: 'content=标题/摘要/事件/正文全文（默认）；summary=仅标题/摘要/事件、不含正文。用户问到章节细节时强烈建议用默认 content 读正文' },
           start: { type: 'integer', minimum: 1, description: '目录分页起始章节号（从 1 开始，默认 1），仅 field=chapters 生效' },
           count: { type: 'integer', minimum: 1, maximum: 500, description: '目录分页数量（默认 200、上限 500），仅 field=chapters 生效' }
         },
         required: ['field']
       },
-      handler: async ({ field, target, start, count }) => {
+      handler: async ({ field, target, start, count, scope }) => {
+        const useContent = String(scope || 'content') === 'content';
         const formatEvents = (item) => (Array.isArray(item.events) && item.events.length > 0
           ? item.events.map((event, eventIndex) => {
               const ctx = Array.isArray(event.context) && event.context.length > 0 ? `（${event.context.join('/')}）` : '';
@@ -265,7 +267,7 @@ export function defineReadyTools(book, settings, signal) {
               return `${eventIndex + 1}. ${event.event}${ctx}${fw}${event.time ? `（${event.time}）` : ''}`;
             }).join('\n')
           : '');
-        // 单章/范围章节块统一格式化：标题 → 摘要 → 事件 →（可选）正文全文
+        // 单章章节块统一格式化：标题 → 摘要 → 事件 →（可选）正文全文
         const chapterBlock = (item, chapterNo, { content = false } = {}) => {
           const parts = [`第 ${chapterNo} 章《${item.title}》`, `摘要：${item.summary || '无'}`];
           const events = formatEvents(item);
@@ -350,31 +352,16 @@ export function defineReadyTools(book, settings, signal) {
             .join('\n');
           return { ok: true, data: `全书分层发展线：\n${text || '暂无事件'}`, effect: null };
         }
-        const targetText = String(target || '').trim();
-        const rangeMatch = targetText.match(/^(\d+)\s*-\s*(\d+)$/);
-        if (rangeMatch) {
-          const from = Number(rangeMatch[1]);
-          const to = Number(rangeMatch[2]);
-          if (from < 1 || to > book.chapters.length || from > to) {
-            return { ok: false, retryable: true, data: `章节范围无效：本书共 ${book.chapters.length} 章，请确认范围（如 "5-15"）。` };
-          }
-          const chapters = book.chapters.slice(from - 1, to);
-          if (chapters.length > 10) {
-            return { ok: false, retryable: true, data: `范围最多 10 章：当前 ${chapters.length} 章超出上限，请缩小范围；需要多章正文细节时请分次调用本工具，每次 target 传单个章节号读取全文。` };
-          }
-          const lines = chapters.map((item, offset) => chapterBlock(item, from + offset));
-          return { ok: true, data: `第 ${from}-${to} 章：\n${lines.join('\n\n')}`, effect: null };
+        if (!Number.isInteger(target) || target < 1 || target > book.chapters.length) {
+          return {
+            ok: false,
+            retryable: true,
+            data: `本书共 ${book.chapters.length} 章，read_book 只支持单章读取：请传 1-${book.chapters.length} 的单个章节序号；需要查看多章时请分次调用、每次读一章。`
+          };
         }
-        const num = Number(targetText);
-        if (!/^\d+$/.test(targetText) || !Number.isInteger(num) || num < 1 || num > book.chapters.length) {
-          if (/^\d+$/.test(targetText) && Number(targetText) > book.chapters.length) {
-            return { ok: false, retryable: true, data: `本书目前只有 ${book.chapters.length} 章，没有第 ${Number(targetText)} 章。` };
-          }
-          return { ok: false, retryable: true, data: 'target 请填阿拉伯数字序号（如 "10"）或范围（如 "5-15"）。' };
-        }
-        const index = num - 1;
+        const index = target - 1;
         const chapter = book.chapters[index];
-        return { ok: true, data: chapterBlock(chapter, index + 1, { content: true }), effect: null };
+        return { ok: true, data: chapterBlock(chapter, index + 1, { content: useContent }), effect: null };
       }
     },
     {
