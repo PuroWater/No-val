@@ -7,6 +7,7 @@ test('normalizeBook fills targetWords defaults', () => {
   assert.equal(book.targetWords, 0);
   assert.equal(book.draft.targetWords, 0);
   assert.equal(book.pendingAction, null);
+  assert.equal(book.version, 0);
   assert.equal('timeline' in book, false);
   assert.deepEqual(book.chapters, []);
   const legacy = normalizeBook({ chapters: [], targetWords: 300000 });

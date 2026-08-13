@@ -209,11 +209,20 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
   ));
 
   async function saveChapter(patch) {
-    const data = await api(`/books/${book.id}/chapters/${chapter.id}`, {
-      method: 'PUT',
-      body: JSON.stringify(patch)
-    });
-    setBook(data.book);
+    try {
+      const data = await api(`/books/${book.id}/chapters/${chapter.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ ...patch, version: book.version })
+      });
+      setBook(data.book);
+    } catch (err) {
+      // 乐观锁冲突：提示并刷新最新内容，保留编辑中的草稿供重新保存
+      if (/内容已更新/.test(String(err.message))) {
+        setError(`${err.message}（已为你刷新最新内容，请确认后重新保存）`);
+        api(`/books/${book.id}`).then((data) => setBook(data.book)).catch(() => {});
+      }
+      throw err;
+    }
   }
 
   async function commitSummary() {

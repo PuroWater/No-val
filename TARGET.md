@@ -1685,3 +1685,9 @@ Novel Agent/
 待更新功能：
 - 书籍新增 `version`（normalizeBook 默认 0）；仅快写路径递增（手动保存 PUT、手动新建章）；PUT 章节带 `version`，与服务端不一致返回 409；AI 慢写不递增 version，保持“手动保存覆盖 AI 修改”的既有语义。
 - 前端保存时带 version，409 时提示并刷新最新书（保留草稿便于重存）。
+
+完成内容：
+- `normalizeBook` 默认 `version=0`；快写路径（手动保存 PUT、手动新建章）递增 version；PUT 章节携带 version 且不一致返回 409“内容已更新，请刷新后重试”；AI 慢写不递增，保持“手动保存覆盖 AI 修改”语义；
+- 前端保存章节携带 `book.version`，409 时提示并刷新最新内容（编辑草稿保留，可重新保存）；
+- 真实验证（dev 服务）：正确 version 保存 200 且 version+1，旧 version 保存 409；
+- 单元测试全过（新增 version 默认值用例）；前端构建通过；版本号统一 0.8.11（根/server/client）；本地提交未推送（按协作规矩）。

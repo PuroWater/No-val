@@ -129,6 +129,7 @@ router.post('/:id/chapters', (req, res) => {
         updatedAt: now
       });
       latest.updatedAt = now;
+      latest.version = (latest.version || 0) + 1;
     });
     return res.status(201).json({ book });
   } catch (err) {
@@ -200,7 +201,7 @@ router.post('/:id/restore', (req, res) => {
 });
 
 router.put('/:id/chapters/:chapterId', (req, res) => {
-  const { title, content } = req.body || {};
+  const { title, content, version } = req.body || {};
   if (typeof title !== 'string' || typeof content !== 'string') {
     return res.status(400).json({ error: '标题和内容必须是字符串' });
   }
@@ -209,14 +210,21 @@ router.put('/:id/chapters/:chapterId', (req, res) => {
       if (latest.deletedAt) throw new Error('书籍不存在');
       const chapter = latest.chapters.find((item) => item.id === req.params.chapterId);
       if (!chapter) throw new Error('章节不存在');
+      // 乐观锁：客户端携带 version 且与服务端不一致 → 冲突，提示刷新（仅快写路径，AI 写不改 version）
+      if (Number.isInteger(version) && latest.version !== version) {
+        throw new Error('内容已更新，请刷新后重试');
+      }
       chapter.title = title;
       chapter.content = content;
       chapter.updatedAt = new Date().toISOString();
       latest.updatedAt = chapter.updatedAt;
+      latest.version = (latest.version || 0) + 1;
     });
     res.json({ book });
   } catch (err) {
-    res.status(err.message === '书籍不存在' || err.message === '章节不存在' ? 404 : 400).json({ error: err.message });
+    const status = err.message === '内容已更新，请刷新后重试' ? 409
+      : (err.message === '书籍不存在' || err.message === '章节不存在' ? 404 : 400);
+    res.status(status).json({ error: err.message });
   }
 });
 
