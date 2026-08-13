@@ -34,7 +34,9 @@ export function buildPlan(intent, { output = null, target = null, settings = {} 
       return {
         groups: ['navigate'],
         termination: { kind: 'signal' },
-        text: '调用 open_book_widget 展示书籍卡片（chapter 可传数字序号定位）；展示完成后直接回复用户确认即可，不要再调用其他工具。'
+        text: Number.isInteger(target?.chapter)
+          ? `调用 open_book_widget 展示书籍卡片并定位到第 ${target.chapter} 章（chapter=${target.chapter}）；展示完成后直接回复用户确认即可，不要再调用其他工具。`
+          : '调用 open_book_widget 展示书籍卡片（chapter 可传数字序号定位）；展示完成后直接回复用户确认即可，不要再调用其他工具。'
       };
     case 'read':
       return {

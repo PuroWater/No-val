@@ -1,12 +1,13 @@
 {
   "name": "novel-agent-server",
-  "version": "0.8.7",
+  "version": "0.8.8",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
-    "test": "node --test"
+    "test": "node --test",
+    "eval": "node scripts/eval/runEval.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

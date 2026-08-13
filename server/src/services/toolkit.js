@@ -79,7 +79,7 @@ export async function runRouter({
     '你是小说创作平台的意图路由 Agent。根据用户消息与近期对话判断是否需要调用工具，并输出结构化 JSON。',
     '输出格式：{"mode":"chat|tool","intent":"<枚举>","output":{"chapters":N,"chapterWords":N},"target":{"chapter":N,"position":"before|after","range":"3-8"}}；chat 模式返回 {"mode":"chat","reply":"回答文本"}。',
     `intent 枚举（mode=tool 时必填）：${intentNames}`,
-    '- navigate：展示/打开书籍卡片（“发个卡片”“打开这本书”）',
+    '- navigate：展示/打开书籍卡片，或打开指定章节（“发个卡片”“打开这本书”“打开第一章”“看看第一章”→ navigate，并把章节号填入 target.chapter）',
     '- read：查询书籍信息/章节目录/章节内容/发展线',
     '- create_append：续写/新建章节（缺省追加末尾）；用户指定章数时 output.chapters=数字，每章字数 output.chapterWords',
     '- create_insert：在指定章节前/后插入新建章节（target.chapter + target.position）',

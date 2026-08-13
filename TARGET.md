@@ -1645,6 +1645,11 @@ Novel Agent/
 - 新增 `server/scripts/eval/`：场景定义（goldenScenarios.js）+ 运行器（runEval.js，对运行中的后端做登录/副本/断言/清理），覆盖：再写一章（恰好 1 章+卡片+无错）、发一个卡片（kind=book）、打开第一章（混排标题副本 → 卡片定位第 1 章）。
 - 根/server 增加 `npm run eval`；文档说明需真实模型与运行中的服务。
 
+完成内容：
+- `server/scripts/eval/` 落地（场景 + 运行器 + 副本准备/清理 + 断言），根/server `npm run eval`；
+- eval 首跑抓到回归：混排标题副本“打开第一章”被路由成文本回复 → 加强路由提示词（“打开第X章”→ navigate + target.chapter）与 navigate 任务单（带目标章），重跑三场景全过；
+- 版本号统一 0.8.8（根/server/client）；本地提交未推送（按协作规矩）。
+
 ### 2026-08-13 v0.8.9 系统级 interrupt（写前人工确认，设置开关）
 
 待更新说明：
