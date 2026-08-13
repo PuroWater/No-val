@@ -59,6 +59,16 @@ const api = {
 
 async function main() {
   const token = await api.login();
+  // eval 必须自控用户设置：强制关闭写前确认，结束恢复原值
+  const settingsBefore = await request('/api/settings', { token });
+  const baseSettings = {
+    theme: settingsBefore.settings.theme,
+    fontSize: settingsBefore.settings.fontSize,
+    chaptersPerOutput: settingsBefore.settings.chaptersPerOutput,
+    chapterWords: settingsBefore.settings.chapterWords,
+    confirmBeforeWrite: false
+  };
+  await request('/api/settings', { method: 'PUT', body: baseSettings, token });
   console.log(`golden eval 开始，共 ${GOLDEN_SCENARIOS.length} 个场景（BASE=${BASE}）`);
   let failed = 0;
   for (const scenario of GOLDEN_SCENARIOS) {
@@ -86,6 +96,7 @@ async function main() {
     }
     if (!ok) failed += 1;
   }
+  await request('/api/settings', { method: 'PUT', body: { ...baseSettings, confirmBeforeWrite: settingsBefore.settings.confirmBeforeWrite === true }, token });
   console.log(`\n${failed === 0 ? 'GOLDEN EVAL ALL PASS' : `GOLDEN EVAL FAILED (${failed}/${GOLDEN_SCENARIOS.length})`}`);
   process.exit(failed === 0 ? 0 : 1);
 }

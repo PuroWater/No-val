@@ -273,8 +273,9 @@ async function handleDraftMessage(book, content, settings, signal) {
     return;
   }
   if (filter.output) {
-    if (Number.isInteger(filter.output.chapters)) book.draft.chaptersPerOutput = filter.output.chapters;
-    if (Number.isFinite(filter.output.chapterWords)) book.draft.chapterWords = filter.output.chapterWords;
+    // 与 ready 路径一致的信任守卫：仅当消息提到规模关键词才采纳
+    if (Number.isInteger(filter.output.chapters) && /章/.test(content)) book.draft.chaptersPerOutput = filter.output.chapters;
+    if (Number.isFinite(filter.output.chapterWords) && /字数|每章/.test(content)) book.draft.chapterWords = filter.output.chapterWords;
   }
   if (book.draft.summary && isConfirmation(content)) {
     await finalizeDraftBook(book, {
@@ -332,14 +333,17 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
     return;
   }
   // 路由产出意图 → 任务单（工具白名单 + 步骤 + 完成条件），执行器按任务单执行
-  const plan = buildPlan(route.intent, { output: route.output, target: route.target, settings });
+  // 输出规模信任守卫：仅当用户消息明确提到 章/字数/每章 时才采用路由解析的 output，
+  // 防止模型虚构 chapterWords/chapters 覆盖用户设置（自查发现“再写一章”被虚构 1000 字）。
+  const safeOutput = /章|字数|每章/.test(content) ? route.output : null;
+  const plan = buildPlan(route.intent, { output: safeOutput, target: route.target, settings });
   if (settings.confirmBeforeWrite && !isConfirmReply && WRITE_INTENTS.has(route.intent)) {
     book.pendingAction = { intent: route.intent, output: route.output, target: route.target, content };
     replaceProcessing(book, `确认执行：${intentConfirmText(route.intent, route.output, route.target, settings)}\n\n回复“确认”继续，或直接提出修改。`, 'question');
     return;
   }
-  const effectiveSettings = route.output?.chapterWords
-    ? { ...settings, chapterWords: route.output.chapterWords }
+  const effectiveSettings = safeOutput?.chapterWords
+    ? { ...settings, chapterWords: safeOutput.chapterWords }
     : settings;
   const allowed = new Set(plan.groups);
   const tools = defineReadyTools(book, effectiveSettings, signal, changeLog).filter((tool) => allowed.has(tool.group));
