@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-- 当前版本：0.8.5（0.8.4 系列 + 0.8.5 简化维护链路、context 收敛两层）
+- 当前版本：0.8.6（0.8.5 系列 + 0.8.6 发展线改名：时间线 → 发展线）
 - 当前分支：Develop
 - 技术栈：React 18 + Vite 5，Express 4，Node.js 18+，JSON 本地持久化
 - 大模型：DeepSeek，模型默认 `deepseek-v4-flash`
@@ -60,7 +60,7 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 - 手动编辑章节正文后不会自动调用模型，可在关系网栏位点击“重新生成关系网”更新。
 - 关系网以主角为中心分层布局，节点大小按重要度区分，支持缩放和平移。
 - 编辑章节后失焦只保存、不触发 AI；真正编辑完成（切换标签、关闭面板、返回导航）时自动维护该章摘要、章节事件与全书概况；关系网仅在用户主动点击“重新生成关系网”时生成。
-- 章节事件（`chapter.events`）按章节序派生为“章节事迹轴”时间线，零 AI 成本，供详情页时间线标签展示。
+- 章节事件（`chapter.events`）按章节序派生为“章节事迹轴”发展线（0.8.6 前称时间线），零 AI 成本，供详情页发展线标签展示。
 - 续写、改写、提问全部通过自然语言触发；改写会先询问章节，再询问修改部分。
 - 聊天面板高度固定，对话内容不影响页面整体大小，消息在聊天区内滚动。
 - 生成与续写按设置中的“每次输出章节数 × 每章字数”占全书目标总字数的比例安排剧情；续写一次输出设置的章节数。
@@ -90,12 +90,12 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 - 我的：展示已生成书籍列表，包含书名、章节数、更新时间，并进入设置页。
 - 书架：内部开发阶段占位页面，仅展示前端 UI。
 - 设置：背景风格按“跟随系统 / 浅色 / 深色 / 护眼绿 / 护眼纸纹”顺序排列，默认护眼纸纹；跟随系统自动匹配操作系统深浅色；小 / 中 / 大字号，每次输出章节数（1-5）与每章大致字数（1000-10000），持久化到 `settings.json`。
-- 书籍详情：`内容 / 关系网 / 时间线` 三个标签，关系网使用 SVG 展示人物与势力节点，时间线按章节展示事件卡（事件 + 人物）。
+- 书籍详情：`内容 / 关系网 / 发展线` 三个标签，关系网使用 SVG 展示人物与势力节点，发展线按大背景/场景/章节展示事件。
 
 ### 未来规划（暂不实现）
 
-- 时间线分支：可对过去某个时间点的对话或文章生成分支（fork），在该分支上继续创作，与原时间线互不影响。
-- 当前版本仅支持按日期查看（过去日期只读、当前日期可输入并自动建档），分支能力作为后续规划。
+- 发展线分支（已取消，不做）：过去某时间点对话/文章生成分支（fork）能力已明确不做。
+- 当前版本仅支持按日期查看（过去日期只读、当前日期可输入并自动建档）。
 
 ## 技术架构
 
@@ -131,7 +131,7 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
   - `src/services/draftTools.js`：构思阶段工具定义（confirm_draft）。
   - `src/services/bookService.js`：已生成图书生命周期与章节编排（`createChapter` / `rewriteChapter` / `deleteChapters` / `updateOutline` / `reviewChapter`）。
   - `src/services/maintenanceService.js`：统一维护内核（`maintainChapterMeta` 单章维护、`initializeBookMeta` 新书一次性初始化）。
-  - `src/services/storyMetaService.js`：故事元数据（关系网增量/分块生成与清洗、章节事迹轴派生视图 `buildTimeline`）。
+  - `src/services/storyMetaService.js`：故事元数据（关系网增量/分块生成与清洗、章节事迹轴派生视图 `buildDevelopmentLine`）。
   - `src/services/modelClient.js`：统一模型调用门面（chatCompletion JSON 模式 / chatTools 原生 function calling / parseJson）。
   - `src/services/providers/deepseek.js`：DeepSeek 模型适配器（第一个 provider，实现统一 client 接口）。
   - `src/lib/modelConfig.js`：模型提供方配置（provider 选择，`DEEPSEEK_*` 兼容保留）。
@@ -336,7 +336,7 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 - `maintainChapterMeta` 统一维护内核：输入 = 全书概况 + 变更章全文 + 前后章摘要 + 变更章现有 events + `pendingDeletes`（O(变更数)），输出 = summary + events + 更新后全书概况，一次关思考调用原子写入，不携带全书事件列表，长小说安全。
 - 日常续写、改写、问答、读章已走局部上下文（全书概况 + 目标章/附近章 + 关系网），不随章数膨胀，长篇小说在这些路径上没有障碍。
 - 删除章节支持任意章（含中间章）：删除不调 AI、不触发维护，只记 `pendingDeletes`；概况残留由下一次改写触发的 `maintainChapterMeta` 自动清除，或 `refresh_chapter_meta` 立即刷新；插入/删除中间章自动重排标准前缀（`renumberChapterPrefixes`）。
-- 后续规划（当前未实现）：关系网交互升级（节点拖拽、筛选、搜索、详情）、时间线事件↔章节与人物↔关系网联动、事件时间字段（真实时间线）、大图性能优化。
+- 后续规划（已取消，不做）：关系网自动维护/交互升级、发展线事件↔章节与人物↔关系网联动、事件时间字段（真实时间轴）、大图性能优化、发展线分支。
 
 ### 并发与写操作约定
 
@@ -1358,4 +1358,14 @@ npm start
 - 时间线横版垂直居中：`.timeline-horizontal` 设 `min-height: auto` + `align-items: center`（竖版保持撑满、水平居中）；
 - 版本号升级到 0.8.5（根/server/client 同步）；单元测试 59/59（新增 context 两层用例）；前端构建通过；本地提交未推送（按协作规矩）。
 
-完成结果：维护链路回归单次调用，context 数据结构收敛为两层；已存在的三层历史事件在下次维护时自动截断为两层（buildTimeline 只消费前两层，时间线展示不受影响）。
+完成结果：维护链路回归单次调用，context 数据结构收敛为两层；已存在的三层历史事件在下次维护时自动截断为两层（buildDevelopmentLine 只消费前两层，发展线展示不受影响）。
+
+### 2026-08-13 v0.8.6 发展线改名（时间线 → 发展线）
+
+更新内容：
+- 后端改名：`buildTimeline` → `buildDevelopmentLine`；路由 `/books/:id/timeline` → `/books/:id/development-line`（旧名 `/timeline` 兼容保留）；响应键 `timeline` → `developmentLine`；`read_book` 的 field `timeline` → `development_line`（旧值 `timeline` 兼容）；设置字段 `timelineOrientation` → `developmentLineOrientation`（读取兼容旧设置，写入新字段）。
+- 前端改名：所有用户可见“时间线”文案改为“发展线”（详情/并列窗口标签、设置项、刷新按钮、提示语），API 与响应键同步；`TimelineView` 组件名与 `timeline-*` CSS 类名保留（纯内部实现，不改）。
+- 决策落地：取消时间线分支 fork、真时间轴/事件真实时间字段、事件↔章节联动、关系网自动维护/交互升级/人物↔关系网联动/大图优化、书架页；TARGET/SUMMARY 待办与规划同步更新（保留：幂等键、golden eval、interrupt、多 provider、版本号乐观锁）。
+- 版本号升级到 0.8.6（根/server/client 同步）；单元测试 59/59；前端构建通过；本地提交未推送（按协作规矩）。
+
+完成结果：全链路统一“发展线”命名（旧名兼容，无破坏）；待办清单按决策收敛，剩余 5 项按序推进。

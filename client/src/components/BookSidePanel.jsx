@@ -149,7 +149,7 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
   useEffect(() => {
     api('/settings')
       .then((data) => {
-        setOrientation(data.settings?.timelineOrientation === 'horizontal' ? 'horizontal' : 'vertical');
+        setOrientation((data.settings?.developmentLineOrientation ?? data.settings?.timelineOrientation) === 'horizontal' ? 'horizontal' : 'vertical');
       })
       .catch(() => {});
   }, []);
@@ -166,14 +166,14 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
     if (tab !== 'timeline') return;
     setTimelineLoading(true);
     setTimelineError('');
-    api(`/books/${bookId}/timeline`)
+    api(`/books/${bookId}/development-line`)
       .then((data) => {
-        setTimeline(data.timeline);
+        setTimeline(data.developmentLine);
       })
       .catch((err) => setTimelineError(err.message))
       .finally(() => setTimelineLoading(false));
     // book.updatedAt 覆盖手动编辑→POST /summary 改 events 但不改章数的陈旧场景；
-    // timelineTick 供“刷新时间线”按钮手动重新拉取（派生视图，零 AI 成本）。
+    // timelineTick 供“刷新发展线”按钮手动重新拉取（派生视图，零 AI 成本）。
   }, [tab, bookId, book?.chapters?.length, book?.updatedAt, refreshSignal, timelineTick]);
 
   useEffect(() => {
@@ -241,7 +241,7 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
       </div>
       <div className="tabs">
         <button className={tab === 'content' ? 'active' : ''} onClick={() => setTab('content')}>内容</button>
-        <button className={tab === 'timeline' ? 'active' : ''} onClick={() => setTab('timeline')}>时间线</button>
+        <button className={tab === 'timeline' ? 'active' : ''} onClick={() => setTab('timeline')}>发展线</button>
         <button className={tab === 'relations' ? 'active' : ''} onClick={() => setTab('relations')}>关系网</button>
       </div>
       {tab === 'content' ? (
@@ -314,7 +314,7 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
         </div>
       ) : (
         <div className="relation-tab">
-          {timelineLoading && <p className="muted">正在加载时间线…</p>}
+          {timelineLoading && <p className="muted">正在加载发展线…</p>}
           {timelineError && <p className="form-error">{timelineError}</p>}
           {!timelineLoading && timeline && (
             <TimelineView
@@ -333,7 +333,7 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
             />
           )}
           {!timelineLoading && (
-            <button className="primary" onClick={() => setTimelineTick((value) => value + 1)}>刷新时间线</button>
+            <button className="primary" onClick={() => setTimelineTick((value) => value + 1)}>刷新发展线</button>
           )}
         </div>
       )}

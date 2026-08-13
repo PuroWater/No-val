@@ -1,7 +1,7 @@
 import { fixChapterPrefixes, replaceTextInBook } from '../lib/chapterUtils.js';
 import { createChapter, deleteChapters, rewriteChapter, updateOutline } from './bookService.js';
 import { maintainChapterMeta } from './maintenanceService.js';
-import { buildTimeline } from './storyMetaService.js';
+import { buildDevelopmentLine } from './storyMetaService.js';
 
 export const READY_TOOL_GROUPS = [
   { name: 'read', summary: '查询书籍信息、章节目录或指定章节内容', tools: ['read_book'] },
@@ -195,7 +195,7 @@ export function defineReadyTools(book, settings, signal, changeLog) {
     {
       group: 'edit',
       name: 'update_events_context',
-      description: '主动修改章节事件的大背景（context）：将指定章节范围内所有事件的 context 统一替换为用户指定的背景路径，并即时同步时间线（时间线按 context 分组）。\n详细说明：用户以自然语言描述章节范围与背景（如“把第3到8章的背景改成家族”“第2-5章归入北境矿脉之行”）时，由 AI 分析并转换为数字范围与背景数组传入；start/end 为阿拉伯数字章节号（从 1 开始、end 不小于 start）；context 为背景路径数组（从大到小最多 2 层：大背景 + 场景，如 ["家族","藏书阁"]，空数组 [] 表示清除该范围背景）。本工具只修改 context 字段，不重算 summary/events/foreshadow，不调用维护 AI；修改后前端时间线自动刷新。',
+      description: '主动修改章节事件的大背景（context）：将指定章节范围内所有事件的 context 统一替换为用户指定的背景路径，并即时同步发展线（发展线按 context 分组）。\n详细说明：用户以自然语言描述章节范围与背景（如“把第3到8章的背景改成家族”“第2-5章归入北境矿脉之行”）时，由 AI 分析并转换为数字范围与背景数组传入；start/end 为阿拉伯数字章节号（从 1 开始、end 不小于 start）；context 为背景路径数组（从大到小最多 2 层：大背景 + 场景，如 ["家族","藏书阁"]，空数组 [] 表示清除该范围背景）。本工具只修改 context 字段，不重算 summary/events/foreshadow，不调用维护 AI；修改后前端发展线自动刷新。',
       parameters: {
         type: 'object',
         properties: {
@@ -226,7 +226,7 @@ export function defineReadyTools(book, settings, signal, changeLog) {
         book.updatedAt = now;
         return {
           ok: true,
-          data: `已将第 ${s}-${e} 章的事件背景统一为${ctx.length > 0 ? `：${ctx.join('/')}` : '空（清除背景）'}，时间线已同步。`,
+          data: `已将第 ${s}-${e} 章的事件背景统一为${ctx.length > 0 ? `：${ctx.join('/')}` : '空（清除背景）'}，发展线已同步。`,
           effect: { type: 'meta', ids: [...changeLog.chapterIds] }
         };
       }
@@ -259,11 +259,11 @@ export function defineReadyTools(book, settings, signal, changeLog) {
     {
       group: 'read',
       name: 'read_book',
-      description: '查询书籍信息（只读，可读除“全部章节全文”与“关系网全量数据”外的所有书籍字段）。field 为 info（书名/简介/章节数/进度/目标字数/构思设定）、meta（完整书籍元数据：状态/目标字数/构思设定与概念/草稿输出规模/关系网概要/时间等）、overview（当前全书概况）、chapters（章节目录，支持 start/count 分页）、chapter（按数字序号或范围读取章节的标题/摘要/事件/正文节选）、timeline（全书分层时间线：重大事件→场景→章节）；用户以数字指代章节（如“第十章”“第5到15章”）时直接传序号/范围，不必先读目录；仅当用户以标题指代且不确定序号时才先读 field=chapters；回答书籍信息前必须先调用本工具读取，不要凭摘要或对话历史猜测；正文过长时用 maxChars 控制节选长度。',
+      description: '查询书籍信息（只读，可读除“全部章节全文”与“关系网全量数据”外的所有书籍字段）。field 为 info（书名/简介/章节数/进度/目标字数/构思设定）、meta（完整书籍元数据：状态/目标字数/构思设定与概念/草稿输出规模/关系网概要/时间等）、overview（当前全书概况）、chapters（章节目录，支持 start/count 分页）、chapter（按数字序号或范围读取章节的标题/摘要/事件/正文节选）、development_line（全书分层发展线：重大事件→场景→章节；旧值 timeline 仍兼容）；用户以数字指代章节（如“第十章”“第5到15章”）时直接传序号/范围，不必先读目录；仅当用户以标题指代且不确定序号时才先读 field=chapters；回答书籍信息前必须先调用本工具读取，不要凭摘要或对话历史猜测；正文过长时用 maxChars 控制节选长度。',
       parameters: {
         type: 'object',
         properties: {
-          field: { type: 'string', description: 'info | meta | overview | chapters | chapter | timeline' },
+          field: { type: 'string', description: 'info | meta | overview | chapters | chapter | development_line' },
           target: { type: 'string', xChapterRef: true, description: '章节序号（纯阿拉伯数字，如 "10"）或范围（纯阿拉伯数字且从小到大，如 "5-15"，不得 "15-5"），field=chapter 时必填；用户以数字指代时直接填，仅标题指代且不确定序号时才先读 chapters' },
           start: { type: 'integer', minimum: 1, description: '目录分页起始章节号（从 1 开始，默认 1），仅 field=chapters 生效' },
           count: { type: 'integer', minimum: 1, maximum: 500, description: '目录分页数量（默认 200、上限 500），仅 field=chapters 生效' },
@@ -334,9 +334,9 @@ export function defineReadyTools(book, settings, signal, changeLog) {
           const more = total > from - 1 + size ? `\n…（全书共 ${total} 章，如需继续请用 start=${from + size} 分页读取）` : '';
           return { ok: true, data: `章节目录（第 ${from}-${Math.min(total, from - 1 + size)} 章 / 共 ${total} 章）：\n${list || '暂无章节'}${more}`, effect: null };
         }
-        if (field === 'timeline') {
-          const timeline = buildTimeline(book);
-          const text = (timeline.groups || [])
+        if (field === 'development_line' || field === 'timeline') {
+          const developmentLine = buildDevelopmentLine(book);
+          const text = (developmentLine.groups || [])
             .map((group) => {
               const range = `第 ${group.chapterStart + 1}-${group.chapterEnd + 1} 章`;
               const scenes = group.scenes.length > 0
@@ -348,7 +348,7 @@ export function defineReadyTools(book, settings, signal, changeLog) {
               return `- ${group.label}（${range}）\n${scenes || chapters}`;
             })
             .join('\n');
-          return { ok: true, data: `全书分层时间线：\n${text || '暂无事件'}`, effect: null };
+          return { ok: true, data: `全书分层发展线：\n${text || '暂无事件'}`, effect: null };
         }
         const targetText = String(target || '').trim();
         const rangeMatch = targetText.match(/^(\d+)\s*-\s*(\d+)$/);

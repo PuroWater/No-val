@@ -80,7 +80,7 @@ export async function runRouter({
     '输出格式：{"mode":"chat|tool","intent":"<枚举>","output":{"chapters":N,"chapterWords":N},"target":{"chapter":N,"position":"before|after","range":"3-8"}}；chat 模式返回 {"mode":"chat","reply":"回答文本"}。',
     `intent 枚举（mode=tool 时必填）：${intentNames}`,
     '- navigate：展示/打开书籍卡片（“发个卡片”“打开这本书”）',
-    '- read：查询书籍信息/章节目录/章节内容/时间线',
+    '- read：查询书籍信息/章节目录/章节内容/发展线',
     '- create_append：续写/新建章节（缺省追加末尾）；用户指定章数时 output.chapters=数字，每章字数 output.chapterWords',
     '- create_insert：在指定章节前/后插入新建章节（target.chapter + target.position）',
     '- rewrite：改写指定章（target.chapter）',

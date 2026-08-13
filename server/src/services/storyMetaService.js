@@ -192,10 +192,10 @@ function buildGroupFromRun(label, run, sceneMap) {
   };
 }
 
-// 分层时间线（派生视图，零 AI 成本）：重大事件（context[0]）→ 场景（context[1]）→ 章节 → 事件。
+// 分层发展线（派生视图，零 AI 成本）：重大事件（context[0]）→ 场景（context[1]）→ 章节 → 事件。
 // 同一 context[0] 按“连续章节区间”切成多个组（家族 1-3、北境 4-9、家族 10-11 各自独立），
 // 组内按起始章排序；无背景事件归入“其他”组，同样按连续区间分段平铺。
-export function buildTimeline(book) {
+export function buildDevelopmentLine(book) {
   const chapters = book.chapters || [];
   const groupMap = new Map();
   const otherChapters = [];

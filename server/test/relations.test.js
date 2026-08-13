@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ensureChapterTitle } from '../src/lib/chapterUtils.js';
 import {
-  buildTimeline,
+  buildDevelopmentLine,
   changedChaptersSince,
   sanitizeRelations,
   splitIntoBlocks
@@ -63,7 +63,7 @@ test('changedChaptersSince returns edited chapters after generatedAt', () => {
   assert.equal(changedChaptersSince(book, null).length, 0);
 });
 
-test('buildTimeline groups by context and keeps plain chapters in 其他', () => {
+test('buildDevelopmentLine groups by context and keeps plain chapters in 其他', () => {
   const book = {
     chapters: [
       { id: 'c1', title: '第一章', events: [{ event: '进入秘境', context: ['秘境探险'] }] },
@@ -71,7 +71,7 @@ test('buildTimeline groups by context and keeps plain chapters in 其他', () =>
       { id: 'c3', title: '第三章', events: [{ event: '回到都市' }] }
     ]
   };
-  const timeline = buildTimeline(book);
+  const timeline = buildDevelopmentLine(book);
   assert.equal(timeline.groups.length, 2);
   const secret = timeline.groups.find((g) => g.label === '秘境探险');
   assert.equal(secret.id, '秘境探险#0-1');
@@ -87,10 +87,10 @@ test('buildTimeline groups by context and keeps plain chapters in 其他', () =>
   assert.equal(other.id, '其他#2-2');
   assert.equal(other.chapters.length, 1);
   assert.equal(other.chapters[0].chapterIndex, 2);
-  assert.equal(buildTimeline({}).groups.length, 0);
+  assert.equal(buildDevelopmentLine({}).groups.length, 0);
 });
 
-test('buildTimeline splits same label into contiguous chapter ranges', () => {
+test('buildDevelopmentLine splits same label into contiguous chapter ranges', () => {
   const book = {
     chapters: [
       { id: 'c1', title: '第一章', events: [{ event: '家族演武', context: ['家族', '演武场'] }] },
@@ -99,7 +99,7 @@ test('buildTimeline splits same label into contiguous chapter ranges', () => {
       { id: 'c4', title: '第四章', events: [{ event: '回到家族', context: ['家族', '议事堂'] }] }
     ]
   };
-  const timeline = buildTimeline(book);
+  const timeline = buildDevelopmentLine(book);
   const familyGroups = timeline.groups.filter((g) => g.label === '家族');
   assert.equal(familyGroups.length, 2);
   assert.equal(familyGroups[0].id, '家族#0-0');

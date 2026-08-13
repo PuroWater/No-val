@@ -179,7 +179,7 @@ export default function TimelineView({
           className={`timeline-content timeline-${orientation}`}
           style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})`, transformOrigin: '0 0' }}
         >
-          {groups.length === 0 && <p className="muted">这本书还在构思中，生成章节后这里会按重大事件展示时间线。</p>}
+          {groups.length === 0 && <p className="muted">这本书还在构思中，生成章节后这里会按重大事件展示发展线。</p>}
           {groups.map((group) => (
             <div key={group.id} className="timeline-group-block">
               <button

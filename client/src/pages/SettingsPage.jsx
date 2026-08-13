@@ -60,7 +60,7 @@ export default function SettingsPage() {
       setChapterWords(Number(data.settings.chapterWords) || 2000);
       setEnterToSend(data.settings.enterToSend !== false);
       setThinkingForWriting(data.settings.thinkingForWriting === true);
-      setTimelineOrientation(data.settings.timelineOrientation === 'horizontal' ? 'horizontal' : 'vertical');
+      setTimelineOrientation((data.settings.developmentLineOrientation ?? data.settings.timelineOrientation) === 'horizontal' ? 'horizontal' : 'vertical');
       setReviewAfterWrite(data.settings.reviewAfterWrite === true);
       applySettings(data.settings);
     });
@@ -77,7 +77,7 @@ export default function SettingsPage() {
           chaptersPerOutput: nextChapters,
           chapterWords: nextWords,
           enterToSend: nextEnter,
-          timelineOrientation: nextOrientation,
+          developmentLineOrientation: nextOrientation,
           thinkingForWriting: nextThinking,
           reviewAfterWrite: nextReview
         })
@@ -179,7 +179,7 @@ export default function SettingsPage() {
                 </div>
               </div>
               <div className="settings-group">
-                <span>时间线方向</span>
+                <span>发展线方向</span>
                 <div className="option-row">
                   <button
                     className={timelineOrientation === 'vertical' ? 'active' : ''}

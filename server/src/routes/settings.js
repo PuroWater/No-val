@@ -19,14 +19,16 @@ router.get('/', (req, res) => {
     chapterWords: 2000,
     enterToSend: true,
     thinkingForWriting: false,
-    timelineOrientation: 'vertical',
+    developmentLineOrientation: 'vertical',
     reviewAfterWrite: false
   };
   res.json({ settings: current });
 });
 
 router.put('/', (req, res) => {
-  const { theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, thinkingForWriting, timelineOrientation, reviewAfterWrite } = req.body || {};
+  const { theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, thinkingForWriting, developmentLineOrientation, timelineOrientation, reviewAfterWrite } = req.body || {};
+  // 0.8.6 起字段改名 developmentLineOrientation，旧名 timelineOrientation 兼容
+  const orientation = developmentLineOrientation ?? timelineOrientation;
   if (!THEMES.includes(theme) || !FONT_SIZES.includes(fontSize)) {
     return res.status(400).json({ error: '设置值不合法' });
   }
@@ -47,8 +49,8 @@ router.put('/', (req, res) => {
   if (thinkingForWriting !== undefined && typeof thinkingForWriting !== 'boolean') {
     return res.status(400).json({ error: '正文思考设置不合法' });
   }
-  if (timelineOrientation !== undefined && timelineOrientation !== 'vertical' && timelineOrientation !== 'horizontal') {
-    return res.status(400).json({ error: '时间线方向设置不合法' });
+  if (orientation !== undefined && orientation !== 'vertical' && orientation !== 'horizontal') {
+    return res.status(400).json({ error: '发展线方向设置不合法' });
   }
   const settings = readJson(SETTINGS_FILE, []);
   let current = settings.find((item) => item.userId === req.user.id);
@@ -62,7 +64,7 @@ router.put('/', (req, res) => {
   current.chapterWords = wordCount;
   if (enterToSend !== undefined) current.enterToSend = enterToSend;
   if (thinkingForWriting !== undefined) current.thinkingForWriting = thinkingForWriting;
-  if (timelineOrientation !== undefined) current.timelineOrientation = timelineOrientation;
+  if (orientation !== undefined) current.developmentLineOrientation = orientation;
   if (reviewAfterWrite !== undefined) current.reviewAfterWrite = reviewAfterWrite;
   writeJson(SETTINGS_FILE, settings);
   res.json({ settings: current });

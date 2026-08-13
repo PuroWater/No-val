@@ -1513,14 +1513,14 @@ Novel Agent/
 
 ### 后续小版本待办（0.8.x，先修 bug 再做功能）
 
+- 发展线改名（0.8.6）：时间线 → 发展线（后端标识/API/设置字段/前端文案）。
 - 写工具幂等键：超时重试防重复建章（同一次工具调用带唯一 key，重复执行返回首次结果）。
 - golden 对话 eval：录制“再写一章/发卡片/改写/打开章节”完整链路做流程回归。
 - 系统级 interrupt：写工具执行前人工确认（当前为对话式确认）。
 - 多 provider 查表分发：modelClient 按 modelConfig 注册表分发（当前固定 deepseek）。
-- 关系网自动维护：章节写后按增量策略自动刷新（当前手动）。
 - 版本号乐观锁：快写并发残留（记账 0.7.x）。
-- 关系网交互升级（拖拽/筛选/搜索/详情）；时间线事件↔章节与人物↔关系网联动；事件真实时间字段；大图性能优化。
-- 书架页占位；时间线分支 fork（未来规划）。
+
+（已取消：时间线分支 fork、真时间轴/事件真实时间字段、事件↔章节联动、关系网自动维护/交互升级/人物↔关系网联动/大图性能优化、书架页。）
 
 ### 2026-08-13 v0.8.1 参数归一化与防绕圈、进度条钉底
 
@@ -1606,17 +1606,16 @@ Novel Agent/
 - 时间线横版垂直居中（`.timeline-horizontal` min-height auto + align-items center），竖版保持撑满+水平居中；
 - 单元测试 59/59（新增 context 两层用例）；前端构建通过；版本号统一 0.8.5（根/server/client）；本地提交未推送（按协作规矩）。
 
-### 2026-08-13 v0.8.0 Agent 工作流重构（规划）
+### 2026-08-13 v0.8.6 发展线改名（时间线 → 发展线）
 
 待更新说明：
-- 现状问题：意图识别靠正则硬补丁（detectReadyToolIntent、卡片意图、newIntentRef/batchNew 分类），执行器没有任务单、每步重新解读原始用户消息，导致“发个卡片”被当闲聊/空转超步数、“再写一章”被反复生成、“改写三章”被当新建；ReAct 走文本 JSON 协议，存在解析失败、修复调用与多余延迟；maxNewChapters、重复卡片守卫、兜底文案等补丁在输出层补救而非流程层解决，系统臃肿且难以泛化。
-- 设计目标：单一路由器（模型 + schema 校验）产出结构化任务单（intent + 参数 + 完成条件），执行器只按任务单执行与汇报；确定性状态机负责“做到没有”，写后校验负责“做对没有”，提示词负责“做什么”；硬补丁只作安全兜底，不承载业务决策。
+- “时间线”名称与实际语义不符（按大背景/场景分组的发展线，不是严格时间轴）；用户要求前后端统一改名“发展线”，并取消相关未做规划（真时间轴/分支/联动等）。
 
-待更新功能（分步实施，每步独立验证）：
-- 0.8.0a 结构化路由与任务单：prefilter 返回 `{ mode, intent, groups, output, target }`（intent 枚举：navigate / read / create_append / create_insert / rewrite / delete / batch_edit / meta / outline / target_words / context_edit 等）；chatService 按 intent 模板组装“步骤 + 完成条件”注入执行器 system，执行器不再重新解读用户消息；navigate 意图直达（跳过“选工具”调用）；移除 detectReadyToolIntent 正则层（保留 normalizeOutputScale 边界校验）。
-- 0.8.0b 原生 function calling：deepseek.js 支持 `tools`/`message.tool_calls`，runToolDecision 改为原生工具循环（执行后以 role=tool 回填），退役文本 JSON 工具协议与 JSON 修复调用；路由/聊天仍走 json_object。
-- 0.8.0c 任务状态机与写后校验：按 intent 定义完成条件（create_append 按章数计数，完成即强制收尾；rewrite/delete/meta 单步后收尾；navigate 卡片展示后收尾），替换 maxNewChapters、重复卡片守卫与 batchNew 分类；写工具执行后确定性校验（章数增量/前缀重排/目标字数）并入状态机，校验失败自动修复或回传模型。
-- 0.8.0d 清理补丁与提示词语义：删除 scaleHint“不要擅自新建”“必须调用 open_book_widget”等补丁式表述，改为任务单承载；兜底文案统一为“执行器按工具结果收尾”的通用规则；SUMMARY「Agent 与工具调用约定」重写为“路由器-执行器-状态机”设计理念（职责分离：提示词定意图、状态机定进度、校验定正确性）。
+待更新功能：
+- 后端：`buildTimeline` → `buildDevelopmentLine`；路由 `/books/:id/timeline` → `/development-line`（旧名兼容）；响应键 `timeline` → `developmentLine`；`read_book` 的 field `timeline` → `development_line`（旧值兼容）；设置字段 `timelineOrientation` → `developmentLineOrientation`（读取兼容旧设置）。
+- 前端：用户可见“时间线”文案全部改为“发展线”（标签/按钮/设置项/提示）；API 与响应键同步；`TimelineView` 组件名与 `timeline-*` CSS 类名保留（纯内部实现）。
+- 决策落地：取消时间线分支 fork、真时间轴/事件真实时间字段、事件↔章节联动、关系网自动维护/交互升级/人物↔关系网联动/大图优化、书架页；TARGET/SUMMARY 待办与规划同步更新。
 
 完成内容：
-- 待实施后填写。
+- 改名落地（后端标识/API/设置字段/前端文案，旧名兼容）；TARGET 待办清单按决策更新（删除取消项，保留幂等键/golden eval/interrupt/多 provider/乐观锁）；
+- 单元测试 59/59；前端构建通过；版本号统一 0.8.6（根/server/client）；本地提交未推送（按协作规矩）。

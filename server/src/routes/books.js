@@ -4,7 +4,7 @@ import { ensureChapterTitle } from '../lib/chapterUtils.js';
 import { requireAuth } from '../middleware/auth.js';
 import { deleteChapters, updateBook } from '../services/bookService.js';
 import { maintainChapterMeta } from '../services/maintenanceService.js';
-import { buildTimeline, extractRelations } from '../services/storyMetaService.js';
+import { buildDevelopmentLine, extractRelations } from '../services/storyMetaService.js';
 import { enqueueBookWrite } from '../lib/writeQueue.js';
 
 const router = Router();
@@ -68,13 +68,17 @@ router.post('/:id/relations', (req, res) => {
   }).catch((err) => res.status(502).json({ error: `关系网生成失败：${err.message}` }));
 });
 
-router.get('/:id/timeline', (req, res) => {
+const developmentLineHandler = (req, res) => {
   const book = readBookById(req.params.id);
   if (!book || book.userId !== req.user.id || book.deletedAt) {
     return res.status(404).json({ error: '书籍不存在' });
   }
-  res.json({ timeline: buildTimeline(book) });
-});
+  res.json({ developmentLine: buildDevelopmentLine(book) });
+};
+
+router.get('/:id/development-line', developmentLineHandler);
+// 兼容旧名（0.8.6 前为 /timeline）
+router.get('/:id/timeline', developmentLineHandler);
 
 router.post('/:id/chapters/:chapterId/summary', (req, res) => {
   // 慢写：摘要/事件维护进书级队列，等当前聊天完成后基于最新内容计算，避免旧摘要覆盖新内容
