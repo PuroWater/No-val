@@ -6,12 +6,14 @@ import {
   prefilterDraftIntent,
   validateArgs,
   validateOutcome,
+  normalizeToolArguments,
   registerTool,
   callTool,
   runRouter,
   runTask,
   applyTransition
 } from '../src/services/toolkit.js';
+import { parseChapterNumber, normalizeChapterTarget } from '../src/lib/chapterUtils.js';
 
 function askSequence(steps) {
   let index = 0;
@@ -61,6 +63,38 @@ test('validateOutcome accepts standard ToolResult and rejects malformed ones', (
   assert.equal(validateOutcome({ ok: true, data: 123 }).ok, false);
   assert.equal(validateOutcome({ ok: true, data: 'x', card: { chapter: 1 } }).ok, false);
   assert.equal(validateOutcome(null).ok, false);
+});
+
+test('chapter reference helpers convert deterministically', () => {
+  assert.equal(parseChapterNumber('第一章'), 1);
+  assert.equal(parseChapterNumber('第3章'), 3);
+  assert.equal(parseChapterNumber('12'), 12);
+  assert.equal(parseChapterNumber('二十万'), 200000);
+  assert.equal(parseChapterNumber('abc'), null);
+  assert.equal(normalizeChapterTarget('第一章'), '1');
+  assert.equal(normalizeChapterTarget('第3到8章'), '3-8');
+  assert.equal(normalizeChapterTarget('5 - 15'), '5-15');
+  assert.equal(normalizeChapterTarget('abc'), 'abc');
+});
+
+test('normalizeToolArguments coerces integer and xChapterRef params', () => {
+  const params = {
+    type: 'object',
+    properties: {
+      chapter: { type: 'integer' },
+      value: { type: 'integer' },
+      target: { type: 'string', xChapterRef: true },
+      text: { type: 'string' }
+    },
+    required: []
+  };
+  assert.deepEqual(normalizeToolArguments(params, { chapter: '第一章' }), { chapter: 1 });
+  assert.deepEqual(normalizeToolArguments(params, { chapter: '第3章' }), { chapter: 3 });
+  assert.deepEqual(normalizeToolArguments(params, { value: '二十万' }), { value: 200000 });
+  assert.deepEqual(normalizeToolArguments(params, { target: '第3到8章' }), { target: '3-8' });
+  // 普通字符串参数不受影响；无法转换的原样保留交校验拒绝
+  assert.deepEqual(normalizeToolArguments(params, { text: '第一章' }), { text: '第一章' });
+  assert.deepEqual(normalizeToolArguments(params, { chapter: 'abc' }), { chapter: 'abc' });
 });
 
 test('callTool validates input and standard output', async () => {
@@ -163,6 +197,56 @@ test('runTask executes tools and merges card into final reply', async () => {
   assert.equal(decision.outcome.kind, 'book');
   assert.equal(decision.outcome.content, '已为你打开。');
   assert.deepEqual(decision.outcome.extra, { bookId: 'b1', chapter: 3 });
+});
+
+test('runTask normalizes chapter args before executing tool', async () => {
+  const openTool = {
+    name: 'open_book_widget',
+    description: '展示卡片',
+    parameters: { type: 'object', properties: { chapter: { type: 'integer' } }, required: [] },
+    handler: async ({ chapter }) => ({
+      ok: true,
+      data: `已定位第 ${chapter} 章。`,
+      effect: { type: 'none' },
+      card: { bookId: 'b1', chapter }
+    })
+  };
+  const decision = await runTask({
+    system: 's',
+    tools: [openTool],
+    user: '打开第一章',
+    plan: { termination: { kind: 'signal' } },
+    ask: askSequence([
+      { content: '', toolCalls: [{ name: 'open_book_widget', arguments: { chapter: '第一章' } }] },
+      { content: '已打开。', toolCalls: [] }
+    ])
+  });
+  assert.equal(decision.outcome.kind, 'book');
+  assert.deepEqual(decision.outcome.extra, { bookId: 'b1', chapter: 1 });
+});
+
+test('runTask finalizes silent tool loops instead of exhausting steps', async () => {
+  const readTool = {
+    name: 'read_book',
+    description: '读取',
+    parameters: { type: 'object', properties: {} },
+    handler: async () => ({ ok: true, data: '第一章内容', effect: null })
+  };
+  let calls = 0;
+  const decision = await runTask({
+    system: 's',
+    tools: [readTool],
+    user: '查看第一章',
+    plan: { termination: { kind: 'none' } },
+    ask: async () => {
+      calls += 1;
+      return { content: '', toolCalls: [{ name: 'read_book', arguments: {} }] };
+    },
+    maxSteps: 30
+  });
+  // none 终止的防绕圈上限为 6 次工具调用，之后用最后一次结果收尾
+  assert.equal(calls, 6);
+  assert.equal(decision.outcome.content, '第一章内容');
 });
 
 test('runTask counted termination enforces target and intercepts extra calls', async () => {

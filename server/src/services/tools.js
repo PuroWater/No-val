@@ -262,7 +262,7 @@ export function defineReadyTools(book, settings, signal, changeLog) {
         type: 'object',
         properties: {
           field: { type: 'string', description: 'info | meta | overview | chapters | chapter | timeline' },
-          target: { type: 'string', description: '章节序号（纯阿拉伯数字，如 "10"）或范围（纯阿拉伯数字且从小到大，如 "5-15"，不得 "15-5"），field=chapter 时必填；用户以数字指代时直接填，仅标题指代且不确定序号时才先读 chapters' },
+          target: { type: 'string', xChapterRef: true, description: '章节序号（纯阿拉伯数字，如 "10"）或范围（纯阿拉伯数字且从小到大，如 "5-15"，不得 "15-5"），field=chapter 时必填；用户以数字指代时直接填，仅标题指代且不确定序号时才先读 chapters' },
           start: { type: 'integer', minimum: 1, description: '目录分页起始章节号（从 1 开始，默认 1），仅 field=chapters 生效' },
           count: { type: 'integer', minimum: 1, maximum: 500, description: '目录分页数量（默认 200、上限 500），仅 field=chapters 生效' },
           scope: { type: 'string', description: 'summary 或 content，field=chapter 时生效' },

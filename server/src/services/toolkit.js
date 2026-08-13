@@ -8,6 +8,7 @@
 import { chatCompletion, chatTools } from './modelClient.js';
 import { INTENTS } from './intentPlans.js';
 import { OUTPUT_LIMITS, OVER_LIMIT_REPLY, normalizeOutputScale } from '../lib/outputScale.js';
+import { parseChapterNumber, normalizeChapterTarget } from '../lib/chapterUtils.js';
 export { OUTPUT_LIMITS, OVER_LIMIT_REPLY, normalizeOutputScale } from '../lib/outputScale.js';
 
 // ---------- 构思阶段路由（独立于已生成图书） ----------
@@ -191,6 +192,27 @@ export function validateOutcome(outcome) {
   return { ok: errors.length === 0, errors };
 }
 
+// 参数归一化：整数型参数与标记 xChapterRef 的字符串参数做章节/数字确定性转换，
+// 不依赖模型把“第一章”转成 1；转换不了才原样交给 validateArgs 拒绝。
+// 属参数层标准化（校验层的一部分），不是针对单个工具的补丁。
+export function normalizeToolArguments(parameters = {}, args) {
+  if (!args || typeof args !== 'object' || Array.isArray(args)) return args;
+  const properties = parameters.properties || {};
+  const out = { ...args };
+  for (const [key, value] of Object.entries(args)) {
+    if (typeof value !== 'string') continue;
+    const schema = properties[key];
+    if (!schema) continue;
+    if (schema.type === 'integer') {
+      const num = parseChapterNumber(value);
+      if (num != null) out[key] = num;
+    } else if (schema.type === 'string' && schema.xChapterRef === true) {
+      out[key] = normalizeChapterTarget(value);
+    }
+  }
+  return out;
+}
+
 const tools = new Map();
 
 export function registerTool(tool) {
@@ -211,11 +233,12 @@ export function listTools() {
 export async function callTool(name, args, context = {}) {
   const tool = tools.get(name);
   if (!tool) throw new Error(`未知工具：${name}`);
-  const validation = validateArgs(tool.parameters, args);
+  const normalized = normalizeToolArguments(tool.parameters, args);
+  const validation = validateArgs(tool.parameters, normalized);
   if (!validation.ok) {
     throw new Error(`参数不合法：${validation.errors.join('；')}`);
   }
-  const outcome = await tool.handler(args, context);
+  const outcome = await tool.handler(normalized, context);
   const checked = validateOutcome(outcome);
   if (!checked.ok) throw new Error(`工具结果不合规：${checked.errors.join('；')}`);
   return outcome;
@@ -312,6 +335,10 @@ export async function runTask({
 }) {
   const state = stateFromPlan(plan);
   const apiTools = toApiTools(toolList);
+  // 防绕圈：连续多次工具调用仍无内容回复时，用最后一次工具结果收尾，不裸靠 maxSteps。
+  // none 终止（read 类）更严，其余意图给足工具调用空间。
+  const silentCap = plan?.termination?.kind === 'none' ? 6 : 12;
+  let silent = 0;
   const messages = [
     { role: 'system', content: system },
     { role: 'user', content: context ? `近期对话：\n${context}\n\n用户消息：${user}` : `用户消息：${user}` }
@@ -338,6 +365,8 @@ export async function runTask({
     if (toolCalls.length === 0) {
       return finalizeReply(state, content);
     }
+    silent += 1;
+    if (silent >= silentCap) return finalizeIntercept(state);
     const call = toolCalls[0] || {};
     const name = String(call.name || '');
     const tool = toolList.find((item) => item.name === name);
@@ -353,7 +382,8 @@ export async function runTask({
       if (state.failures >= maxAttempts) throw new Error(`工具调用多次失败：未知工具 ${name}`);
       continue;
     }
-    const validation = validateArgs(tool.parameters, call.arguments);
+    const normalizedArgs = normalizeToolArguments(tool.parameters, call.arguments);
+    const validation = validateArgs(tool.parameters, normalizedArgs);
     if (!validation.ok) {
       recordFailure(call, `参数不合法：${validation.errors.join('；')}`);
       if (state.failures >= maxAttempts) throw new Error(`工具调用多次失败：${validation.errors.join('；')}`);
@@ -361,7 +391,7 @@ export async function runTask({
     }
     let outcome;
     try {
-      outcome = await tool.handler(call.arguments, { user, signal });
+      outcome = await tool.handler(normalizedArgs, { user, signal });
     } catch (err) {
       if (/中断|超时/.test(err.message)) throw err;
       recordFailure(call, `工具执行失败：${err.message}`);
@@ -379,7 +409,7 @@ export async function runTask({
     const callId = call.id || `call_${step}_${name}`;
     messages.push({
       role: 'assistant',
-      tool_calls: [{ id: callId, type: 'function', function: { name, arguments: JSON.stringify(call.arguments || {}) } }]
+      tool_calls: [{ id: callId, type: 'function', function: { name, arguments: JSON.stringify(normalizedArgs || {}) } }]
     });
     messages.push({ role: 'tool', tool_call_id: callId, content: String(outcome.data || '') });
   }

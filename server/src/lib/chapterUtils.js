@@ -30,6 +30,39 @@ export function chineseNumberToInt(text) {
   return total + section + current;
 }
 
+// 章节数字提取：阿拉伯数字直接转，汉字数字走 chineseNumberToInt。
+function chapterDigit(raw) {
+  const t = String(raw || '').trim();
+  return /^\d+$/.test(t) ? Number(t) : chineseNumberToInt(t);
+}
+
+// 章节/数字指代确定性转阿拉伯数字：“第一章/第1章/1/二十万” → 1 / 1 / 1 / 200000。
+// 无法转换返回 null（交由 schema 校验拒绝），不猜测。
+export function parseChapterNumber(text) {
+  const t = String(text || '').trim();
+  if (/^\d+$/.test(t)) return Number(t);
+  const chapter = t.match(/^第\s*([0-9零一二两三四五六七八九十百千]+)\s*章$/);
+  if (chapter) return chapterDigit(chapter[1]);
+  if (/^[零一二两三四五六七八九十百千万]+$/.test(t)) return chineseNumberToInt(t);
+  return null;
+}
+
+// 章节指代文本归一化为 read 工具要求的数字/范围格式：“第一章”→"1"，“第3到8章”→"3-8"。
+// 用于 xChapterRef 字符串参数（如 read_book.target），消除对模型自律转换的依赖。
+export function normalizeChapterTarget(text) {
+  const t = String(text || '').trim();
+  if (/^\d+(\s*[-~—]\s*\d+)?$/.test(t)) return t.replace(/\s+/g, '');
+  const single = t.match(/^第\s*([0-9零一二两三四五六七八九十百千]+)\s*章$/);
+  if (single) return String(chineseNumberToInt(single[1]));
+  const range = t.match(/^第?\s*([0-9零一二两三四五六七八九十百千]+)\s*章?\s*(?:到|至|~|—|-)\s*第?\s*([0-9零一二两三四五六七八九十百千]+)\s*章?$/);
+  if (range) {
+    const from = chapterDigit(range[1]);
+    const to = chapterDigit(range[2]);
+    return `${Math.min(from, to)}-${Math.max(from, to)}`;
+  }
+  return t;
+}
+
 export function intToChinese(number) {
   const digits = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
   const n = Math.max(1, Math.floor(number));

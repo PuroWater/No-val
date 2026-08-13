@@ -1,8 +1,8 @@
 【项目目标】
 在当前开发环境下（已安装 VSCode、Node.js），生成一个可直接运行的**小说创作平台 Web 应用**。项目不连接任何数据库，后端数据使用本地 JSON 文件持久化。前端为 React 单页应用（SPA），后端为 Express，调用 DeepSeek 大模型辅助创作。
 
-当前版本：0.8.0  
-最近更新：2026-08-13 0.8.0 Agent 工作流重构（路由 + 任务单 + 状态机 + 原生 function calling + 模型层抽象）
+当前版本：0.8.1  
+最近更新：2026-08-13 0.8.1 参数归一化与防绕圈、进度条钉底修复
 
 【文档职责】
 - `TARGET.md`：每次更新的目标文件。每次更新前先修改本文档，按“日期 + 版本”划分，写明待更新说明、待更新功能；开发完成后记录实际完成内容。
@@ -1510,6 +1510,34 @@ Novel Agent/
 - 工具结果标准化：全部 ready 工具与 confirm_draft 改标准 ToolResult（ok/data/retryable/effect/card）+ validateOutcome。
 - 真实验证（沙箱外）：再写一章 14→15 恰好 1 章、进度可见、模型总结 + 卡片定位第 15 章；发一个卡片约 3 秒；改写第一章正常；原生 function calling 实测可用。
 - 单元测试 51/51（重写为路由/执行器/状态机/标准结果用例）；SUMMARY「Agent 与工具调用约定」重写为设计理念 + 工具开发规范；docs 新增 Agent 设计教学文档；版本号统一 0.8.0（根/server/client）；本地提交未推送（按协作规矩）。
+
+### 后续小版本待办（0.8.x，先修 bug 再做功能）
+
+- 写工具幂等键：超时重试防重复建章（同一次工具调用带唯一 key，重复执行返回首次结果）。
+- golden 对话 eval：录制“再写一章/发卡片/改写/打开章节”完整链路做流程回归。
+- 系统级 interrupt：写工具执行前人工确认（当前为对话式确认）。
+- 多 provider 查表分发：modelClient 按 modelConfig 注册表分发（当前固定 deepseek）。
+- 关系网自动维护：章节写后按增量策略自动刷新（当前手动）。
+- 版本号乐观锁：快写并发残留（记账 0.7.x）。
+- 关系网交互升级（拖拽/筛选/搜索/详情）；时间线事件↔章节与人物↔关系网联动；事件真实时间字段；大图性能优化。
+- 书架页占位；时间线分支 fork（未来规划）。
+
+### 2026-08-13 v0.8.1 参数归一化与防绕圈、进度条钉底
+
+待更新说明：
+- “打开第1章”在章节标题混排（第一章/第2章）时超步数：0.7.7 的“数字参数强制阿拉伯数字”只有拒绝层，转换仍依赖模型自律；read 意图 termination=none 无防绕圈，只能靠 maxSteps 兜底。
+- 顶部进度条出现时压缩消息区高度，滚动位置不重新钉底，最新消息被挤出可视区。
+
+待更新功能：
+- 参数归一化：executor/callTool 在 validateArgs 前把整数型参数与 xChapterRef 字符串参数做确定性转换（parseChapterNumber / normalizeChapterTarget），转换不了才拒绝。
+- 防绕圈：runTask 增加连续工具调用上限（none 终止 6 次、其余 12 次），达到即以最后一次工具结果收尾，不裸靠 maxSteps。
+- 进度条：ChatPanel 滚动 effect 增加 progressBarVisible 依赖，顶部进度条出现/消失时重新钉底。
+
+完成内容：
+- chapterUtils 新增 `parseChapterNumber`（第一章/第1章/1/二十万 → 数字）与 `normalizeChapterTarget`（第一章→"1"，第3到8章→"3-8"）；toolkit 新增 `normalizeToolArguments` 并接入 runTask/callTool；read_book.target 标记 `xChapterRef`。
+- runTask 新增防绕圈：none 终止连续 6 次工具调用、其余 12 次仍无内容回复即用最后一次结果收尾。
+- ChatPanel 滚动 effect 增加 progressBarVisible 依赖。
+- 单元测试 55/55（新增归一化/防绕圈/章节指代用例）；真实验证（沙箱外）：混排标题副本“打开第一章”3 秒返回卡片定位第 1 章、“查看第一章”正常总结，均不再超步数；版本号统一 0.8.1（根/server/client）；本地提交未推送（按协作规矩）。
 
 ### 2026-08-13 v0.8.0 Agent 工作流重构（规划）
 

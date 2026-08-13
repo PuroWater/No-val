@@ -101,6 +101,7 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
   const effectiveBookId = bookId || activeBookId;
   const hasProcessing = Boolean(book?.chat?.some((message) => message.kind === 'processing'));
   const waiting = sending || hasProcessing;
+  const progressBarVisible = hasProcessing && Boolean(progress) && progress.total > 0;
 
   useEffect(() => {
     // 发送即开始轮询（不等 book 里出现 processing 消息），响应返回后停止；
@@ -122,7 +123,8 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
   useEffect(() => {
     const el = messagesRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [book?.chat?.length, bookId, selectedDate]);
+    // 顶部进度条出现/消失会改变消息区高度，需重新钉底，避免最新消息被挤出可视区
+  }, [book?.chat?.length, bookId, selectedDate, progressBarVisible]);
 
   useEffect(() => {
     if (!dateOpen) return undefined;
@@ -345,7 +347,7 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
           </div>
         )}
       </div>
-      {hasProcessing && progress && progress.total > 0 && (
+      {progressBarVisible && (
         <div className="chat-progress">
           <span className="chat-progress-text">{progress.text || '处理中…'}</span>
           {progress.total > 0 && (
