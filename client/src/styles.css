@@ -1306,9 +1306,7 @@ button, input, textarea, select {
 }
 
 .workspace-split {
-  display: grid;
-  grid-template-columns: minmax(320px, 5fr) minmax(320px, 6fr);
-  grid-template-rows: minmax(0, 1fr);
+  display: flex;
   gap: 14px;
   align-items: stretch;
   flex: 1;
@@ -1316,10 +1314,21 @@ button, input, textarea, select {
 }
 
 .workspace-split > * {
+  min-width: 0;
   min-height: 0;
 }
 
+.workspace-split > .book-side-panel {
+  flex: 0 0 var(--side-width, 480px);
+}
+
+.workspace-split > .chat-panel {
+  flex: 1;
+  min-width: 0;
+}
+
 .split-divider {
+  flex: 0 0 6px;
   cursor: col-resize;
   border-radius: 3px;
   background: var(--border);
@@ -1569,7 +1578,7 @@ button, input, textarea, select {
 
 @media (max-width: 900px) {
   .workspace-split {
-    grid-template-columns: 1fr;
+    flex-direction: column;
   }
 }
 

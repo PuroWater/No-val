@@ -2014,6 +2014,17 @@ Novel Agent/
 完成内容：
 - ChatPanel 相对进度保持实现；前端构建通过；版本号统一 0.8.35（根/server/client）；本地提交未推送（按协作规矩）。
 
+### 2026-08-14 v0.8.36 并列窗口改 flex 布局（修复聊天区塌陷/上移）
+
+待更新说明：
+- 0.8.35 的相对进度方案实测未触发（ResizeObserver 无日志），且用户反馈“聊天消息不显示”——`workspace-split` 的 grid 布局下 ChatPanel 高度塌陷/异常，导致聊天区被压缩上移。
+
+待更新功能：
+- `workspace-split` 由 grid 改为 flex：BookSidePanel `flex: 0 0 var(--side-width)`、divider `flex: 0 0 6px`、ChatPanel `flex: 1 min-width:0`；JSX 内联 `gridTemplateColumns` 改为 CSS 变量 `--side-width`；窄屏 flex-direction: column。
+
+完成内容：
+- 并列布局改 flex，ChatPanel 高度由 flex 保证不再塌陷；前端构建通过；版本号统一 0.8.36（根/server/client）；本地提交未推送（按协作规矩）。
+
 ### 后续建议方向（交接快照 2026-08-13）
 
 - 0.8.7-0.8.19 待办已全部完成（幂等 call.id/跨消息、golden eval、写前确认、多 provider、乐观锁、规模信任守卫、背景/场景语义修正、P1 拆分、P2 统一记账、P3 抽公共、场景拼合模板、工具白名单、卡片打开语义、发送白屏修复）。
