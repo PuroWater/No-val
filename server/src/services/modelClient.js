@@ -1,7 +1,10 @@
 // 统一模型调用门面：业务代码只 import 本文件。
 // chatCompletion：JSON 模式（路由/聊天/正文生成），带 JSON 修复兜底；
 // chatTools：原生 function calling（工具循环），返回 { content, toolCalls }。
-import { provider } from './providers/deepseek.js';
+import { getProvider } from './providers/index.js';
+import { modelProviderName } from '../lib/modelConfig.js';
+
+const provider = getProvider(modelProviderName());
 
 export function parseJson(text) {
   const cleaned = String(text).replace(/```(?:json)?/g, '').trim();

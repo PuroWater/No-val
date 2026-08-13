@@ -1673,6 +1673,10 @@ Novel Agent/
 待更新功能：
 - 新增 `services/providers/index.js` 注册表（deepseek 首项），`modelClient` 按 `modelConfig.modelProviderName()` 查表分发；`MODEL_PROVIDER` 环境变量切换；DEEPSEEK_* 兼容保留。
 
+完成内容：
+- `services/providers/index.js` 注册表（PROVIDERS + getProvider）落地，`modelClient` 改为按 `MODEL_PROVIDER` 查表选择 provider；新增 provider = 注册一行 + 实现统一 chat 接口；
+- 单元测试全过、模块导入正常；版本号统一 0.8.10（根/server/client）；本地提交未推送（按协作规矩）。
+
 ### 2026-08-13 v0.8.11 版本号乐观锁（快写并发）
 
 待更新说明：

@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-- 当前版本：0.8.9（0.8.8 系列 + 0.8.9 系统级 interrupt：写前确认）
+- 当前版本：0.8.10（0.8.9 系列 + 0.8.10 多 provider 查表分发）
 - 当前分支：Develop
 - 技术栈：React 18 + Vite 5，Express 4，Node.js 18+，JSON 本地持久化
 - 大模型：DeepSeek，模型默认 `deepseek-v4-flash`
@@ -1398,3 +1398,12 @@ npm start
 - 版本号升级到 0.8.9（根/server/client 同步）；单元测试 61/61；前端构建通过；本地提交未推送（按协作规矩）。
 
 完成结果：写工具执行前可人工确认（系统级 interrupt，默认关，不影响既有流畅体验）；确认状态跨消息持久化。
+
+### 2026-08-13 v0.8.10 多 provider 查表分发
+
+更新内容：
+- 新增 `services/providers/index.js` 注册表（`PROVIDERS` + `getProvider`，deepseek 为首项）；`modelClient` 改为按 `MODEL_PROVIDER` 环境变量查表选择 provider，不再直接 import deepseek；
+- 新增 provider = 实现统一 chat 接口 + 注册一行 + `lib/modelConfig.js` 登记配置；`DEEPSEEK_*` 兼容保留；
+- 版本号升级到 0.8.10（根/server/client 同步）；单元测试全过；本地提交未推送（按协作规矩）。
+
+完成结果：模型提供方通过注册表切换，业务代码零改动。
