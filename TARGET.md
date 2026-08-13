@@ -1719,3 +1719,15 @@ Novel Agent/
 - 维护/初始化 prompt 语义改正（删“禁止阶段与场景矛盾”类表述，明确“背景=主线阶段、场景=实际地点”）；教学文档同步；
 - 《仙路逆鳞》全书 14 章重维护：每章 ≤3 事件、单主背景；场景恢复真实地点（第 8 章北境主线含“家族/藏书阁”场景、第 9/11 章家族主线含“矿洞”场景，均符合正确语义）；
 - 单元测试全过、前端构建通过；版本号统一 0.8.13（根/server/client）；本地提交未推送（按协作规矩）。
+
+### 2026-08-13 v0.8.14 P1 结构拆分（toolkit 上帝模块）
+
+待更新说明：
+- toolkit.js（407 行、13 个导出）混合路由/执行器/状态机/校验/注册表，与“模块化/职责分离”理念相悖。
+
+待更新功能：
+- 拆分为：`lib/toolArgs.js`（validateArgs/normalizeToolArguments）、`lib/toolOutcome.js`（validateOutcome）、`services/toolRegistry.js`（register/get/list/call/toApiTools）、`services/router.js`（runRouter/prefilterDraftIntent）、`services/executor.js`（runTask + 状态机）；删除 toolkit.js，更新全部 import，测试文件改名 agentFlow.test.js。
+
+完成内容：
+- 5 个新文件落地、toolkit.js 删除、引用全部更新（chatService/tests），行为零变化；
+- 单元测试 61/61、前端构建通过、golden eval 3/3 全过；版本号统一 0.8.14（根/server/client）；本地提交未推送（按协作规矩）。

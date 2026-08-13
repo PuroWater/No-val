@@ -1,7 +1,8 @@
 import { readBookById, listBooks, saveBook } from '../lib/store.js';
 import { newId, normalizeBook } from '../lib/bookUtils.js';
 import { finalizeDraftBook } from './draftService.js';
-import { prefilterDraftIntent, runRouter, runTask } from './toolkit.js';
+import { prefilterDraftIntent, runRouter } from './router.js';
+import { runTask } from './executor.js';
 import { buildPlan } from './intentPlans.js';
 import { defineReadyTools } from './tools.js';
 import { defineDraftTools } from './draftTools.js';

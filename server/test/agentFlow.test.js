@@ -1,18 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  OVER_LIMIT_REPLY,
-  normalizeOutputScale,
-  prefilterDraftIntent,
-  validateArgs,
-  validateOutcome,
-  normalizeToolArguments,
-  registerTool,
-  callTool,
-  runRouter,
-  runTask,
-  applyTransition
-} from '../src/services/toolkit.js';
+import { OVER_LIMIT_REPLY, normalizeOutputScale } from '../src/lib/outputScale.js';
+import { validateArgs, normalizeToolArguments } from '../src/lib/toolArgs.js';
+import { validateOutcome } from '../src/lib/toolOutcome.js';
+import { registerTool, callTool } from '../src/services/toolRegistry.js';
+import { prefilterDraftIntent, runRouter } from '../src/services/router.js';
+import { runTask, applyTransition } from '../src/services/executor.js';
 import { parseChapterNumber, normalizeChapterTarget } from '../src/lib/chapterUtils.js';
 
 function askSequence(steps) {
