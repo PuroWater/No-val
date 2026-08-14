@@ -86,12 +86,13 @@ export function normalizeBook(book) {
     : 0;
   book.relations.mode = book.relations.mode || '';
   if (!book.deletedAt) book.deletedAt = null;
-  if (!book.storySummary) book.storySummary = '';
+  // 全书概况已删除（0.8.39）：旧数据残留加载即清除
+  delete book.storySummary;
   if (!book.targetWords) book.targetWords = 0;
   // 乐观锁版本号：仅快写路径递增；AI 慢写不递增，保持“手动保存覆盖 AI 修改”的语义
   if (!Number.isInteger(book.version) || book.version < 0) book.version = 0;
-  // 删除记录：删除章节后暂存（不立即维护概况），由下一次 maintainChapterMeta 消费清理。
-  if (!Array.isArray(book.pendingDeletes)) book.pendingDeletes = [];
+  // 章节删除记录已随全书概况一并移除（0.8.39）：删除只重排章节，不再维护概况残留
+  delete book.pendingDeletes;
   // 写前确认（系统级 interrupt）：待确认的写意图，确认后执行、否则清除
   if (!book.pendingAction) book.pendingAction = null;
   // 跨消息幂等：最近一次成功应用的客户端消息 id（重试令牌）

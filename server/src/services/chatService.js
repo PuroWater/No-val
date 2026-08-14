@@ -178,10 +178,8 @@ export function mergeBookState(latest, mutated, changedChapterIds = new Set(), d
   latest.title = mutated.title;
   latest.outline = mutated.outline;
   latest.status = mutated.status;
-  latest.storySummary = mutated.storySummary;
   latest.targetWords = mutated.targetWords;
   latest.draft = mutated.draft;
-  latest.pendingDeletes = mutated.pendingDeletes;
   latest.pendingAction = mutated.pendingAction;
   latest.lastAppliedMessageId = mutated.lastAppliedMessageId;
   latest.updatedAt = mutated.updatedAt;
@@ -361,7 +359,6 @@ async function handleDraftMessage(book, content, settings, signal) {
 }
 
 async function handleReadyMessage(book, content, settings, signal, changeLog, job) {
-  const last = book.chapters[book.chapters.length - 1];
   // 系统级 interrupt：上一条消息已落 pendingAction，本条为“确认”则恢复执行；否则清除 pending 按新消息路由
   const isConfirmReply = isConfirmation(content) && Boolean(book.pendingAction);
   let route;
@@ -382,9 +379,7 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
       system: [
         '你是小说创作平台的意图路由 Agent。',
         PLOT_FACT_RULE,
-        'read_book 可读取图书最新数据（书名、简介、元数据、章节目录、章节内容、概况、发展线等）；用户询问任何书籍信息时意图为 read。',
-        `全书概况：${book.storySummary || '暂无'}`,
-        `最近章节摘要：${last?.summary || last?.title || '暂无'}`
+        'read_book 可读取图书最新数据（书名、简介、元数据、章节目录、章节内容、发展线等）；用户询问任何书籍信息时意图为 read。',
       ].join('\n')
     });
   }
@@ -420,9 +415,7 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
       PLOT_FACT_RULE,
       WRITE_EXECUTION_RULE,
       CHAPTER_NUM_RULE,
-      TOOL_AVAILABILITY_RULE,
-      `全书摘要：${book.storySummary || '暂无'}`,
-      `最近章节摘要：${last?.summary || last?.title || '暂无'}`
+      TOOL_AVAILABILITY_RULE
     ].join('\n'),
     tools,
     user: content,

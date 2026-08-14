@@ -1,8 +1,8 @@
 【项目目标】
 在当前开发环境下（已安装 VSCode、Node.js），生成一个可直接运行的**小说创作平台 Web 应用**。项目不连接任何数据库，后端数据使用本地 JSON 文件持久化。前端为 React 单页应用（SPA），后端为 Express，调用 DeepSeek 大模型辅助创作。
 
-当前版本：0.8.5  
-最近更新：2026-08-13 0.8.5 简化维护链路：移除阶段一致性修复、context 收敛两层
+当前版本：0.8.39  
+最近更新：2026-08-14 0.8.39 删除全书概况：只维护章节摘要与事件
 
 【文档职责】
 - `TARGET.md`：每次更新的目标文件。每次更新前先修改本文档，按“日期 + 版本”划分，写明待更新说明、待更新功能；开发完成后记录实际完成内容。
@@ -2048,6 +2048,36 @@ Novel Agent/
 
 完成内容：
 - ChatPanel 无 ResizeObserver/lastRatio 残留；前端构建通过；版本号统一 0.8.38（根/server/client）；本地提交未推送（按协作规矩）。
+
+### 2026-08-14 v0.8.39 删除全书概况：只维护章节摘要与事件
+
+待更新说明：
+- 用户判定“全书概况（storySummary）”为伪需求：AI 每章全量重写 300-800 字概况，丢失细节、增大输入 token，且每次小改都触发全量维护，纯浪费；
+- 章节事件硬上限 3 条、前后章局部事件已足够衔接；看全局改用 outline 简介 + 章节数 + 字数 + 目标字数（read_book field=info）；
+- 顺带清理：关系网 JSON 不再注入写正文上下文；pendingDeletes 随概况一并删除；路由/执行器 system 的“最近章节摘要”与 PLOT_FACT_RULE（禁止用旧摘要下结论）冲突，一并删除。
+
+待更新功能：
+- 删除 book.storySummary 字段与全部消费点：maintainChapterMeta 输出只保留 summary/events（去 prose）、initializeBookMeta 去 prose、writingPrompts 删 storySummaryRef、bookService 五处写正文去概况、chatService 路由/执行器 system 去概况与最近章节摘要、read_book 删 overview 分支与描述、refresh_chapter_meta 措辞更新；
+- 删除 pendingDeletes 字段与消费点（deleteChapters 不再记录、maintainChapterMeta 不再消费、mergeBookState/routes 合并行、normalizeBook 清理旧数据残留）；
+- 写正文上下文统一：creationContextRef / rewriteContextRef 行序统一（上章摘要→上章结尾→下章摘要→下章开头），关系网注入删除，全书进度行移入 creationContextRef（新章专属）；
+- 测试与文档同步。
+
+完成内容：
+- 删除 book.storySummary 全部消费点与旧字段（normalizeBook delete 清理旧数据残留）：maintainChapterMeta / initializeBookMeta 去 prose 输出、writingPrompts 删 storySummaryRef、bookService 五处写正文去概况、chatService 路由/执行器 system 去概况与“最近章节摘要”、read_book 删 overview 分支与描述、refresh_chapter_meta 措辞更新、draftService 注释同步；
+- 删除 pendingDeletes（字段 + deleteChapters 记录 + 维护消费 + mergeBookState/routes 合并行 + 测试断言）；
+- 写正文上下文统一：creationContextRef / rewriteContextRef 行序统一（上章摘要→上章结尾→下章摘要→下章开头）、关系网注入删除、全书进度行移入 creationContextRef（新章专属，确定性零 AI 成本）；
+- 审校只对照“指令 + 本章内容”；单元测试 69/69；版本号统一 0.8.39（根/server/client）；本地提交未推送（按协作规矩）。
+
+### 2026-08-14 v0.8.40 写正文规则：章节收尾 + 脉络扩写
+
+待更新说明：
+- 新建章结尾常出现“总结升华段”（如“他知道明天会更好”），明明故事未结束却假闭合，导致后续章节衔接生硬；
+- 用户以“分条脉络/纲要”作为写作指令或章节正文时，模型可能漏条、跳序或自创主线，扩写结果不可预期。
+
+待更新功能：
+- writingPrompts 新增 CHAPTER_ENDING_RULE（未收尾章节停在悬念/转折/未决冲突，禁止总结式升华收尾，仅全书达目标字数走收束分支时允许完结式收尾）与 OUTLINE_EXPANSION_RULE（分条纲要逐条扩展：覆盖所有要点、保持顺序、不增删主干）；
+- 两条规则注入 writingSystem，create/rewrite/converge/ensure 全部写正文调用生效；
+- 测试与文档同步。
 
 ### 后续建议方向（交接快照 2026-08-13）
 

@@ -7,7 +7,6 @@ function sampleBook() {
     id: 'b1',
     title: '测试书',
     outline: '简介',
-    storySummary: '全书概况',
     targetWords: 0,
     relations: { nodes: [], edges: [] },
     chapters: [

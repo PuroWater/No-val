@@ -12,22 +12,19 @@ test('validateBatchDelete enforces count range and keeps at least one chapter', 
   assert.equal(validateBatchDelete(2.5, 10), '删除章节数需为 1-50 的整数');
 });
 
-test('deleteChapters removes trailing chapters and records pendingDeletes', async () => {
+test('deleteChapters removes trailing chapters and renumbers prefixes', async () => {
   const book = {
     id: 'b1',
     chapters: Array.from({ length: 5 }, (_, index) => ({ id: `c${index}`, title: `第${index + 1}章` })),
-    updatedAt: 'old',
-    storySummary: '旧概况'
+    updatedAt: 'old'
   };
   const result = await deleteChapters(book, { count: 2 });
   assert.equal(result.book.chapters.length, 3);
   assert.deepEqual(result.book.chapters.map((chapter) => chapter.id), ['c0', 'c1', 'c2']);
   assert.equal(result.book.chapters[2].title, '第3章');
   assert.notEqual(result.book.updatedAt, 'old');
-  assert.equal(result.book.pendingDeletes.length, 2);
-  assert.equal(result.book.pendingDeletes[0].index, 3);
-  assert.equal(result.book.pendingDeletes[0].title, '第4章');
-  assert.equal(result.book.pendingDeletes[1].index, 4);
+  // 0.8.39 起删除不再记录 pendingDeletes（全书概况已删除，无概况残留需清理）
+  assert.equal(result.book.pendingDeletes, undefined);
 });
 
 test('deleteChapters rejects invalid count without mutating book', async () => {
@@ -51,8 +48,8 @@ test('deleteChapters removes middle chapter and renumbers standard prefixes', as
   assert.deepEqual(result.book.chapters.map((chapter) => chapter.id), ['c0', 'c2', 'c3']);
   assert.equal(result.book.chapters[1].title, '第2章 转折');
   assert.equal(result.book.chapters[2].title, '终章');
-  assert.equal(result.book.pendingDeletes.length, 1);
-  assert.equal(result.book.pendingDeletes[0].title, '第2章 冲突');
+  // 0.8.39 起删除不再记录 pendingDeletes
+  assert.equal(result.book.pendingDeletes, undefined);
   assert.deepEqual(result.affectedIds, ['c2']);
 });
 

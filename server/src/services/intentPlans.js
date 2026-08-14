@@ -88,7 +88,7 @@ export function buildPlan(intent, { output = null, target = null, settings = {} 
       return {
         tools: ['refresh_chapter_meta', 'read_book', 'open_book_widget'],
         termination: { kind: 'single' },
-        text: '调用 refresh_chapter_meta 重算目标章（chapter 数字序号）的摘要/事件与全书概况；完成后调用 open_book_widget 并总结结果。'
+        text: '调用 refresh_chapter_meta 重算目标章（chapter 数字序号）的摘要/事件；完成后调用 open_book_widget 并总结结果。'
       };
     case 'outline':
       return {

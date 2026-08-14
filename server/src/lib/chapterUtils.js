@@ -156,7 +156,7 @@ export function replaceTextInBook(book, from, to, changeLog = new Set()) {
     count += value.split(source).length - 1;
     return value.split(source).join(target);
   };
-  for (const field of ['title', 'outline', 'storySummary']) {
+  for (const field of ['title', 'outline']) {
     book[field] = replaceIn(book[field]);
   }
   if (book.draft) {

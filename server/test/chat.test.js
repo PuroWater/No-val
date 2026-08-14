@@ -79,7 +79,6 @@ test('replaceTextInBook replaces text across chapter fields', () => {
   const book = {
     title: '陈默传奇',
     outline: '陈默的修真之路',
-    storySummary: '陈默捡到古卷。',
     draft: { concept: '主角陈默', summary: '陈默得宝' },
     chapters: [
       { id: 'r1', title: '第一章 陈默', content: '陈默捡到玉佩，陈默开始修炼。', summary: '陈默得宝。', events: [{ id: 'e1', event: '陈默捡到古卷', characters: ['陈默'] }], updatedAt: 'T0' },
@@ -88,13 +87,12 @@ test('replaceTextInBook replaces text across chapter fields', () => {
   };
   const changeLog = new Set();
   const count = replaceTextInBook(book, '陈默', '高远', changeLog);
-  assert.equal(count, 12);
+  assert.equal(count, 11);
   assert.equal(book.chapters[0].content.includes('高远'), true);
   assert.equal(book.chapters[0].content.includes('陈默'), false);
   assert.equal(book.chapters[1].summary, '试炼。');
   assert.equal(book.title, '高远传奇');
   assert.equal(book.outline, '高远的修真之路');
-  assert.equal(book.storySummary, '高远捡到古卷。');
   assert.equal(book.draft.concept, '主角高远');
   assert.equal(book.draft.summary, '高远得宝');
   assert.equal(book.chapters[0].events[0].event, '高远捡到古卷');
@@ -108,7 +106,6 @@ test('mergeBookState preserves concurrent edits and applies AI changes', () => {
   const latest = {
     title: '书',
     status: 'ready',
-    storySummary: '旧摘要',
     targetWords: 0,
     draft: {},
     rewrite: { step: 'none', chapterIndex: -1 },
@@ -124,7 +121,6 @@ test('mergeBookState preserves concurrent edits and applies AI changes', () => {
   const mutated = {
     title: '书',
     status: 'ready',
-    storySummary: '新摘要',
     targetWords: 100000,
     draft: {},
     rewrite: { step: 'none', chapterIndex: -1 },
@@ -144,7 +140,6 @@ test('mergeBookState preserves concurrent edits and applies AI changes', () => {
   assert.equal(latest.chapters[2].id, 'c3');
   assert.equal(latest.chat[1].kind, 'book');
   assert.equal(latest.targetWords, 100000);
-  assert.equal(latest.storySummary, '新摘要');
 });
 
 test('mergeBookState applies rewritten chapters', () => {

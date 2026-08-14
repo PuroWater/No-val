@@ -63,7 +63,7 @@ export function defineReadyTools(book, settings, signal) {
     {
       group: 'edit',
       name: 'batch_delete_last_chapters',
-      description: '仅当用户完全明确要求删除末尾章节时才调用（删除不可恢复）。批量删除末尾章节（不会进入回收站）：从最后一章开始向前删除 count 章，至少保留 1 章。删除不维护书中已断层的内容，概况残留需在后续改写任意章时自动清除，或调用 refresh_chapter_meta 立即刷新。',
+      description: '仅当用户完全明确要求删除末尾章节时才调用（删除不可恢复）。批量删除末尾章节（不会进入回收站）：从最后一章开始向前删除 count 章，至少保留 1 章。删除不维护书中已断层的内容，元数据残留需在后续改写任意章时自动清除，或调用 refresh_chapter_meta 立即刷新。',
       parameters: {
         type: 'object',
         properties: {
@@ -76,7 +76,7 @@ export function defineReadyTools(book, settings, signal) {
         await deleteChapters(book, { count });
         return {
           ok: true,
-          data: `已删除末尾 ${count} 章（不可恢复），当前共 ${book.chapters.length} 章。删除造成的概况残留会在后续改写任意章时自动修复，也可调用 refresh_chapter_meta 立即刷新。`,
+          data: `已删除末尾 ${count} 章（不可恢复），当前共 ${book.chapters.length} 章。删除造成的元数据残留会在后续改写任意章时自动修复，也可调用 refresh_chapter_meta 立即刷新。`,
           effect: { type: 'chapters', delta: -count, ids: deleted.map((chapter) => chapter.id), renamedIds: [] }
         };
       }
@@ -84,7 +84,7 @@ export function defineReadyTools(book, settings, signal) {
     {
       group: 'edit',
       name: 'edit_book',
-      description: '仅当路由已确认用户明确要求新建/改写/删除章节时调用，不得自行猜测或越权使用。新建/改写/删除章节（正文由后端创作调用生成，不经过工具参数）。mode 为 new（新建：缺省追加末尾，chapter 指定时插入该章之后）/ modify（按 instruction 改写指定章，改写前先读目标章全文，并把读章发现的衔接问题/保留元素写进 instruction）/ delete（删除指定章，不可恢复、不进入回收站；删除会造成剧情断层，概况残留不会立即清理，需在改写后自动修复，或调用 refresh_chapter_meta 立即刷新，请谨慎使用）。instruction 为写作方向（new）或具体改写指令（modify：须含用户核心要求与关键衔接/保留元素，避免空泛）；title 仅 new 时可选预置标题。',
+      description: '仅当路由已确认用户明确要求新建/改写/删除章节时调用，不得自行猜测或越权使用。新建/改写/删除章节（正文由后端创作调用生成，不经过工具参数）。mode 为 new（新建：缺省追加末尾，chapter 指定时插入该章之后）/ modify（按 instruction 改写指定章，改写前先读目标章全文，并把读章发现的衔接问题/保留元素写进 instruction）/ delete（删除指定章，不可恢复、不进入回收站；删除会造成剧情断层，元数据残留不会立即清理，需在改写后自动修复，或调用 refresh_chapter_meta 立即刷新，请谨慎使用）。instruction 为写作方向（new）或具体改写指令（modify：须含用户核心要求与关键衔接/保留元素，避免空泛）；title 仅 new 时可选预置标题。',
       parameters: {
         type: 'object',
         properties: {
@@ -109,7 +109,7 @@ export function defineReadyTools(book, settings, signal) {
           const { affectedIds = [] } = await deleteChapters(book, { index });
           return {
             ok: true,
-            data: `已删除第 ${index + 1} 章《${removedTitle}》（不可恢复）。删除造成的剧情断层与概况残留会在后续改写任意章时自动修复，也可调用 refresh_chapter_meta 立即刷新。`,
+            data: `已删除第 ${index + 1} 章《${removedTitle}》（不可恢复）。删除造成的剧情断层与元数据残留会在后续改写任意章时自动修复，也可调用 refresh_chapter_meta 立即刷新。`,
             effect: { type: 'chapters', delta: -1, ids: [removedId], renamedIds: affectedIds }
           };
         }
@@ -186,7 +186,7 @@ export function defineReadyTools(book, settings, signal) {
     {
       group: 'edit',
       name: 'refresh_chapter_meta',
-      description: '仅当用户完全明确要求重新维护/刷新章节摘要、事件或全书概况时才调用。唤起后端对指定章节的一次主动维护：重算该章 summary/events 并更新全书概况（含清理已删除章节残留）。不修改正文；聊天 AI 不能直接改 summary，需通过本工具维护。用户以标题或“第X章”指代章节时，先调用 read_book(field=chapters) 获取目录，chapter 传数字序号（从 1 开始）。',
+      description: '仅当用户完全明确要求重新维护/刷新章节摘要或事件时才调用。唤起后端对指定章节的一次主动维护：重算该章 summary/events。不修改正文；聊天 AI 不能直接改 summary，需通过本工具维护。用户以标题或“第X章”指代章节时，先调用 read_book(field=chapters) 获取目录，chapter 传数字序号（从 1 开始）。',
       parameters: {
         type: 'object',
         properties: { chapter: { type: 'integer', minimum: 1, description: '章节序号（从 1 开始）' } },
@@ -200,7 +200,7 @@ export function defineReadyTools(book, settings, signal) {
         await maintainChapterMeta(book, { chapterIndex: index, mode: 'modify', signal });
         return {
           ok: true,
-          data: `已重新维护第 ${index + 1} 章《${book.chapters[index].title}》的摘要、事件与全书概况。`,
+          data: `已重新维护第 ${index + 1} 章《${book.chapters[index].title}》的摘要与事件。`,
           effect: { type: 'meta', ids: [book.chapters[index].id] }
         };
       }
@@ -208,7 +208,7 @@ export function defineReadyTools(book, settings, signal) {
     {
       group: 'read',
       name: 'read_book',
-      description: `查询书籍信息（只读）。field 为 info（书名/简介/章节数/进度/目标字数/构思设定）、meta（完整书籍元数据：状态/目标字数/构思设定与概念/草稿输出规模/关系网概要/时间等）、overview（当前全书概况）、chapters（章节目录，支持 start/count 分页）、chapter（读取单个章节：target 传单个章节序号，默认返回该章标题/摘要/事件/正文全文；scope=summary 只看标题/摘要/事件、不含正文）、development_line（全书分层发展线；旧值 timeline 仍兼容）。field=chapter 只支持单章，禁止范围读取：需要查看多章时请分次调用本工具、每次 target 传一个章节号；用户以数字或“第X章”指代时直接传序号，仅标题指代且不确定序号时才先读 chapters。${PLOT_FACT_RULE}`,
+      description: `查询书籍信息（只读）。field 为 info（书名/简介/章节数/进度/目标字数/构思设定）、meta（完整书籍元数据：状态/目标字数/构思设定与概念/草稿输出规模/关系网概要/时间等）、chapters（章节目录，支持 start/count 分页）、chapter（读取单个章节：target 传单个章节序号，默认返回该章标题/摘要/事件/正文全文；scope=summary 只看标题/摘要/事件、不含正文）、development_line（全书分层发展线；旧值 timeline 仍兼容）。field=chapter 只支持单章，禁止范围读取：需要查看多章时请分次调用本工具、每次 target 传一个章节号；用户以数字或“第X章”指代时直接传序号，仅标题指代且不确定序号时才先读 chapters。${PLOT_FACT_RULE}`,
       parameters: {
         type: 'object',
         properties: {
@@ -237,15 +237,6 @@ export function defineReadyTools(book, settings, signal) {
           if (content && item.content) parts.push(`正文：\n${item.content}`);
           return parts.join('\n');
         };
-        if (field === 'overview') {
-          return {
-            ok: true,
-            data: book.storySummary
-              ? `当前全书概况：\n${book.storySummary}`
-              : '当前全书概况：暂无（章节生成、修改或删除末尾章后会自动重建）',
-            effect: null
-          };
-        }
         if (field === 'info') {
           const totalWords = book.chapters.reduce((sum, chapter) => sum + (chapter.content || '').length, 0);
           return {

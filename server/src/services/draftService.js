@@ -1,5 +1,5 @@
 // 构思生成服务：构思定稿后走“新建章流程”逐章生成（与已生成图书的新建章共用 createChapter），
-// 每章内部统一做字数收敛/补写/审校 + maintainChapterMeta 自动维护 summary/events/全书概况。
+// 每章内部统一做字数收敛/补写/审校 + maintainChapterMeta 自动维护 summary/events（0.8.39 起不再维护全书概况）。
 // 仅“书名/简介”为构思通道专用的一次产出；不进入已生成工具体系（edit_book 等只面向 status=ready 的图书）。
 import { clampOutput } from '../lib/chapterUtils.js';
 import { callModel } from '../lib/modelCall.js';
@@ -24,7 +24,7 @@ export async function finalizeDraftBook(book, settings = {}) {
   book.title = String(metaResult.title || '').trim() || '未命名小说';
   book.outline = String(metaResult.outline || '').trim();
   book.targetWords = book.draft.targetWords || book.targetWords || 0;
-  // 逐章走新建章流程：createChapter 内部自动处理字数收敛/补写/审校与 summary/events/概况维护
+  // 逐章走新建章流程：createChapter 内部自动处理字数收敛/补写/审校与 summary/events 维护
   for (let index = 0; index < chaptersPerOutput; index += 1) {
     await createChapter(book, {
       instruction: concept ? `根据以下构思继续创作：${concept}` : '继续创作',

@@ -99,8 +99,6 @@ router.post('/:id/chapters/:chapterId/summary', (req, res) => {
           chapter.events = stale.events;
           chapter.updatedAt = stale.updatedAt;
         }
-        latest.storySummary = book.storySummary;
-        latest.pendingDeletes = book.pendingDeletes;
         latest.updatedAt = new Date().toISOString();
       });
       return res.json({ book: saved });
