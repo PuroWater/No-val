@@ -95,5 +95,57 @@ export const GOLDEN_SCENARIOS = [
         }
       }
     ]
+  },
+  {
+    name: '删除中间章（断层提示 + 卡片 + 章数 -1）',
+    async setup(api, token) {
+      return api.createBookCopy(REAL_BOOK_ID, token, '【golden】删除中间章副本');
+    },
+    steps: [
+      {
+        content: '删除第 5 章',
+        assert(book, lastMsg, ctx) {
+          const ok = book.chapters.length === ctx.before - 1
+            && lastMsg.kind === 'book'
+            && !/失败|上限/.test(String(lastMsg.content));
+          return { ok, detail: `章数 ${ctx.before}->${book.chapters.length}, kind=${lastMsg.kind}` };
+        }
+      }
+    ]
+  },
+  {
+    name: '中间插入一章（章数 +1 + 卡片 + 无错）',
+    async setup(api, token) {
+      return api.createBookCopy(REAL_BOOK_ID, token, '【golden】插入章节副本');
+    },
+    steps: [
+      {
+        content: '在第 5 章后插入一章',
+        assert(book, lastMsg, ctx) {
+          const ok = book.chapters.length === ctx.before + 1
+            && lastMsg.kind === 'book'
+            && !/失败|上限/.test(String(lastMsg.content));
+          return { ok, detail: `章数 ${ctx.before}->${book.chapters.length}, kind=${lastMsg.kind}` };
+        }
+      }
+    ]
+  },
+  {
+    name: '主动维护第 3 章摘要与事件（refresh_chapter_meta + 卡片）',
+    async setup(api, token) {
+      return api.createBookCopy(REAL_BOOK_ID, token, '【golden】维护元数据副本');
+    },
+    steps: [
+      {
+        content: '重新维护第 3 章的摘要和事件',
+        assert(book, lastMsg, ctx) {
+          const ch = book.chapters[2];
+          const ok = ch && String(ch.summary || '').trim().length > 0
+            && lastMsg.kind === 'book'
+            && !/失败|上限/.test(String(lastMsg.content));
+          return { ok, detail: `summary=${String(ch?.summary || '').slice(0, 30)}, kind=${lastMsg.kind}` };
+        }
+      }
+    ]
   }
 ];
