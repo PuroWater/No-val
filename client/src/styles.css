@@ -1587,9 +1587,6 @@ button, input, textarea, select {
   overflow: hidden;
   position: relative;
   display: flex;
-  /* 0.8.55 画布左上对齐：不再居中整个发展图，避免横排第一章被挤出视线 */
-  align-items: flex-start;
-  justify-content: flex-start;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--panel);
@@ -1598,6 +1595,16 @@ button, input, textarea, select {
   user-select: none;
 }
 
+/* 0.8.57 分方向对齐：竖排水平居中+垂直靠上；横排水平靠左+垂直居中（保证第一章在视线内） */
+.development-line-canvas-vertical {
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.development-line-canvas-horizontal {
+  justify-content: flex-start;
+  align-items: center;
+}
 .development-line-vertical {
   /* 0.8.56 竖排：背景按钮中线对齐，连接线连接中线 */
   align-items: center;

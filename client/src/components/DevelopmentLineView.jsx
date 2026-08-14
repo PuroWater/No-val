@@ -175,7 +175,7 @@ export default function DevelopmentLineView({
     <div className="development-line-view">
       <div
         ref={canvasRef}
-        className="development-line-canvas"
+        className={`development-line-canvas development-line-canvas-${orientation}`}
         onPointerDown={startDrag}
         onWheel={handleWheel}
         style={{ touchAction: 'none' }}
