@@ -1599,6 +1599,8 @@ button, input, textarea, select {
 }
 
 .development-line-vertical {
+  /* 0.8.56 竖排：背景按钮中线对齐，连接线连接中线 */
+  align-items: center;
   display: flex;
   flex-direction: column;
   gap: 10px;
