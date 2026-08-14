@@ -1615,10 +1615,9 @@ button, input, textarea, select {
   width: max-content;
   min-height: 100%;
   padding: 12px;
-  align-items: flex-start;
 }
 
-/* 横版：内容高度随内容（不再撑满画布），行内容垂直居中；竖版保持撑满+水平居中 */
+/* 横版：内容高度随内容（不再撑满画布），行内容垂直居中；竖版背景水平居中、连接线居中连接（0.8.54） */
 .development-line-horizontal {
   min-height: auto;
   align-items: center;
