@@ -1,8 +1,20 @@
 // 写正文公共提示词构造：createChapter / rewriteChapter / ensureChapterLength 共用，
 // 降低三处拼装漂移。原则：写正文只注入“当天+本条”聊天上下文（有界）+ 章节上下文，不注入全量历史。
 
+// 章节收尾规则：未收尾章节禁止“总结升华式”假闭合收尾（0.8.40）。
+// 只约束“章节收尾”行为（不堆正则），由 writingSystem 注入全部写正文调用。
+export const CHAPTER_ENDING_RULE =
+  '章节收尾：全书未到收尾阶段时，本章结尾必须是情节进行中的自然节点（停在悬念、转折或未决冲突上），' +
+  '不要做章节总结、感慨或升华收尾；禁止“他知道明天会更好”“一切才刚刚开始”这类总结式结尾句；' +
+  '只有全书达到目标字数且需要收束故事时才允许完结式收尾。';
+
+// 脉络/纲要扩写规则：分条输入逐条扩展，覆盖所有要点、保持顺序、不增删主干（0.8.40）。
+export const OUTLINE_EXPANSION_RULE =
+  '当指令或原章节是分条纲要/脉络时，逐条扩展为连贯正文：覆盖所有要点、保持原有顺序、不增删主干情节；' +
+  '细节可丰富，但不得遗漏条目或自创主线。';
+
 export function writingSystem(role = '创作') {
-  return `你是小说${role}助手。始终只返回 JSON，不要包含 Markdown。`;
+  return `你是小说${role}助手。${CHAPTER_ENDING_RULE}${OUTLINE_EXPANSION_RULE}始终只返回 JSON，不要包含 Markdown。`;
 }
 
 export const PARAGRAPH_RULE = '正文按情节自然分段，段落之间用空行分隔。';

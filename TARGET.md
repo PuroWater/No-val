@@ -1,8 +1,8 @@
 【项目目标】
 在当前开发环境下（已安装 VSCode、Node.js），生成一个可直接运行的**小说创作平台 Web 应用**。项目不连接任何数据库，后端数据使用本地 JSON 文件持久化。前端为 React 单页应用（SPA），后端为 Express，调用 DeepSeek 大模型辅助创作。
 
-当前版本：0.8.39  
-最近更新：2026-08-14 0.8.39 删除全书概况：只维护章节摘要与事件
+当前版本：0.8.40  
+最近更新：2026-08-14 0.8.40 写正文规则：章节收尾 + 脉络扩写
 
 【文档职责】
 - `TARGET.md`：每次更新的目标文件。每次更新前先修改本文档，按“日期 + 版本”划分，写明待更新说明、待更新功能；开发完成后记录实际完成内容。
@@ -2078,6 +2078,11 @@ Novel Agent/
 - writingPrompts 新增 CHAPTER_ENDING_RULE（未收尾章节停在悬念/转折/未决冲突，禁止总结式升华收尾，仅全书达目标字数走收束分支时允许完结式收尾）与 OUTLINE_EXPANSION_RULE（分条纲要逐条扩展：覆盖所有要点、保持顺序、不增删主干）；
 - 两条规则注入 writingSystem，create/rewrite/converge/ensure 全部写正文调用生效；
 - 测试与文档同步。
+
+完成内容：
+- writingPrompts 新增 CHAPTER_ENDING_RULE（未收尾章节停在悬念/转折/未决冲突，禁止总结式升华收尾，仅全书达目标字数走收束分支时允许完结式收尾）与 OUTLINE_EXPANSION_RULE（分条纲要逐条扩展：覆盖所有要点、保持顺序、不增删主干）；
+- 两条规则注入 writingSystem，create/rewrite/converge/ensure 全部写正文调用生效（单一来源）；
+- 新增 writingPrompts.test.js（规则注入 + 上下文行序/进度断言）；单元测试 73/73、前端构建通过；版本号统一 0.8.40（根/server/client）；本地提交未推送（按协作规矩）。
 
 ### 后续建议方向（交接快照 2026-08-13）
 
