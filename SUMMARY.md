@@ -1817,39 +1817,16 @@ npm start
 ### 2026-08-15 v0.8.53 清理：删除旧数据迁移 + TARGET 规划整理
 
 更新内容：
-- 
-ormalizeBook 删除 	imeline → chapter.events 旧数据迁移逻辑（实测 12 本存量书均无 	imeline 旧字段，迁移使命完成）；删除对应单元测试；
+- `normalizeBook` 删除 `timeline → chapter.events` 旧数据迁移逻辑（实测 12 本存量书均无 `timeline` 旧字段，迁移使命完成）；删除对应单元测试；
 - TARGET 后续建议方向整理：移除全部已完成/已取消项，仅保留 provider 正式方案与可选 skill 风格模板；CONTEXT 第 8 节同步。
 
 完成结果：单元测试 74/74；版本号统一 0.8.53；本地提交未推送（按协作规矩）。
 
-### 2026-08-15 v0.8.54 竖排发展线背景居中（连接线正常连接）
+### 2026-08-15 v0.8.54 发展线视图布局完善（竖排连线 / 画布对齐；0.8.54-0.8.57 合并为同一个小版本）
 
 更新内容：
-- .development-line-vertical 加 lign-items: center（背景组水平居中），.development-line-content 移除 lign-items: flex-start（避免覆盖）；
-- 竖排时背景按钮与连接线都在中间对齐，连线不再靠左偏置；
-- 
-pm run build 通过；版本号统一 0.8.54；本地提交未推送（按协作规矩，用户自验收）。
+- 竖排连线：`.development-line-vertical` 加 `align-items: center`，背景按钮中线对齐、连接线连接中线（首次写入因行尾不匹配未生效，已可靠修复）；
+- 画布对齐（按用户方案分方向）：竖排水平居中+垂直靠上（第一章顶部可见）；横排水平靠左+垂直居中（第一章左侧可见）；
+- 记账（用户 2026-08-15）：provider 正式方案、写作风格模板走 skill 系统 → **v1.0 再做**（TARGET/CONTEXT 同步）。
 
-### 2026-08-15 v0.8.55 发展线画布左上对齐（横排第一章不被挤出）+ 记账 v1.0 待办
-
-更新内容：
-- .development-line-canvas 去掉 lign-items: center; justify-content: center;，改为 lex-start 左上对齐——不再把整个发展图居中，横排时第一章背景不再被挤出视线；竖排按钮居中与连线居中连接由 0.8.54 保留；
-- 记账（用户 2026-08-15）：provider 正式方案、写作风格模板走 skill 系统 → **v1.0 再做**（TARGET/CONTEXT 同步）；
-- 
-pm run build 通过；版本号统一 0.8.55；本地提交未推送（按协作规矩，用户自验收）。
-
-### 2026-08-15 v0.8.56 竖排背景按钮中线对齐（修复 0.8.54 未生效）
-
-更新内容：
-- 根因：0.8.54 为 .development-line-vertical 加 lign-items: center 时因行尾不匹配未写入（无报错），竖排背景一直左对齐；
-- 修复：可靠写入 lign-items: center 到 .development-line-vertical（按钮中线对齐，连接线连接中线）；画布保持 0.8.55 左上对齐（第一章可见）；
-- 
-pm run build 通过；版本号统一 0.8.56；本地提交未推送（按协作规矩，用户自验收）。
-
-### 2026-08-15 v0.8.57 画布分方向对齐（竖排水平居中+垂直靠上；横排水平靠左+垂直居中）
-
-更新内容：
-- 画布按方向分别对齐（纠正 0.8.55 统一左上）：.development-line-canvas-vertical 水平居中+垂直靠上（竖排第一章顶部可见）；.development-line-canvas-horizontal 水平靠左+垂直居中（横排第一章左侧可见）；
-- DevelopmentLineView canvas 加方向类；
-pm run build 通过；版本号统一 0.8.57；本地提交未推送（按协作规矩，用户自验收）。
+完成结果：发展线视图竖排连线与横竖排画布对齐符合用户预期；`npm run build` 通过；版本号 0.8.54-0.8.57（本地提交未推送，用户自验收）。
