@@ -17,7 +17,7 @@ function clampScale(scale) {
 }
 
 export default function DevelopmentLineView({
-  timeline,
+  developmentLine,
   orientation,
   expandedGroup,
   expandedScene,
@@ -35,7 +35,7 @@ export default function DevelopmentLineView({
   const [hover, setHover] = useState(null);
   const [groupAnchor, setGroupAnchor] = useState(null);
 
-  const groups = Array.isArray(timeline?.groups) ? timeline.groups : [];
+  const groups = Array.isArray(developmentLine?.groups) ? developmentLine.groups : [];
   // 同一背景可能按连续章节区间拆成多个同标签组，展开状态用唯一 id（label#start-end）
   const expandedGroupData = groups.find((group) => group.id === expandedGroup) || null;
   const vertical = orientation === 'vertical';

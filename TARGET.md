@@ -1,8 +1,8 @@
 【项目目标】
 在当前开发环境下（已安装 VSCode、Node.js），生成一个可直接运行的**小说创作平台 Web 应用**。项目不连接任何数据库，后端数据使用本地 JSON 文件持久化。前端为 React 单页应用（SPA），后端为 Express，调用 DeepSeek 大模型辅助创作。
 
-当前版本：0.8.51  
-最近更新：2026-08-15 0.8.51 内部命名彻底统一：TimelineView → DevelopmentLineView
+当前版本：0.8.52  
+最近更新：2026-08-15 0.8.52 内部命名补全（BookSidePanel state/tab/props）
 
 【文档职责】
 - `TARGET.md`：每次更新的目标文件。每次更新前先修改本文档，按“日期 + 版本”划分，写明待更新说明、待更新功能；开发完成后记录实际完成内容。
@@ -2242,6 +2242,18 @@ Novel Agent/
 
 完成内容：
 - 内部命名全部统一为“发展线”；build 通过、页面无白屏、dist CSS 类名正确、client/src 无 timeline- 残留；版本号统一 0.8.51；本地提交未推送（按协作规矩）。
+
+### 2026-08-15 v0.8.52 内部命名补全（BookSidePanel state/tab/props）
+
+待更新说明：
+- 0.8.51 统一了组件名与 CSS 类名，但 BookSidePanel 内部 state（timeline/timelineLoading/timelineError/timelineTick）、tab 值（'timeline'）与 DevelopmentLineView 的 props（timeline）仍残留旧名。
+
+待更新功能：
+- BookSidePanel：state 全改 developmentLine*；tab 值 'timeline'→'developmentLine'；props 传 developmentLine；
+- DevelopmentLineView：props timeline → developmentLine。
+
+完成内容：
+- client/src 已无 timeline 残留（server bookUtils 旧数据迁移保留）；build 通过；版本号统一 0.8.52；本地提交未推送（按协作规矩）。
 
 ### 后续建议方向（交接快照 2026-08-13）
 

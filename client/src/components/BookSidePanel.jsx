@@ -13,10 +13,10 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
   const [error, setError] = useState('');
   const [relationsLoading, setRelationsLoading] = useState(false);
   const [relationsError, setRelationsError] = useState('');
-  const [timeline, setTimeline] = useState(null);
-  const [timelineLoading, setTimelineLoading] = useState(false);
-  const [timelineError, setTimelineError] = useState('');
-  const [timelineTick, setTimelineTick] = useState(0);
+  const [developmentLine, setDevelopmentLine] = useState(null);
+  const [developmentLineLoading, setDevelopmentLineLoading] = useState(false);
+  const [developmentLineError, setDevelopmentLineError] = useState('');
+  const [developmentLineTick, setDevelopmentLineTick] = useState(0);
   const [orientation, setOrientation] = useState('vertical');
   const [expandedGroup, setExpandedGroup] = useState(null);
   const [expandedScene, setExpandedScene] = useState(null);
@@ -112,18 +112,18 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
   }, [book, openChapter]);
 
   useEffect(() => {
-    if (tab !== 'timeline') return;
-    setTimelineLoading(true);
-    setTimelineError('');
+    if (tab !== 'developmentLine') return;
+    setDevelopmentLineLoading(true);
+    setDevelopmentLineError('');
     api(`/books/${bookId}/development-line`)
       .then((data) => {
-        setTimeline(data.developmentLine);
+        setDevelopmentLine(data.developmentLine);
       })
-      .catch((err) => setTimelineError(err.message))
-      .finally(() => setTimelineLoading(false));
+      .catch((err) => setDevelopmentLineError(err.message))
+      .finally(() => setDevelopmentLineLoading(false));
     // book.updatedAt 覆盖手动编辑→POST /summary 改 events 但不改章数的陈旧场景；
-    // timelineTick 供“刷新发展线”按钮手动重新拉取（派生视图，零 AI 成本）。
-  }, [tab, bookId, book?.chapters?.length, book?.updatedAt, refreshSignal, timelineTick]);
+    // developmentLineTick 供“刷新发展线”按钮手动重新拉取（派生视图，零 AI 成本）。
+  }, [tab, bookId, book?.chapters?.length, book?.updatedAt, refreshSignal, developmentLineTick]);
 
   async function regenerateRelations() {
     setRelationsLoading(true);
@@ -185,7 +185,7 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
       </div>
       <div className="tabs">
         <button className={tab === 'content' ? 'active' : ''} onClick={() => setTab('content')}>内容</button>
-        <button className={tab === 'timeline' ? 'active' : ''} onClick={() => setTab('timeline')}>发展线</button>
+        <button className={tab === 'developmentLine' ? 'active' : ''} onClick={() => setTab('developmentLine')}>发展线</button>
         <button className={tab === 'relations' ? 'active' : ''} onClick={() => setTab('relations')}>关系网</button>
       </div>
       {tab === 'content' ? (
@@ -223,11 +223,11 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
         </div>
       ) : (
         <div className="relation-tab">
-          {timelineLoading && <p className="muted">正在加载发展线…</p>}
-          {timelineError && <p className="form-error">{timelineError}</p>}
-          {!timelineLoading && timeline && (
+          {developmentLineLoading && <p className="muted">正在加载发展线…</p>}
+          {developmentLineError && <p className="form-error">{developmentLineError}</p>}
+          {!developmentLineLoading && developmentLine && (
             <DevelopmentLineView
-              timeline={timeline}
+              developmentLine={developmentLine}
               orientation={orientation}
               expandedGroup={expandedGroup}
               expandedScene={expandedScene}
@@ -241,8 +241,8 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
               onViewChange={setDevelopmentLineView}
             />
           )}
-          {!timelineLoading && (
-            <button className="primary" onClick={() => setTimelineTick((value) => value + 1)}>刷新发展线</button>
+          {!developmentLineLoading && (
+            <button className="primary" onClick={() => setDevelopmentLineTick((value) => value + 1)}>刷新发展线</button>
           )}
         </div>
       )}
