@@ -123,8 +123,57 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
   useEffect(() => {
     const el = messagesRef.current;
     if (el) el.scrollTop = el.scrollHeight;
+    updateScrollAnchor();
     // 顶部进度条出现/消失会改变消息区高度，需重新钉底，避免最新消息被挤出可视区
   }, [book?.chat?.length, bookId, selectedDate, progressBarVisible]);
+
+  // 0.8.43 并列查看聊天上移修复：布局/尺寸变化（点并列宽度变窄、文本重排、拖分隔条）时，
+  // 按“变化前”的阅读锚点修复滚动——原本在底部保持钉底，翻历史保持相对进度。
+  // 锚点在滚动事件里用“变化前”的值更新。
+  // 关键：并列切换会触发 ChatPanel 重挂载（条件分支），新实例的 ResizeObserver 会错过
+  // 已完成的宽度变化，因此 sideOpen 变化时直接用锚点修复（主修复）；ResizeObserver 兜底
+  // 处理同实例内的其他尺寸变化（如拖分隔条、内容加载）。
+  const scrollAnchorRef = useRef({ atBottom: true, ratio: 0 });
+  const updateScrollAnchor = () => {
+    const el = messagesRef.current;
+    if (!el) return;
+    const max = el.scrollHeight - el.clientHeight;
+    scrollAnchorRef.current = {
+      atBottom: max > 0 && el.scrollHeight - el.scrollTop - el.clientHeight < 40,
+      ratio: max > 0 ? el.scrollTop / max : 0
+    };
+  };
+  // 并列切换（sideOpen 变化）后：DOM 已更新、文本重排完成，按“变化前”锚点修复滚动
+  useEffect(() => {
+    const el = messagesRef.current;
+    if (!el) return undefined;
+    const { atBottom, ratio } = scrollAnchorRef.current;
+    const max = el.scrollHeight - el.clientHeight;
+    if (atBottom) {
+      el.scrollTop = el.scrollHeight;
+    } else if (max > 0) {
+      el.scrollTop = Math.round(ratio * max);
+    }
+  }, [sideOpen]);
+  useEffect(() => {
+    const el = messagesRef.current;
+    if (!el) return undefined;
+    let raf = 0;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const { atBottom, ratio } = scrollAnchorRef.current;
+        const max = el.scrollHeight - el.clientHeight;
+        if (atBottom) {
+          el.scrollTop = el.scrollHeight;
+        } else if (max > 0) {
+          el.scrollTop = Math.round(ratio * max);
+        }
+      });
+    });
+    observer.observe(el);
+    return () => { cancelAnimationFrame(raf); observer.disconnect(); };
+  }, []);
 
   useEffect(() => {
     if (!dateOpen) return undefined;
@@ -362,7 +411,7 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
           )}
         </div>
       )}
-      <div className="chat-messages" ref={messagesRef}>
+      <div className="chat-messages" ref={messagesRef} onScroll={updateScrollAnchor}>
         {book.chat.length === 0 && (
           <div className="chat-empty-greeting">{greeting}</div>
         )}
