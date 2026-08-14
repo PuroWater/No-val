@@ -1,4 +1,4 @@
-import { Fragment, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 
 function rangeText(start, end) {
   return `第 ${start + 1}-${end + 1} 章`;
