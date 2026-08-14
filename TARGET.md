@@ -2255,6 +2255,25 @@ Novel Agent/
 完成内容：
 - client/src 已无 timeline 残留（server bookUtils 旧数据迁移保留）；build 通过；版本号统一 0.8.52；本地提交未推送（按协作规矩）。
 
+### 2026-08-15 v0.8.53 清理：删除旧数据迁移 + TARGET 规划整理
+
+完成内容：
+- normalizeBook 删除 timeline → chapter.events 旧数据迁移（实测 12 本书均无旧字段）+ 对应测试；TARGET 后续建议方向整理为精简清单。
+
+### 2026-08-15 v0.8.54 竖排发展线背景居中（连接线正常连接）
+
+完成内容：
+- 尝试为 .development-line-vertical 加 align-items: center（因行尾不匹配实际未写入，0.8.56 修复）；本次未生效。
+
+### 2026-08-15 v0.8.55 发展线画布左上对齐（横排第一章不被挤出）+ 记账 v1.0 待办
+
+完成内容：
+- 画布去掉 justify/align center 改 flex-start 左上对齐，横排第一章不再被挤出；记账 provider + skill 风格模板为 v1.0 待办。
+
+### 2026-08-15 v0.8.56 竖排背景按钮中线对齐（修复 0.8.54 未写入）
+
+完成内容：
+- 可靠写入 align-items: center 到 .development-line-vertical（按钮中线对齐、连线连接中线）；画布保持左上；build 通过，用户自验收。
 ### 后续建议方向（2026-08-15 更新）
 
 - **v1.0 再做（记账，用户 2026-08-15 定）**：
