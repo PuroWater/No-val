@@ -26,33 +26,30 @@ export function updateBook(userId, bookId, apply) {
   return book;
 }
 
-// 生成后审校（可开关，settings.reviewAfterWrite）：通读刚生成的章节，判断是否通顺、是否符合指令与本章内容（0.8.39 起不再对照全书概况）。
-// 开思考、预算按字数放大（可能返回修订后的完整章节）；不通过且含修订时直接应用，由外层统一触发维护。
+// 衔接评审（可开关，settings.reviewAfterWrite）：读上/此/下三章，检查衔接与“总结升华鸡汤式”收尾（0.8.42）。
+// 不直接改正文：不通过时返回 instruction（含问题原文摘录 + “仅修复衔接、内容不变”），由外层调用 rewriteChapter 重写一次（skipReview 不再复评）。
 export async function reviewChapter(book, chapterIndex, { instruction = '', settings = {}, signal } = {}) {
-  const target = book.chapters[chapterIndex];
+  const index = Number(chapterIndex);
+  const target = book.chapters[index];
   if (!target) throw new Error('章节不存在');
-  const chapterWords = clampOutput(settings.chapterWords, 1000, 10000, 2000);
+  const prev = index > 0 ? book.chapters[index - 1] : null;
+  const next = index < book.chapters.length - 1 ? book.chapters[index + 1] : null;
   const result = await callModel(
     () => ({
-      system: '你是小说质量审校助手。通读刚生成的章节，判断是否通顺、是否符合用户指令与本章内容；若不通过，给出修订后的完整章节。只返回 JSON，不要包含 Markdown。',
-      user: `请审校以下章节（约 ${chapterWords} 字）：\n《${target.title}》\n${target.content}\n生成指令：${instruction || '无'}\n\n若内容通顺且符合指令，返回 {"pass":true,"issues":""}；若需要修订，返回 {"pass":false,"issues":"问题要点","revised":{"title":"修订后标题","content":"修订后完整章节正文"}}。修订版必须保留情节主线且为完整章节。`,
-      maxTokens: maxTokensForWords(chapterWords),
-      thinkingType: 'enabled'
+      system: '你是小说章节衔接评审助手。只检查衔接与收尾，不评价文笔，不修改正文。只返回 JSON，不要包含 Markdown。',
+      user: `请评审第 ${index + 1} 章《${target.title}》的衔接质量。\n上一章结尾（节选）：${prev ? String(prev.content || '').slice(-600) : '（无上一章）'}\n本章全文：\n${target.content}\n下一章开头（节选）：${next ? String(next.content || '').slice(0, 600) : '（无下一章）'}\n\n检查点（逐项核对）：\n1) 上一章结尾 → 本章开头是否衔接断裂（如上一章人物已出门，本章开头仍在门内、时间地点不接）；\n2) 本章结尾 → 下一章开头是否衔接断裂（如有下一章）；\n3) 上一章/本章/下一章是否存在“总结升华鸡汤式”收尾（如“他知道明天会更好”“一切才刚刚开始”这类与情节推进无关的升华总结句）。\n\n返回 JSON：{"pass":true|false,"issues":"发现的问题要点（无则空）","instruction":"pass=false 时的修改意见：先摘录问题处的原文，再说明应如何修复本章衔接；必须明确“仅修复衔接问题，不得改变情节主线、人物与本章已有内容”"}。pass=true 时 instruction 返回空字符串。`,
+      maxTokens: 4096,
+      thinkingType: 'disabled'
     }),
     (r) => r && typeof r.pass === 'boolean'
   );
-  if (result.pass) return { pass: true, issues: '' };
-  const revised = result.revised && typeof result.revised.content === 'string' && result.revised.content.trim()
-    ? {
-        title: String(result.revised.title || target.title).trim(),
-        content: String(result.revised.content).trim()
-      }
-    : null;
-  if (revised) {
-    target.title = revised.title;
-    target.content = revised.content;
-  }
-  return { pass: false, issues: String(result.issues || ''), revised };
+  return {
+    pass: result.pass,
+    issues: String(result.issues || ''),
+    instruction: result.pass
+      ? ''
+      : String(result.instruction || result.issues || '请修复本章衔接问题，不得改变情节主线、人物与本章已有内容。').trim()
+  };
 }
 
 // 字数达标判断（纯函数）：正文长度是否在目标 80%-120% 区间；目标无效视为达标（交给 trim 兜底）。
@@ -165,9 +162,13 @@ export async function createChapter(book, { anchorIndex, title, instruction, rem
   renumberChapterPrefixes(book, { fromIndex: insertAt, collect: affectedIds });
   if (settings.reviewAfterWrite) {
     try {
-      await reviewChapter(book, insertAt, { instruction, settings, signal });
+      const review = await reviewChapter(book, insertAt, { instruction, settings, signal });
+      // 衔接评审不通过：带修改意见重写此章一次（仅修衔接、内容不变；skipReview 防止再次评审形成循环）
+      if (!review.pass && review.instruction) {
+        await rewriteChapter(book, insertAt, review.instruction, { ...settings, skipReview: true }, chatContext, '');
+      }
     } catch (err) {
-      console.error('[review] 审校失败，按通过降级:', err.message);
+      console.error('[review] 衔接评审失败，跳过重写:', err.message);
     }
   }
   try {
@@ -202,11 +203,15 @@ export async function rewriteChapter(book, chapterIndex, instruction, settings =
   // 标题按当前位置规范化（与 createChapter 一致），防止模型返回无“第N章”前缀的标题覆盖后丢失格式
   target.title = ensureChapterTitle(chapterIndex, String(body.title || target.title).trim());
   target.content = body.content;
-  if (settings.reviewAfterWrite) {
+  if (settings.reviewAfterWrite && !settings.skipReview) {
     try {
-      await reviewChapter(book, chapterIndex, { instruction, settings, signal: settings.signal });
+      const review = await reviewChapter(book, chapterIndex, { instruction, settings, signal: settings.signal });
+      // 衔接评审不通过：带修改意见重写此章一次（仅修衔接、内容不变；skipReview 防止再次评审形成循环）
+      if (!review.pass && review.instruction) {
+        await rewriteChapter(book, chapterIndex, review.instruction, { ...settings, skipReview: true }, chatContext, '');
+      }
     } catch (err) {
-      console.error('[review] 审校失败，按通过降级:', err.message);
+      console.error('[review] 衔接评审失败，跳过重写:', err.message);
     }
   }
   try {

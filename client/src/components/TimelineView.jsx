@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { Fragment, useRef, useState } from 'react';
 
 function rangeText(start, end) {
   return `第 ${start + 1}-${end + 1} 章`;
@@ -180,16 +180,20 @@ export default function TimelineView({
           style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})`, transformOrigin: '0 0' }}
         >
           {groups.length === 0 && <p className="muted">这本书还在构思中，生成章节后这里会按重大事件展示发展线。</p>}
-          {groups.map((group) => (
-            <div key={group.id} className="timeline-group-block">
-              <button
-                className={`timeline-node timeline-group${expandedGroup === group.id ? ' active' : ''}`}
-                onClick={(event) => handleGroupClick(group.id, event)}
-              >
-                <span className="timeline-node-label">{group.label}</span>
-                <span className="timeline-node-range">{rangeText(group.chapterStart, group.chapterEnd)}</span>
-              </button>
-            </div>
+          {groups.map((group, index) => (
+            <Fragment key={group.id}>
+              <div className="timeline-group-block">
+                <button
+                  className={`timeline-node timeline-group${expandedGroup === group.id ? ' active' : ''}`}
+                  onClick={(event) => handleGroupClick(group.id, event)}
+                >
+                  <span className="timeline-node-label">{group.label}</span>
+                  <span className="timeline-node-range">{rangeText(group.chapterStart, group.chapterEnd)}</span>
+                </button>
+              </div>
+              {/* 背景组之间的连接线：主题色、居中连接相邻背景（0.8.42 美化） */}
+              {index < groups.length - 1 && <div className="timeline-connector" />}
+            </Fragment>
           ))}
           {renderFloat()}
         </div>

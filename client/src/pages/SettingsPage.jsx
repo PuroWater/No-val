@@ -280,7 +280,7 @@ export default function SettingsPage() {
                         top: Math.min(confirmTip.y + 16, window.innerHeight - 90)
                       }}
                     >
-                      开启后，在新建/改写/删除/批量修改/事件背景修改等写操作执行前，AI 会先在对话中向你确认，回复“确认”后才真正执行。
+                      开启后，在新建/改写/删除/批量修改等写操作执行前，AI 会先在对话中向你确认，回复“确认”后才真正执行。
                     </div>
                   )}
                 </div>

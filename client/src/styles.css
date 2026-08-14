@@ -1638,6 +1638,26 @@ button, input, textarea, select {
   flex-direction: column;
 }
 
+/* 背景组之间的连接线：主题色、居中连接相邻背景（0.8.42 美化） */
+.timeline-connector {
+  flex: none;
+  background: var(--accent);
+  opacity: 0.45;
+  border-radius: 2px;
+}
+
+.timeline-vertical .timeline-connector {
+  width: 2px;
+  height: 26px;
+  align-self: center;
+}
+
+.timeline-horizontal .timeline-connector {
+  height: 2px;
+  width: 26px;
+  align-self: center;
+}
+
 .timeline-node {
   display: inline-flex;
   align-items: center;
