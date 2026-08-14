@@ -1411,8 +1411,7 @@ button, input, textarea, select {
 
 .book-widget-actions {
   display: flex;
-  align-items: center;
-  justify-content: center;
+
   gap: 8px;
   margin-left: auto;
   margin-right: auto;
@@ -1588,8 +1587,9 @@ button, input, textarea, select {
   overflow: hidden;
   position: relative;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  /* 0.8.55 画布左上对齐：不再居中整个发展图，避免横排第一章被挤出视线 */
+  align-items: flex-start;
+  justify-content: flex-start;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--panel);
