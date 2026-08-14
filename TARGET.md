@@ -1,8 +1,8 @@
 【项目目标】
 在当前开发环境下（已安装 VSCode、Node.js），生成一个可直接运行的**小说创作平台 Web 应用**。项目不连接任何数据库，后端数据使用本地 JSON 文件持久化。前端为 React 单页应用（SPA），后端为 Express，调用 DeepSeek 大模型辅助创作。
 
-当前版本：0.8.43  
-最近更新：2026-08-14 0.8.43 修复并列查看聊天上移（阅读锚点）
+当前版本：0.8.44  
+最近更新：2026-08-14 0.8.44 前端大文件拆子组件（仅结构不动样式）
 
 【文档职责】
 - `TARGET.md`：每次更新的目标文件。每次更新前先修改本文档，按“日期 + 版本”划分，写明待更新说明、待更新功能；开发完成后记录实际完成内容。
@@ -2134,6 +2134,23 @@ Novel Agent/
 
 完成内容：
 - ChatPanel 修复落地（scrollAnchorRef + sideOpen effect + ResizeObserver 兜底）；npm run build 通过；版本号统一 0.8.43；本地提交未推送（按协作规矩）。
+
+### 2026-08-14 v0.8.44 前端大文件拆子组件（仅结构不动样式）
+
+待更新说明：
+- ChatPanel / BookSidePanel / SettingsPage 三个文件较大（400+ 行），结构臃肿难维护；
+- 用户要求：按功能拆成子组件，仅搬代码结构、样式一字不动。
+
+待更新功能：
+- ChatPanel 拆出 ChatMessageList（消息列表渲染）与 ChatDatePicker（日期选择器）；
+- BookSidePanel 拆出 ChapterDirectory（章节目录，搜索/新建/删除自包含）；
+- SettingsPage 拆出 TrashPanel（回收站分组）与 AccountPanel（账户/改密码）；
+- 浏览器实测验证主界面/并列/设置页正常；build 通过。
+
+完成内容：
+- 5 个子组件落地（ChatMessageList / ChatDatePicker / ChapterDirectory / TrashPanel / AccountPanel）；父组件瘦身；
+- 修复拆分引入的 getDateRanges 残留引用（白屏）；Edge 实测主界面消息/日期选择、并列目录、设置页回收站/账户全部正常；
+- 版本号统一 0.8.44；本地提交未推送（按协作规矩）。
 
 ### 后续建议方向（交接快照 2026-08-13）
 

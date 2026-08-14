@@ -1,4 +1,6 @@
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import ChatMessageList from './ChatMessageList.jsx';
+import ChatDatePicker from './ChatDatePicker.jsx';
 import { api } from '../api.js';
 import BookWidget from './BookWidget.jsx';
 import { useStack } from './OverlayStack.jsx';
@@ -17,43 +19,6 @@ function formatDate(iso) {
   }
 }
 
-function getDateRanges(book) {
-  const byDate = new Map();
-  const touch = (date) => {
-    if (!date) return;
-    byDate.set(date, byDate.get(date) || { start: Infinity, end: 0, modified: [] });
-  };
-  (book.chat || []).forEach((message) => touch(formatDate(message.createdAt)));
-  (book.chapters || []).forEach((chapter, index) => {
-    const created = formatDate(chapter.createdAt || chapter.updatedAt);
-    const updated = formatDate(chapter.updatedAt);
-    touch(created);
-    touch(updated);
-    if (created && updated && updated !== created) {
-      byDate.get(updated).modified.push(index + 1);
-    }
-    if (created) {
-      const info = byDate.get(created);
-      info.start = Math.min(info.start, index + 1);
-      info.end = Math.max(info.end, index + 1);
-    }
-  });
-  return [...byDate.entries()]
-    .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
-    .map(([date, info]) => {
-      const lines = [];
-      const modified = [...new Set(info.modified)].sort((a, b) => a - b);
-      if (modified.length > 0) {
-        lines.push(`修改：第${modified.join('、')}章`);
-      }
-      const hasAdded = info.end >= info.start;
-      if (hasAdded) {
-        lines.push(info.start === info.end ? `新增：第${info.start}章` : `新增：第${info.start}-${info.end}章`);
-      }
-      return { date, lines };
-    });
-}
-
 export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOpen, onToggleSide, onBookChanged }) {
   const isNew = !bookId;
   const { open } = useStack();
@@ -67,10 +32,7 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
   const [activeBookId, setActiveBookId] = useState('');
   const messagesRef = useRef(null);
   const [selectedDate, setSelectedDate] = useState('__today__');
-  const [dateOpen, setDateOpen] = useState(false);
-  const [dateHover, setDateHover] = useState(null);
   const [enterToSend, setEnterToSend] = useState(true);
-  const dateWrapRef = useRef(null);
   // 每本书独立维护聊天输入草稿：存 sessionStorage，页面不关闭（含路由切换/刷新）期间保活。
   const draftKey = bookId ? `novel_chat_draft_${bookId}` : 'novel_chat_draft_new';
 
@@ -174,18 +136,6 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
     observer.observe(el);
     return () => { cancelAnimationFrame(raf); observer.disconnect(); };
   }, []);
-
-  useEffect(() => {
-    if (!dateOpen) return undefined;
-    const onDown = (event) => {
-      if (dateWrapRef.current && !dateWrapRef.current.contains(event.target)) {
-        setDateOpen(false);
-        setDateHover(null);
-      }
-    };
-    document.addEventListener('mousedown', onDown);
-    return () => document.removeEventListener('mousedown', onDown);
-  }, [dateOpen]);
 
   useEffect(() => {
     api('/settings')
@@ -292,11 +242,6 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
   }
 
   const todayKey = formatDate(new Date());
-  const dateOptions = getDateRanges(book);
-  const hasTodayRecord = dateOptions.some((option) => option.date === todayKey);
-  const archiveOptions = hasTodayRecord
-    ? dateOptions
-    : dateOptions.filter((option) => option.date !== todayKey);
   const isKnownDate = selectedDate && selectedDate !== '__today__' && dateOptions.some((option) => option.date === selectedDate);
   const mode = selectedDate === '__today__' || !selectedDate
     ? selectedDate
@@ -322,66 +267,7 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
             </span>
           </div>
           {!isNew && (
-            <div className="chat-date-wrap" ref={dateWrapRef}>
-              <button
-                className="chat-date-select"
-                onClick={() => {
-                  setDateHover(null);
-                  setDateOpen((open) => !open);
-                }}
-                aria-haspopup="listbox"
-              >
-                {mode === '__today__' ? '当前日期' : mode || '全部日期'}
-                <span className="chat-date-caret">▾</span>
-              </button>
-              {dateOpen && (
-                <div className="chat-date-panel" role="listbox">
-                  <button
-                    className={`chat-date-option${mode === '__today__' ? ' active' : ''}`}
-                    onClick={() => { setSelectedDate('__today__'); setDateOpen(false); setDateHover(null); }}
-                  >
-                    当前日期
-                  </button>
-                  <button
-                    className={`chat-date-option${mode === '' ? ' active' : ''}`}
-                    onClick={() => { setSelectedDate(''); setDateOpen(false); setDateHover(null); }}
-                  >
-                    全部日期
-                  </button>
-                  {archiveOptions.map((option) => (
-                    <button
-                      key={option.date}
-                      className={`chat-date-option${mode === option.date ? ' active' : ''}`}
-                      onClick={() => { setSelectedDate(option.date); setDateOpen(false); setDateHover(null); }}
-                      onMouseEnter={(event) => {
-                        if (option.lines.length > 0) {
-                          setDateHover({ x: event.clientX, y: event.clientY, lines: option.lines });
-                        }
-                      }}
-                      onMouseMove={(event) => {
-                        if (option.lines.length > 0) {
-                          setDateHover({ x: event.clientX, y: event.clientY, lines: option.lines });
-                        }
-                      }}
-                      onMouseLeave={() => setDateHover(null)}
-                    >
-                      {option.date}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {dateHover && dateHover.lines.length > 0 && (
-                <div
-                  className="chat-date-tooltip"
-                  style={{
-                    left: Math.min(dateHover.x + 14, window.innerWidth - 270),
-                    top: Math.min(dateHover.y + 16, window.innerHeight - 90)
-                  }}
-                >
-                  {dateHover.lines.map((line) => <div key={line}>{line}</div>)}
-                </div>
-              )}
-            </div>
+            <ChatDatePicker book={book} mode={mode} onSelect={setSelectedDate} />
           )}
         </div>
         {!isNew && book.status === 'ready' && (
@@ -411,48 +297,15 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
           )}
         </div>
       )}
-      <div className="chat-messages" ref={messagesRef} onScroll={updateScrollAnchor}>
-        {book.chat.length === 0 && (
-          <div className="chat-empty-greeting">{greeting}</div>
-        )}
-        {mode && visibleMessages.length === 0 && book.chat.length > 0 && (
-          <p className="muted">{isTodayView ? '今天还没有对话，输入即可开始今天的创作' : '该日期暂无消息'}</p>
-        )}
-        {visibleMessages.map((message) => {
-          const date = formatDate(message.createdAt);
-          const showSeparator = !lastDate || date !== lastDate;
-          lastDate = date;
-          const bubble = message.kind === 'book' ? (
-            <Fragment>
-              {message.content && (
-                <div className={`chat-message ${message.role}`}>{message.content}</div>
-              )}
-              <BookWidget
-                book={book}
-                onOpen={onOpenBook}
-                chapter={Number(message.chapter) || 1}
-              />
-            </Fragment>
-          ) : message.kind === 'typing' || message.kind === 'processing' ? (
-            <div className="chat-message agent processing">
-              回复中
-              <span className="typing-dots"><i>.</i><i>.</i><i>.</i></span>
-            </div>
-          ) : (
-            <div
-              className={`chat-message ${message.role}${message.kind === 'error' ? ' error' : ''}${message.kind === 'processing' ? ' processing' : ''}`}
-            >
-              {message.content}
-            </div>
-          );
-          return (
-            <Fragment key={message.id}>
-              {showSeparator && date && <div className="chat-date-separator">{date}</div>}
-              {bubble}
-            </Fragment>
-          );
-        })}
-      </div>
+            <ChatMessageList
+        messages={visibleMessages}
+        book={book}
+        greeting={greeting}
+        emptyText={mode ? (isTodayView ? '今天还没有对话，输入即可开始今天的创作' : '该日期暂无消息') : ''}
+        scrollRef={messagesRef}
+        onScroll={updateScrollAnchor}
+        onOpenBook={onOpenBook}
+      />
       <div className="chat-input">
         <textarea
           value={input}

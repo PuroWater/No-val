@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import ConfirmModal from '../components/ConfirmModal.jsx';
 import { applySettings } from '../components/SettingsApplier.jsx';
+import TrashPanel from '../components/TrashPanel.jsx';
+import AccountPanel from '../components/AccountPanel.jsx';
 
 const THEMES = [
   { value: 'system', label: '跟随系统' },
@@ -34,11 +36,6 @@ export default function SettingsPage() {
   const [trash, setTrash] = useState([]);
   const [toasts, setToasts] = useState([]);
   const toastIdRef = useRef(0);
-  const [oldPassword, setOldPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [accountMessage, setAccountMessage] = useState('');
-  const [accountError, setAccountError] = useState('');
   const [permanentTarget, setPermanentTarget] = useState(null);
 
   async function loadTrash() {
@@ -104,28 +101,6 @@ export default function SettingsPage() {
     await api(`/books/${permanentTarget.id}/permanent`, { method: 'DELETE' });
     await loadTrash();
     setPermanentTarget(null);
-  }
-
-  async function changePassword(event) {
-    event.preventDefault();
-    setAccountMessage('');
-    setAccountError('');
-    if (newPassword !== confirmPassword) {
-      setAccountError('两次输入的新密码不一致');
-      return;
-    }
-    try {
-      await api('/auth/password', {
-        method: 'PUT',
-        body: JSON.stringify({ oldPassword, newPassword })
-      });
-      setAccountMessage('密码已修改');
-      setOldPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-    } catch (err) {
-      setAccountError(err.message);
-    }
   }
 
   const trashBooks = trash.filter((book) => book.status === 'ready');
@@ -350,53 +325,15 @@ export default function SettingsPage() {
             </>
           )}
           {activeSetting === 'trash' && (
-            <>
-              <div className="trash-section">
-                <h3>图书（已生成）</h3>
-                {trashBooks.length === 0 && <p className="muted">暂无回收图书</p>}
-                {trashBooks.map((book) => (
-                  <div key={book.id} className="trash-item">
-                    <div>
-                      <strong>{book.title}</strong>
-                      <span className="muted">{book.chapterCount} 章</span>
-                    </div>
-                    <div>
-                      <button onClick={() => restore(book)}>恢复</button>
-                      <button className="danger" onClick={() => setPermanentTarget(book)}>彻底删除</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="trash-section">
-                <h3>构思（未生成）</h3>
-                {trashDrafts.length === 0 && <p className="muted">暂无回收构思</p>}
-                {trashDrafts.map((book) => (
-                  <div key={book.id} className="trash-item">
-                    <div>
-                      <strong>{book.title}</strong>
-                      <span className="muted">创作中</span>
-                    </div>
-                    <div>
-                      <button onClick={() => restore(book)}>恢复</button>
-                      <button className="danger" onClick={() => setPermanentTarget(book)}>彻底删除</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
+            <TrashPanel
+              books={trashBooks}
+              drafts={trashDrafts}
+              onRestore={restore}
+              onPermanent={setPermanentTarget}
+            />
           )}
           {activeSetting === 'account' && (
-            <div className="settings-group">
-              <span>账户设置</span>
-              <form className="account-form" onSubmit={changePassword}>
-                <input type="password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} placeholder="原密码" />
-                <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="新密码（至少 6 位）" />
-                <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="确认新密码" />
-                {accountError && <p className="form-error">{accountError}</p>}
-                {accountMessage && <p className="saved-tip">{accountMessage}</p>}
-                <button className="primary" type="submit">修改密码</button>
-              </form>
-            </div>
+            <AccountPanel />
           )}
         </div>
       </div>

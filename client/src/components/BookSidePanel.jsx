@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import ChapterEditor from './ChapterEditor.jsx';
+import ChapterDirectory from './ChapterDirectory.jsx';
 import RelationGraph from './RelationGraph.jsx';
 import TimelineView from './TimelineView.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
@@ -9,7 +10,6 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
   const [book, setBook] = useState(null);
   const [tab, setTab] = useState('content');
   const [chapterIndex, setChapterIndex] = useState(0);
-  const [chapterQuery, setChapterQuery] = useState('');
   const [error, setError] = useState('');
   const [relationsLoading, setRelationsLoading] = useState(false);
   const [relationsError, setRelationsError] = useState('');
@@ -21,8 +21,6 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
   const [expandedGroup, setExpandedGroup] = useState(null);
   const [expandedScene, setExpandedScene] = useState(null);
   const [timelineView, setTimelineView] = useState({ x: 0, y: 0, scale: 1 });
-  const [addingChapter, setAddingChapter] = useState(false);
-  const [newTitle, setNewTitle] = useState('');
   const [deleteChapterTarget, setDeleteChapterTarget] = useState(null);
   const [deleteChapterError, setDeleteChapterError] = useState('');
   const [aiEditedToast, setAiEditedToast] = useState(false);
@@ -31,62 +29,13 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
   const aiToastTimerRef = useRef(null);
   const editingDirtyRef = useRef(false);
   const lastOpenChapterRef = useRef(null);
-  const directoryRef = useRef(null);
-  const addInputRef = useRef(null);
 
-  function intToChinese(number) {
-    const digits = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
-    const n = Math.max(1, Math.floor(number));
-    if (n < 10) return digits[n];
-    if (n < 20) return n === 10 ? '十' : `十${digits[n - 10]}`;
-    if (n < 100) {
-      const tens = Math.floor(n / 10);
-      const ones = n % 10;
-      return `${digits[tens]}十${ones ? digits[ones] : ''}`;
-    }
-    if (n < 1000) {
-      const hundreds = Math.floor(n / 100);
-      const rest = n % 100;
-      return `${digits[hundreds]}百${rest ? (rest < 10 ? `零${digits[rest]}` : intToChinese(rest)) : ''}`;
-    }
-    const thousands = Math.floor(n / 1000);
-    const rest = n % 1000;
-    return `${digits[thousands]}千${rest ? (rest < 100 ? `零${intToChinese(rest)}` : intToChinese(rest)) : ''}`;
-  }
-
-  function nextChapterPrefix(bookRef) {
-    const chapters = bookRef?.chapters || [];
-    const last = chapters[chapters.length - 1];
-    if (!last) return '';
-    const match = String(last.title).match(/^第\s*([0-9零一二两三四五六七八九十百千]+)\s*章/);
-    if (!match) return '';
-    const chinese = /[零一二两三四五六七八九十百千]/.test(match[1]);
-    return chinese ? `第${intToChinese(chapters.length + 1)}章 ` : `第${chapters.length + 1}章 `;
-  }
-
-  function startAddChapter() {
-    setNewTitle(nextChapterPrefix(book));
-    setAddingChapter(true);
-    setTimeout(() => addInputRef.current?.focus(), 0);
-  }
-
-  // 提取章节名部分：去掉“第n章”前缀（含冒号/空格），只剩“第n章”时返回空。
-  function chapterNamePart(raw) {
-    const match = raw.match(/^第\s*([0-9零一二两三四五六七八九十百千]+)\s*章[\s:：]*/);
-    return match ? raw.slice(match[0].length).trim() : raw.trim();
-  }
-
-  async function commitAddChapter() {
-    const raw = newTitle.trim();
-    setAddingChapter(false);
-    setNewTitle('');
-    if (!book || !raw) return;
-    // 只输入了自动生成的“第n章”前缀、没有实际章节名时不新建。
-    if (!chapterNamePart(raw)) return;
+  async function commitAddChapter(title) {
+    if (!book || !title) return;
     try {
       const data = await api(`/books/${book.id}/chapters`, {
         method: 'POST',
-        body: JSON.stringify({ title: raw })
+        body: JSON.stringify({ title })
       });
       setBook(data.book);
       setChapterIndex(data.book.chapters.length - 1);
@@ -176,14 +125,6 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
     // timelineTick 供“刷新发展线”按钮手动重新拉取（派生视图，零 AI 成本）。
   }, [tab, bookId, book?.chapters?.length, book?.updatedAt, refreshSignal, timelineTick]);
 
-  useEffect(() => {
-    if (!book) return undefined;
-    const timer = setTimeout(() => {
-      directoryRef.current?.querySelector('.directory-item.active')?.scrollIntoView({ block: 'nearest' });
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [book, openChapter, chapterIndex]);
-
   async function regenerateRelations() {
     setRelationsLoading(true);
     setRelationsError('');
@@ -201,12 +142,6 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
   if (!book) return <aside className="book-side-panel"><p className="muted">加载中…</p></aside>;
 
   const chapter = book.chapters[chapterIndex];
-  const chapterQueryText = chapterQuery.trim().toLowerCase();
-  const filteredChapters = book.chapters.filter((item, index) => (
-    !chapterQueryText
-    || item.title.toLowerCase().includes(chapterQueryText)
-    || String(index + 1).includes(chapterQueryText)
-  ));
 
   async function saveChapter(patch) {
     try {
@@ -255,49 +190,14 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
       </div>
       {tab === 'content' ? (
         <div className="book-content">
-          <aside className="chapter-directory" ref={directoryRef}>
-            <input
-              className="directory-search"
-              placeholder="搜索章节…"
-              value={chapterQuery}
-              onChange={(e) => setChapterQuery(e.target.value)}
-            />
-            {filteredChapters.map((item, index) => (
-              <button
-                key={item.id}
-                className={`directory-item ${chapterIndex === book.chapters.indexOf(item) ? 'active' : ''}`}
-                onClick={() => setChapterIndex(book.chapters.indexOf(item))}
-              >
-                <span className="directory-label">{item.title}</span>
-                {book.chapters.length > 1 && (
-                  <span
-                    className="directory-delete"
-                    onClick={(e) => { e.stopPropagation(); setDeleteChapterTarget(item); }}
-                  >
-                    删除
-                  </span>
-                )}
-              </button>
-            ))}
-            {book.chapters.length <= 1 && <p className="muted">仅剩 1 章不可删除，删除整书请到「我的」页面。</p>}
-            {addingChapter ? (
-              <input
-                ref={addInputRef}
-                className="directory-add-input"
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') commitAddChapter(); }}
-                onBlur={commitAddChapter}
-                placeholder="章节名"
-              />
-            ) : (
-              <button className="directory-add-chapter" onClick={startAddChapter}>
-                点击添加新章节
-              </button>
-            )}
-            {filteredChapters.length === 0 && <p className="muted">没有匹配的章节</p>}
-            {deleteChapterError && <p className="form-error">{deleteChapterError}</p>}
-          </aside>
+                    <ChapterDirectory
+            chapters={book.chapters}
+            chapterIndex={chapterIndex}
+            onSelect={setChapterIndex}
+            onDelete={setDeleteChapterTarget}
+            onAdd={commitAddChapter}
+            deleteError={deleteChapterError}
+          />
           <div className="chapter-editor-area">
             {chapter ? (
               <ChapterEditor
