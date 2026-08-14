@@ -59,19 +59,6 @@ export function normalizeBook(book) {
       : []
   }));
   if (!Array.isArray(book.chat)) book.chat = [];
-  if (Array.isArray(book.timeline)) {
-    for (const item of book.timeline) {
-      const chapter = book.chapters[Number(item.chapterIndex)];
-      if (chapter && item && typeof item.event === 'string' && item.event.trim()) {
-        chapter.events.push({
-          id: item.id || `t_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-          event: item.event.trim(),
-          characters: Array.isArray(item.characters) ? item.characters.map(String) : []
-        });
-      }
-    }
-    delete book.timeline;
-  }
   backfillChapterCreation(book);
   if (!book.status) book.status = book.chapters.length > 0 ? 'ready' : 'draft';
   if (!book.draft) book.draft = { concept: '', summary: '', targetWords: 0 };

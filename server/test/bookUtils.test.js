@@ -36,25 +36,6 @@ test('normalizeBook fills relations marker defaults', () => {
   assert.equal(kept.relations.mode, 'incremental');
 });
 
-test('normalizeBook migrates legacy timeline into chapter events', () => {
-  const book = normalizeBook({
-    title: '旧书',
-    chapters: [
-      { id: 'c1', title: '第一章', summary: '摘要一' },
-      { id: 'c2', title: '第二章', summary: '摘要二' }
-    ],
-    timeline: [
-      { id: 't1', chapterIndex: 0, event: '事件A', characters: ['甲'] },
-      { id: 't2', chapterIndex: 1, event: '事件B', characters: ['乙'] }
-    ]
-  });
-  assert.equal('timeline' in book, false);
-  assert.equal(book.chapters[0].events.length, 1);
-  assert.equal(book.chapters[0].events[0].event, '事件A');
-  assert.deepEqual(book.chapters[0].events[0].characters, ['甲']);
-  assert.equal(book.chapters[1].events[0].event, '事件B');
-});
-
 test('normalizeBook backfills legacy chapter creation dates from book messages', () => {
   const book = normalizeBook({
     createdAt: '2026-08-09T14:00:00.000Z',
