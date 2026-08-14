@@ -1,8 +1,8 @@
 【项目目标】
 在当前开发环境下（已安装 VSCode、Node.js），生成一个可直接运行的**小说创作平台 Web 应用**。项目不连接任何数据库，后端数据使用本地 JSON 文件持久化。前端为 React 单页应用（SPA），后端为 Express，调用 DeepSeek 大模型辅助创作。
 
-当前版本：0.8.47  
-最近更新：2026-08-14 0.8.47 兼容别名清理（/timeline、field=timeline、timelineOrientation）
+当前版本：0.8.48  
+最近更新：2026-08-14 0.8.48 刷新即中断：processing 残留不重启自愈 + 回复自然化
 
 【文档职责】
 - `TARGET.md`：每次更新的目标文件。每次更新前先修改本文档，按“日期 + 版本”划分，写明待更新说明、待更新功能；开发完成后记录实际完成内容。
@@ -2190,6 +2190,20 @@ Novel Agent/
 
 完成内容：
 - 兼容别名全清；API 实测 GET 不再含 timelineOrientation、PUT 方向读写正常；单元测试 75/75、build 通过；版本号统一 0.8.47；本地提交未推送。
+
+### 2026-08-14 v0.8.48 刷新即中断：processing 残留不重启自愈 + 回复自然化
+
+待更新说明：
+- 卡住的 processing 此前只能重启服务（recoverStaleProcessing 启动时清理）消除；
+- 用户要求：刷新页面 F5 时把“正在思考”标记为中断。
+
+待更新功能：
+- 后端 interruptProcessing 增强：指定 bookId 时即使无进行中任务也清理该书残留 processing（标记“输出已中断”）；
+- 前端 ChatPanel 模块级标记：页面刷新（模块重载）后首次加载时若该书有 processing 自动调 /chat/abort；切换书不重复中断、不误伤其他标签页正在跑的任务；
+- 轻量去预制味：执行器收尾提示词补“总结自然、像真人，避免模板化开头”。
+
+完成内容：
+- API 实测：临时副本塞 processing → abort → interrupted=true、processing 变“输出已中断”；单元测试 75/75、build 通过；版本号统一 0.8.48；本地提交未推送（按协作规矩）。
 
 ### 后续建议方向（交接快照 2026-08-13）
 

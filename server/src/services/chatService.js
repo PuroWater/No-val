@@ -234,6 +234,8 @@ export function interruptProcessing(userId, bookId = '') {
     activeJobs.delete(key);
     targets.add(jobBookId);
   }
+  // 0.8.48 刷新即中断：指定书时即使无进行中任务（任务已结束/泄漏/崩溃残留），也清理该书残留 processing
+  if (bookId) targets.add(bookId);
   if (targets.size === 0) return { interrupted: false };
   let changed = false;
   for (const book of listBooks()) {
@@ -411,7 +413,7 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
     system: [
       '你是小说协作 Agent，按任务单执行，不要自行扩展或缩减任务。',
       `任务单：${plan.text}`,
-      '只能使用任务单允许的工具；完成条件由系统强制，达到后立即用自己的话总结回复用户（不要复述工具返回文本，不要重复调用已完成步骤的工具）。',
+      '只能使用任务单允许的工具；完成条件由系统强制，达到后立即用自己的话总结回复用户（不要复述工具返回文本，不要重复调用已完成步骤的工具）。总结要自然、像真人对话，避免“好的/已为你/没问题”等模板化开头。',
       PLOT_FACT_RULE,
       WRITE_EXECUTION_RULE,
       CHAPTER_NUM_RULE,

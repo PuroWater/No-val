@@ -7,6 +7,9 @@ import { useStack } from './OverlayStack.jsx';
 
 const SUGGESTIONS = ['今天有什么想法？', '来聊聊吧！'];
 
+// 0.8.48 刷新即中断：模块级标记，仅页面刷新（模块重载）后首次加载时检查一次，切换书不重复中断。
+let initializedForSession = false;
+
 function formatDate(iso) {
   try {
     const date = new Date(iso);
@@ -41,6 +44,13 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
     try {
       const data = await api(`/books/${bookId}`);
       setBook(data.book);
+      // 0.8.48 刷新即中断：本 SPA 会话首次加载时若存在 processing 残留（上一轮未正常收尾），自动中断标记，不再卡死
+      if (!initializedForSession) {
+        initializedForSession = true;
+        if ((data.book.chat || []).some((message) => message.kind === 'processing')) {
+          api(`/chat/abort`, { method: 'POST', body: JSON.stringify({ bookId }) }).catch(() => {});
+        }
+      }
     } catch (err) {
       setError(err.message);
     }
