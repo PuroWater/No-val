@@ -98,7 +98,7 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
   useEffect(() => {
     api('/settings')
       .then((data) => {
-        setOrientation((data.settings?.developmentLineOrientation ?? data.settings?.timelineOrientation) === 'horizontal' ? 'horizontal' : 'vertical');
+        setOrientation(data.settings?.developmentLineOrientation === 'horizontal' ? 'horizontal' : 'vertical');
       })
       .catch(() => {});
   }, []);

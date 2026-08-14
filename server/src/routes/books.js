@@ -78,8 +78,6 @@ const developmentLineHandler = (req, res) => {
 };
 
 router.get('/:id/development-line', developmentLineHandler);
-// 兼容旧名（0.8.6 前为 /timeline）
-router.get('/:id/timeline', developmentLineHandler);
 
 router.post('/:id/chapters/:chapterId/summary', (req, res) => {
   // 慢写：摘要/事件维护进书级队列，等当前聊天完成后基于最新内容计算，避免旧摘要覆盖新内容

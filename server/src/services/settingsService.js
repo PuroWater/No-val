@@ -18,8 +18,7 @@ export function getUserSettings(userId) {
     chapterWords: clampInt(current.chapterWords, 1000, 10000, base.chapterWords),
     enterToSend: current.enterToSend !== false,
     thinkingForWriting: current.thinkingForWriting === true,
-    // 0.8.6 起字段改名 developmentLineOrientation，旧名 timelineOrientation 兼容
-    developmentLineOrientation: (current.developmentLineOrientation ?? current.timelineOrientation) === 'horizontal' ? 'horizontal' : 'vertical',
+    developmentLineOrientation: current.developmentLineOrientation === 'horizontal' ? 'horizontal' : 'vertical',
     reviewAfterWrite: current.reviewAfterWrite === true,
     confirmBeforeWrite: current.confirmBeforeWrite === true
   };

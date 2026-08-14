@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { readJson, writeJson, SETTINGS_FILE } from '../lib/store.js';
 import { requireAuth } from '../middleware/auth.js';
 import { defaultSettings } from '../lib/settingsDefaults.js';
+import { getUserSettings } from '../services/settingsService.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -11,15 +12,12 @@ const FONT_SIZES = ['small', 'medium', 'large'];
 const CHAPTER_RANGE = [1, 2, 3, 4, 5];
 
 router.get('/', (req, res) => {
-  const settings = readJson(SETTINGS_FILE, []);
-  const current = settings.find((item) => item.userId === req.user.id) || defaultSettings(req.user.id);
-  res.json({ settings: current });
+  res.json({ settings: getUserSettings(req.user.id) });
 });
 
 router.put('/', (req, res) => {
-  const { theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, thinkingForWriting, developmentLineOrientation, timelineOrientation, reviewAfterWrite, confirmBeforeWrite } = req.body || {};
-  // 0.8.6 起字段改名 developmentLineOrientation，旧名 timelineOrientation 兼容
-  const orientation = developmentLineOrientation ?? timelineOrientation;
+  const { theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, thinkingForWriting, developmentLineOrientation, reviewAfterWrite, confirmBeforeWrite } = req.body || {};
+  const orientation = developmentLineOrientation;
   if (!THEMES.includes(theme) || !FONT_SIZES.includes(fontSize)) {
     return res.status(400).json({ error: '设置值不合法' });
   }

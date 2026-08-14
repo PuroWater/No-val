@@ -1,8 +1,8 @@
 【项目目标】
 在当前开发环境下（已安装 VSCode、Node.js），生成一个可直接运行的**小说创作平台 Web 应用**。项目不连接任何数据库，后端数据使用本地 JSON 文件持久化。前端为 React 单页应用（SPA），后端为 Express，调用 DeepSeek 大模型辅助创作。
 
-当前版本：0.8.46  
-最近更新：2026-08-14 0.8.46 golden eval 扩展（删除/插入/维护场景）
+当前版本：0.8.47  
+最近更新：2026-08-14 0.8.47 兼容别名清理（/timeline、field=timeline、timelineOrientation）
 
 【文档职责】
 - `TARGET.md`：每次更新的目标文件。每次更新前先修改本文档，按“日期 + 版本”划分，写明待更新说明、待更新功能；开发完成后记录实际完成内容。
@@ -2177,6 +2177,19 @@ Novel Agent/
 
 完成内容：
 - 场景 5→8；真实模型跑通 `GOLDEN EVAL ALL PASS`（删除 18→17、插入 18→19、维护摘要正常）；版本号统一 0.8.46；本地提交未推送（按协作规矩）。
+
+### 2026-08-14 v0.8.47 兼容别名清理（/timeline、field=timeline、timelineOrientation）
+
+待更新说明：
+- “时间线”改名“发展线”后保留了三处兼容别名（/timeline 路由、read_book field=timeline、设置 timelineOrientation 旧字段），v1.0 前清理。
+
+待更新功能：
+- 删除 /timeline 旧路由；read_book 只认 development_line；设置只认 developmentLineOrientation（后端解构/读取、前端 SettingsPage 状态名统一）；
+- GET /settings 改用 getUserSettings（不再暴露存量 timelineOrientation 旧字段）；
+- 保留 normalizeBook 的 timeline→chapter.events 旧数据迁移（数据层，非别名）。
+
+完成内容：
+- 兼容别名全清；API 实测 GET 不再含 timelineOrientation、PUT 方向读写正常；单元测试 75/75、build 通过；版本号统一 0.8.47；本地提交未推送。
 
 ### 后续建议方向（交接快照 2026-08-13）
 

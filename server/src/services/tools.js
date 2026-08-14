@@ -209,7 +209,7 @@ export function defineReadyTools(book, settings, signal) {
     {
       group: 'read',
       name: 'read_book',
-      description: `查询书籍信息（只读）。field 为 info（书名/简介/章节数/进度/目标字数/构思设定）、meta（完整书籍元数据：状态/目标字数/构思设定与概念/草稿输出规模/关系网概要/时间等）、chapters（章节目录，支持 start/count 分页）、chapter（读取单个章节：target 传单个章节序号，默认返回该章标题/摘要/事件/正文全文；scope=summary 只看标题/摘要/事件、不含正文）、development_line（全书分层发展线；旧值 timeline 仍兼容）。field=chapter 只支持单章，禁止范围读取：需要查看多章时请分次调用本工具、每次 target 传一个章节号；用户以数字或“第X章”指代时直接传序号，仅标题指代且不确定序号时才先读 chapters。${PLOT_FACT_RULE}`,
+      description: `查询书籍信息（只读）。field 为 info（书名/简介/章节数/进度/目标字数/构思设定）、meta（完整书籍元数据：状态/目标字数/构思设定与概念/草稿输出规模/关系网概要/时间等）、chapters（章节目录，支持 start/count 分页）、chapter（读取单个章节：target 传单个章节序号，默认返回该章标题/摘要/事件/正文全文；scope=summary 只看标题/摘要/事件、不含正文）、development_line（全书分层发展线）。field=chapter 只支持单章，禁止范围读取：需要查看多章时请分次调用本工具、每次 target 传一个章节号；用户以数字或“第X章”指代时直接传序号，仅标题指代且不确定序号时才先读 chapters。${PLOT_FACT_RULE}`,
       parameters: {
         type: 'object',
         properties: {
@@ -290,7 +290,7 @@ export function defineReadyTools(book, settings, signal) {
           const more = total > from - 1 + size ? `\n…（全书共 ${total} 章，如需继续请用 start=${from + size} 分页读取）` : '';
           return { ok: true, data: `章节目录（第 ${from}-${Math.min(total, from - 1 + size)} 章 / 共 ${total} 章）：\n${list || '暂无章节'}${more}`, effect: null };
         }
-        if (field === 'development_line' || field === 'timeline') {
+        if (field === 'development_line') {
           const developmentLine = buildDevelopmentLine(book);
           const text = (developmentLine.groups || [])
             .map((group) => {
