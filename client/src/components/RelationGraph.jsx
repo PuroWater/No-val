@@ -1,4 +1,4 @@
-import { Component, useEffect, useMemo, useRef, useState } from 'react';
+import { Component, memo, useEffect, useMemo, useRef, useState } from 'react';
 
 const VIEW_W = 1200;
 const VIEW_H = 900;
@@ -83,6 +83,32 @@ function computeLayout(nodes, edges) {
   return { positions: sized, protagonist: protagonist.id };
 }
 
+// 0.8.49 长书大图优化：节点/边抽成 memo 组件——拖动/缩放只改外层 transform，
+// 节点/边坐标不变（layout 为 useMemo），React 跳过子元素重渲染。
+const GraphEdge = memo(function GraphEdge({ edge, from, to, showLabel }) {
+  return (
+    <g>
+      <line x1={from.x} y1={from.y} x2={to.x} y2={to.y} />
+      {showLabel && edge.label && (
+        <text className="edge-label" x={(from.x + to.x) / 2} y={(from.y + to.y) / 2}>{edge.label}</text>
+      )}
+    </g>
+  );
+});
+
+const GraphNode = memo(function GraphNode({ node }) {
+  return (
+    <g className={`relation-node ${node.type}`}>
+      {node.isMain && <circle className="main-halo" cx={node.x} cy={node.y} r={node.radius + 8} />}
+      <circle cx={node.x} cy={node.y} r={node.radius} />
+      <text x={node.x} y={node.y - node.radius - 10} textAnchor="middle">{node.name}</text>
+      <text className="node-type" x={node.x} y={node.y + 4} textAnchor="middle">
+        {node.type === 'faction' ? '势力' : node.isMain ? '主角' : '人物'}
+      </text>
+    </g>
+  );
+});
+
 function RelationGraphInner({ relations }) {
   const nodes = relations?.nodes || [];
   const edges = relations?.edges || [];
@@ -92,9 +118,16 @@ function RelationGraphInner({ relations }) {
   const drag = useRef(null);
   const dragHandlers = useRef(null);
   const containerRef = useRef(null);
+  // 0.8.49 rAF 节流：拖动/缩放高频事件每帧最多应用一次，避免长书大图重渲染卡顿
+  const rafRef = useRef(0);
+
+  function scheduleView(updater) {
+    cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => setView(updater));
+  }
 
   function zoom(factor) {
-    setView((current) => ({ ...current, scale: clamp(current.scale * factor, 0.2, 3) }));
+    scheduleView((current) => ({ ...current, scale: clamp(current.scale * factor, 0.2, 3) }));
   }
 
   useEffect(() => {
@@ -105,13 +138,14 @@ function RelationGraphInner({ relations }) {
     const handler = (event) => {
       event.preventDefault();
       const factor = event.deltaY < 0 ? 1.15 : 1 / 1.15;
-      setView((current) => ({ ...current, scale: clamp(current.scale * factor, 0.2, 3) }));
+      scheduleView((current) => ({ ...current, scale: clamp(current.scale * factor, 0.2, 3) }));
     };
     el.addEventListener('wheel', handler, { passive: false });
     return () => el.removeEventListener('wheel', handler);
   }, [hasGraph]);
 
   useEffect(() => () => {
+    cancelAnimationFrame(rafRef.current);
     if (dragHandlers.current) {
       window.removeEventListener('pointermove', dragHandlers.current.onMove);
       window.removeEventListener('pointerup', dragHandlers.current.onUp);
@@ -128,11 +162,10 @@ function RelationGraphInner({ relations }) {
       const state = drag.current;
       if (!state) return;
       if (!Number.isFinite(moveEvent.clientX) || !Number.isFinite(moveEvent.clientY)) return;
-      setView((current) => ({
-        ...current,
-        x: moveEvent.clientX - state.startX,
-        y: moveEvent.clientY - state.startY
-      }));
+      const x = moveEvent.clientX - state.startX;
+      const y = moveEvent.clientY - state.startY;
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => setView((current) => ({ ...current, x, y })));
     };
     const onUp = () => {
       drag.current = null;
@@ -164,24 +197,10 @@ function RelationGraphInner({ relations }) {
             const from = layout.positions.get(edge.from);
             const to = layout.positions.get(edge.to);
             if (!from || !to) return null;
-            return (
-              <g key={index}>
-                <line x1={from.x} y1={from.y} x2={to.x} y2={to.y} />
-                {showEdgeLabels && edge.label && (
-                  <text className="edge-label" x={(from.x + to.x) / 2} y={(from.y + to.y) / 2}>{edge.label}</text>
-                )}
-              </g>
-            );
+            return <GraphEdge key={index} edge={edge} from={from} to={to} showLabel={showEdgeLabels} />;
           })}
           {[...layout.positions.values()].map((node) => (
-            <g key={node.id} className={`relation-node ${node.type}`}>
-              {node.isMain && <circle className="main-halo" cx={node.x} cy={node.y} r={node.radius + 8} />}
-              <circle cx={node.x} cy={node.y} r={node.radius} />
-              <text x={node.x} y={node.y - node.radius - 10} textAnchor="middle">{node.name}</text>
-              <text className="node-type" x={node.x} y={node.y + 4} textAnchor="middle">
-                {node.type === 'faction' ? '势力' : node.isMain ? '主角' : '人物'}
-              </text>
-            </g>
+            <GraphNode key={node.id} node={node} />
           ))}
         </g>
       </svg>

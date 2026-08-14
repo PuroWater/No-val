@@ -30,6 +30,8 @@ export default function TimelineView({
   const canvasRef = useRef(null);
   const contentRef = useRef(null);
   const dragRef = useRef(null);
+  // 0.8.49 rAF 节流：拖动/缩放高频事件每帧最多应用一次，避免长书大图重渲染卡顿
+  const rafRef = useRef(0);
   const [hover, setHover] = useState(null);
   const [groupAnchor, setGroupAnchor] = useState(null);
 
@@ -37,6 +39,8 @@ export default function TimelineView({
   // 同一背景可能按连续章节区间拆成多个同标签组，展开状态用唯一 id（label#start-end）
   const expandedGroupData = groups.find((group) => group.id === expandedGroup) || null;
   const vertical = orientation === 'vertical';
+
+  useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
 
   function startDrag(event) {
     if (event.button !== 0) return;
@@ -50,7 +54,8 @@ export default function TimelineView({
       const dx = moveEvent.clientX - drag.startX;
       const dy = moveEvent.clientY - drag.startY;
       if (Math.abs(dx - view.x) + Math.abs(dy - view.y) > 4) drag.moved = true;
-      onViewChange({ x: dx, y: dy, scale: view.scale });
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => onViewChange({ x: dx, y: dy, scale: view.scale }));
     };
     const onUp = () => {
       dragRef.current = null;
@@ -68,7 +73,8 @@ export default function TimelineView({
     if (event.target?.closest?.('.timeline-float')) return;
     event.preventDefault();
     const factor = event.deltaY < 0 ? 1.15 : 1 / 1.15;
-    onViewChange({ ...view, scale: clampScale(view.scale * factor) });
+    cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => onViewChange({ ...view, scale: clampScale(view.scale * factor) }));
   }
 
   function handleGroupClick(id, event) {
