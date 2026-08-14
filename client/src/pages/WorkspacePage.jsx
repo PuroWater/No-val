@@ -121,7 +121,7 @@ export default function WorkspacePage() {
   async function confirmDelete() {
     if (!deleteTarget) return;
     try {
-      await api(`/books/${deleteTarget.id}`, { method: 'DELETE' });
+      await api(`/books/${deleteTarget.id}`, { method: 'DELETE', body: JSON.stringify({ version: deleteTarget.version }) });
       await loadBooks();
       if (selectedBookId === deleteTarget.id) {
         setSelectedBookId('');

@@ -15,7 +15,7 @@ export default function MyPage() {
   async function confirmDelete() {
     if (!deleteTarget) return;
     try {
-      await api(`/books/${deleteTarget.id}`, { method: 'DELETE' });
+      await api(`/books/${deleteTarget.id}`, { method: 'DELETE', body: JSON.stringify({ version: deleteTarget.version }) });
       setBooks((list) => list.filter((item) => item.id !== deleteTarget.id));
       setDeleteTarget(null);
     } catch (err) {

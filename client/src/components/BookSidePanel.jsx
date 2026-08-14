@@ -35,7 +35,7 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
     try {
       const data = await api(`/books/${book.id}/chapters`, {
         method: 'POST',
-        body: JSON.stringify({ title })
+        body: JSON.stringify({ title, version: book.version })
       });
       setBook(data.book);
       setChapterIndex(data.book.chapters.length - 1);

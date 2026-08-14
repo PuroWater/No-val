@@ -92,15 +92,24 @@ export default function SettingsPage() {
   }
 
   async function restore(book) {
-    await api(`/books/${book.id}/restore`, { method: 'POST' });
-    await loadTrash();
+    try {
+      await api(`/books/${book.id}/restore`, { method: 'POST', body: JSON.stringify({ version: book.version }) });
+      await loadTrash();
+    } catch (err) {
+      pushToast(`恢复失败：${err.message}`, true);
+    }
   }
 
   async function confirmPermanentDelete() {
     if (!permanentTarget) return;
-    await api(`/books/${permanentTarget.id}/permanent`, { method: 'DELETE' });
-    await loadTrash();
-    setPermanentTarget(null);
+    try {
+      await api(`/books/${permanentTarget.id}/permanent`, { method: 'DELETE', body: JSON.stringify({ version: permanentTarget.version }) });
+      await loadTrash();
+      setPermanentTarget(null);
+    } catch (err) {
+      pushToast(`彻底删除失败：${err.message}`, true);
+      setPermanentTarget(null);
+    }
   }
 
   const trashBooks = trash.filter((book) => book.status === 'ready');

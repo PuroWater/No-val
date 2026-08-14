@@ -1,8 +1,8 @@
 【项目目标】
 在当前开发环境下（已安装 VSCode、Node.js），生成一个可直接运行的**小说创作平台 Web 应用**。项目不连接任何数据库，后端数据使用本地 JSON 文件持久化。前端为 React 单页应用（SPA），后端为 Express，调用 DeepSeek 大模型辅助创作。
 
-当前版本：0.8.44  
-最近更新：2026-08-14 0.8.44 前端大文件拆子组件（仅结构不动样式）
+当前版本：0.8.45  
+最近更新：2026-08-14 0.8.45 乐观锁覆盖手动新建章与回收站
 
 【文档职责】
 - `TARGET.md`：每次更新的目标文件。每次更新前先修改本文档，按“日期 + 版本”划分，写明待更新说明、待更新功能；开发完成后记录实际完成内容。
@@ -2151,6 +2151,20 @@ Novel Agent/
 - 5 个子组件落地（ChatMessageList / ChatDatePicker / ChapterDirectory / TrashPanel / AccountPanel）；父组件瘦身；
 - 修复拆分引入的 getDateRanges 残留引用（白屏）；Edge 实测主界面消息/日期选择、并列目录、设置页回收站/账户全部正常；
 - 版本号统一 0.8.44；本地提交未推送（按协作规矩）。
+
+### 2026-08-14 v0.8.45 乐观锁覆盖手动新建章与回收站
+
+待更新说明：
+- 乐观锁仅覆盖手动保存章节（PUT）；手动新建章、回收站操作只递增/不校验 version，双端同时操作可能重复/错乱。
+
+待更新功能：
+- 后端 routes/books：summary 返回 version；POST /chapters（新建章）、DELETE /:id（软删）、POST /restore（恢复）、DELETE /permanent（彻底删除）统一校验 version，不一致 409“内容已更新，请刷新后重试”，成功路径递增 version；
+- 前端调用点携带 version：WorkspacePage/MyPage 删除整书、SettingsPage 恢复/彻底删除（加错误 toast）、BookSidePanel 新建章；
+- API 实测错误 version 新建/软删均 409；测试/build 通过。
+
+完成内容：
+- 乐观锁扩展到 4 个手动写入口（新建章/软删/恢复/彻底删除），summary/trash 列表返回 version；
+- API 实测：错误 version 新建章 409、软删 409、恢复未删书 404；单元测试 75/75、build 通过；版本号统一 0.8.45；本地提交未推送（按协作规矩）。
 
 ### 后续建议方向（交接快照 2026-08-13）
 

@@ -17,7 +17,8 @@ function summary(book) {
     status: book.status,
     chapterCount: book.chapters.length,
     deletedAt: book.deletedAt,
-    updatedAt: book.updatedAt
+    updatedAt: book.updatedAt,
+    version: book.version
   };
 }
 
@@ -109,13 +110,17 @@ router.post('/:id/chapters/:chapterId/summary', (req, res) => {
 });
 
 router.post('/:id/chapters', (req, res) => {
-  const { title } = req.body || {};
+  const { title, version } = req.body || {};
   if (typeof title !== 'string' || !String(title).trim()) {
     return res.status(400).json({ error: '章节标题不能为空' });
   }
   try {
     const book = updateBook(req.user.id, req.params.id, (latest) => {
       if (latest.deletedAt) throw new Error('书籍不存在');
+      // 乐观锁：双标签页同时新建防重叠——携带 version 不一致时拒绝并提示刷新
+      if (Number.isInteger(version) && latest.version !== version) {
+        throw new Error('内容已更新，请刷新后重试');
+      }
       const now = new Date().toISOString();
       const index = latest.chapters.length;
       latest.chapters.push({
@@ -131,7 +136,9 @@ router.post('/:id/chapters', (req, res) => {
     });
     return res.status(201).json({ book });
   } catch (err) {
-    return res.status(err.message === '书籍不存在' ? 404 : 400).json({ error: err.message });
+    const status = err.message === '内容已更新，请刷新后重试' ? 409
+      : (err.message === '书籍不存在' ? 404 : 400);
+    return res.status(status).json({ error: err.message });
   }
 });
 
@@ -174,6 +181,11 @@ router.delete('/:id/permanent', (req, res) => {
   if (!book || book.userId !== req.user.id || !book.deletedAt) {
     return res.status(404).json({ error: '回收站中没有该项目' });
   }
+  const { version } = req.body || {};
+  // 乐观锁：双标签页一个恢复一个彻底删除时拒绝
+  if (Number.isInteger(version) && book.version !== version) {
+    return res.status(409).json({ error: '内容已更新，请刷新后重试' });
+  }
   deleteBookFile(book.id);
   res.json({ ok: true });
 });
@@ -181,8 +193,14 @@ router.delete('/:id/permanent', (req, res) => {
 router.delete('/:id', (req, res) => {
   const book = readBookById(req.params.id);
   if (!book || book.userId !== req.user.id || book.deletedAt) return res.status(404).json({ error: '书籍不存在' });
+  const { version } = req.body || {};
+  // 乐观锁：双标签页一边编辑一边删除时拒绝（防止基于旧状态的写操作）
+  if (Number.isInteger(version) && book.version !== version) {
+    return res.status(409).json({ error: '内容已更新，请刷新后重试' });
+  }
   book.deletedAt = new Date().toISOString();
   book.updatedAt = book.deletedAt;
+  book.version = (book.version || 0) + 1;
   saveBook(book);
   res.json({ ok: true });
 });
@@ -192,8 +210,14 @@ router.post('/:id/restore', (req, res) => {
   if (!book || book.userId !== req.user.id || !book.deletedAt) {
     return res.status(404).json({ error: '回收站中没有该项目' });
   }
+  const { version } = req.body || {};
+  // 乐观锁：双标签页一个恢复一个彻底删除时拒绝
+  if (Number.isInteger(version) && book.version !== version) {
+    return res.status(409).json({ error: '内容已更新，请刷新后重试' });
+  }
   book.deletedAt = null;
   book.updatedAt = new Date().toISOString();
+  book.version = (book.version || 0) + 1;
   saveBook(book);
   res.json({ book });
 });
