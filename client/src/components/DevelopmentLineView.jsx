@@ -16,7 +16,7 @@ function clampScale(scale) {
   return Math.min(2.5, Math.max(0.5, scale));
 }
 
-export default function TimelineView({
+export default function DevelopmentLineView({
   timeline,
   orientation,
   expandedGroup,
@@ -46,7 +46,7 @@ export default function TimelineView({
     if (event.button !== 0) return;
     if (event.target?.closest?.('button')) return;
     // 浮窗内部有独立滚动与按钮交互，框内按下不应平移画布
-    if (event.target?.closest?.('.timeline-float')) return;
+    if (event.target?.closest?.('.development-line-float')) return;
     dragRef.current = { startX: event.clientX - view.x, startY: event.clientY - view.y, moved: false };
     const onMove = (moveEvent) => {
       const drag = dragRef.current;
@@ -70,7 +70,7 @@ export default function TimelineView({
 
   function handleWheel(event) {
     // 鼠标在二级浮窗内滚动时交给浮窗原生滚动，不缩放画布
-    if (event.target?.closest?.('.timeline-float')) return;
+    if (event.target?.closest?.('.development-line-float')) return;
     event.preventDefault();
     const factor = event.deltaY < 0 ? 1.15 : 1 / 1.15;
     cancelAnimationFrame(rafRef.current);
@@ -95,7 +95,7 @@ export default function TimelineView({
     return (chapters || []).map((chapter) => (
       <button
         key={chapter.chapterIndex}
-        className="timeline-node timeline-chapter"
+        className="development-line-node development-line-chapter"
         onClick={() => {
           if (dragRef.current?.moved) return;
           onOpenChapter(chapter.chapterIndex);
@@ -107,7 +107,7 @@ export default function TimelineView({
         onMouseMove={(event) => setHover((prev) => (prev ? { ...prev, x: event.clientX, y: event.clientY } : prev))}
         onMouseLeave={() => setHover(null)}
       >
-        <span className="timeline-node-label">{chapter.chapterTitle}</span>
+        <span className="development-line-node-label">{chapter.chapterTitle}</span>
       </button>
     ));
   }
@@ -118,7 +118,7 @@ export default function TimelineView({
     const nodeRect = groupAnchor.el.getBoundingClientRect();
     const contentRect = contentRef.current.getBoundingClientRect();
     const scale = view.scale || 1;
-    // 浮窗在 .timeline-content（被 transform: translate + scale 的层）内部绝对定位，
+    // 浮窗在 .development-line-content（被 transform: translate + scale 的层）内部绝对定位，
     // 屏幕坐标先换算回内容坐标，浮窗尺寸/字号随画布一起缩放。
     const contentX = (nodeRect.left - contentRect.left) / scale;
     const contentY = (nodeRect.top - contentRect.top) / scale;
@@ -138,16 +138,16 @@ export default function TimelineView({
       : [];
     const directChapters = expandedGroupData.scenes.length === 0 ? expandedGroupData.chapters : [];
     return (
-      <div className="timeline-float" style={{ position: 'absolute', left, top, flexDirection: groupDirection }}>
+      <div className="development-line-float" style={{ position: 'absolute', left, top, flexDirection: groupDirection }}>
         {directChapters.length > 0 && (
-          <div className="timeline-chapter-column" style={{ flexDirection: chapterDirection }}>
+          <div className="development-line-chapter-column" style={{ flexDirection: chapterDirection }}>
             {renderChapterList(directChapters)}
           </div>
         )}
         {scenes.map((scene) => (
-          <div key={scene.label || '__plain__'} className="timeline-scene-group">
+          <div key={scene.label || '__plain__'} className="development-line-scene-group">
             <button
-              className={`timeline-scene-title${expandedScene === scene.label ? ' active' : ''}`}
+              className={`development-line-scene-title${expandedScene === scene.label ? ' active' : ''}`}
               onClick={() => {
                 if (dragRef.current?.moved) return;
                 onToggleScene(scene.label);
@@ -161,7 +161,7 @@ export default function TimelineView({
               {scene.label || '未细分'}
             </button>
             {expandedScene === scene.label && (
-              <div className="timeline-chapter-column" style={{ flexDirection: chapterDirection }}>
+              <div className="development-line-chapter-column" style={{ flexDirection: chapterDirection }}>
                 {renderChapterList(scene.chapters)}
               </div>
             )}
@@ -172,33 +172,33 @@ export default function TimelineView({
   }
 
   return (
-    <div className="timeline-view">
+    <div className="development-line-view">
       <div
         ref={canvasRef}
-        className="timeline-canvas"
+        className="development-line-canvas"
         onPointerDown={startDrag}
         onWheel={handleWheel}
         style={{ touchAction: 'none' }}
       >
         <div
           ref={contentRef}
-          className={`timeline-content timeline-${orientation}`}
+          className={`development-line-content development-line-${orientation}`}
           style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})`, transformOrigin: '0 0' }}
         >
           {groups.length === 0 && <p className="muted">这本书还在构思中，生成章节后这里会按重大事件展示发展线。</p>}
           {groups.map((group, index) => (
             <Fragment key={group.id}>
-              <div className="timeline-group-block">
+              <div className="development-line-group-block">
                 <button
-                  className={`timeline-node timeline-group${expandedGroup === group.id ? ' active' : ''}`}
+                  className={`development-line-node development-line-group${expandedGroup === group.id ? ' active' : ''}`}
                   onClick={(event) => handleGroupClick(group.id, event)}
                 >
-                  <span className="timeline-node-label">{group.label}</span>
-                  <span className="timeline-node-range">{rangeText(group.chapterStart, group.chapterEnd)}</span>
+                  <span className="development-line-node-label">{group.label}</span>
+                  <span className="development-line-node-range">{rangeText(group.chapterStart, group.chapterEnd)}</span>
                 </button>
               </div>
               {/* 背景组之间的连接线：主题色、居中连接相邻背景（0.8.42 美化） */}
-              {index < groups.length - 1 && <div className="timeline-connector" />}
+              {index < groups.length - 1 && <div className="development-line-connector" />}
             </Fragment>
           ))}
           {renderFloat()}
@@ -206,14 +206,14 @@ export default function TimelineView({
       </div>
       {hover && (
         <div
-          className="chat-date-tooltip timeline-tooltip"
+          className="chat-date-tooltip development-line-tooltip"
           style={{
             left: Math.min(hover.x + 14, window.innerWidth - 280),
             top: Math.min(hover.y + 16, window.innerHeight - 120)
           }}
         >
           {hover.title && <strong>{hover.title}</strong>}
-          {hover.detail && <pre className="timeline-tooltip-detail">{hover.detail}</pre>}
+          {hover.detail && <pre className="development-line-tooltip-detail">{hover.detail}</pre>}
         </div>
       )}
     </div>

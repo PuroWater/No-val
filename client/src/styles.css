@@ -1454,7 +1454,7 @@ button, input, textarea, select {
   overflow-y: auto;
 }
 
-.timeline-list {
+.development-line-list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -1463,14 +1463,14 @@ button, input, textarea, select {
   gap: 10px;
 }
 
-.timeline-chapter {
+.development-line-chapter {
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--bg);
   overflow: hidden;
 }
 
-.timeline-chapter-head {
+.development-line-chapter-head {
   width: 100%;
   display: flex;
   align-items: center;
@@ -1485,50 +1485,50 @@ button, input, textarea, select {
   text-align: left;
 }
 
-.timeline-chapter-title {
+.development-line-chapter-title {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.timeline-chapter-count {
+.development-line-chapter-count {
   flex: none;
   color: var(--muted);
   font-size: 12px;
 }
 
-.timeline-events {
+.development-line-events {
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 0 12px 12px;
 }
 
-.timeline-empty {
+.development-line-empty {
   margin: 0;
 }
 
-.timeline-event {
+.development-line-event {
   padding: 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--panel);
 }
 
-.timeline-event-text {
+.development-line-event-text {
   margin: 0 0 6px;
   line-height: 1.6;
 }
 
-.timeline-event-characters {
+.development-line-event-characters {
   margin: 0;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
 
-.timeline-character {
+.development-line-character {
   padding: 2px 8px;
   border-radius: 10px;
   background: var(--accent);
@@ -1575,14 +1575,14 @@ button, input, textarea, select {
 
 /* ---------- 0.7.4 分层时间线 ---------- */
 
-.timeline-view {
+.development-line-view {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
 }
 
-.timeline-canvas {
+.development-line-canvas {
   flex: 1;
   min-height: 0;
   overflow: hidden;
@@ -1598,19 +1598,19 @@ button, input, textarea, select {
   user-select: none;
 }
 
-.timeline-vertical {
+.development-line-vertical {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.timeline-horizontal {
+.development-line-horizontal {
   display: flex;
   flex-direction: row;
   gap: 10px;
 }
 
-.timeline-content {
+.development-line-content {
   position: relative;
   width: max-content;
   min-height: 100%;
@@ -1619,46 +1619,46 @@ button, input, textarea, select {
 }
 
 /* 横版：内容高度随内容（不再撑满画布），行内容垂直居中；竖版保持撑满+水平居中 */
-.timeline-horizontal {
+.development-line-horizontal {
   min-height: auto;
   align-items: center;
 }
 
-.timeline-group-block {
+.development-line-group-block {
   display: flex;
   align-items: flex-start;
   gap: 10px;
 }
 
-.timeline-vertical .timeline-group-block {
+.development-line-vertical .development-line-group-block {
   flex-direction: row;
 }
 
-.timeline-horizontal .timeline-group-block {
+.development-line-horizontal .development-line-group-block {
   flex-direction: column;
 }
 
 /* 背景组之间的连接线：主题色、居中连接相邻背景（0.8.42 美化） */
-.timeline-connector {
+.development-line-connector {
   flex: none;
   background: var(--accent);
   opacity: 0.45;
   border-radius: 2px;
 }
 
-.timeline-vertical .timeline-connector {
+.development-line-vertical .development-line-connector {
   width: 2px;
   height: 26px;
   align-self: center;
 }
 
-.timeline-horizontal .timeline-connector {
+.development-line-horizontal .development-line-connector {
   height: 2px;
   width: 26px;
   align-self: center;
 }
 
-.timeline-node {
+.development-line-node {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -1673,32 +1673,32 @@ button, input, textarea, select {
   text-align: left;
 }
 
-.timeline-node.active {
+.development-line-node.active {
   background: var(--accent);
   border-color: var(--accent);
   color: #ffffff;
 }
 
-.timeline-node-label {
+.development-line-node-label {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.timeline-node-range {
+.development-line-node-range {
   margin-left: auto;
   font-size: 12px;
   opacity: 0.7;
   white-space: nowrap;
 }
 
-.timeline-chapter-column {
+.development-line-chapter-column {
   display: flex;
   gap: 6px;
   align-items: flex-start;
 }
 
-.timeline-scene-group {
+.development-line-scene-group {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1708,7 +1708,7 @@ button, input, textarea, select {
   background: var(--bg);
 }
 
-.timeline-scene-title {
+.development-line-scene-title {
   display: block;
   width: 100%;
   padding: 4px 8px;
@@ -1722,17 +1722,17 @@ button, input, textarea, select {
   cursor: pointer;
 }
 
-.timeline-scene-title:hover {
+.development-line-scene-title:hover {
   background: var(--border);
 }
 
-.timeline-scene-title.active {
+.development-line-scene-title.active {
   background: var(--accent);
   border-color: var(--accent);
   color: #ffffff;
 }
 
-.timeline-float {
+.development-line-float {
   display: flex;
   gap: 8px;
   padding: 10px;
@@ -1746,11 +1746,11 @@ button, input, textarea, select {
   overflow: auto;
 }
 
-.timeline-chapter-float {
+.development-line-chapter-float {
   display: none;
 }
 
-.timeline-tooltip-detail {
+.development-line-tooltip-detail {
   margin: 4px 0 0;
   white-space: pre-wrap;
   font-size: 12px;

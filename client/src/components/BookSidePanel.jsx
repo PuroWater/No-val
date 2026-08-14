@@ -3,7 +3,7 @@ import { api } from '../api.js';
 import ChapterEditor from './ChapterEditor.jsx';
 import ChapterDirectory from './ChapterDirectory.jsx';
 import RelationGraph from './RelationGraph.jsx';
-import TimelineView from './TimelineView.jsx';
+import DevelopmentLineView from './DevelopmentLineView.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
 
 export default function BookSidePanel({ bookId, onClose, onBack, openChapter, refreshSignal }) {
@@ -20,7 +20,7 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
   const [orientation, setOrientation] = useState('vertical');
   const [expandedGroup, setExpandedGroup] = useState(null);
   const [expandedScene, setExpandedScene] = useState(null);
-  const [timelineView, setTimelineView] = useState({ x: 0, y: 0, scale: 1 });
+  const [developmentLineView, setDevelopmentLineView] = useState({ x: 0, y: 0, scale: 1 });
   const [deleteChapterTarget, setDeleteChapterTarget] = useState(null);
   const [deleteChapterError, setDeleteChapterError] = useState('');
   const [aiEditedToast, setAiEditedToast] = useState(false);
@@ -226,7 +226,7 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
           {timelineLoading && <p className="muted">正在加载发展线…</p>}
           {timelineError && <p className="form-error">{timelineError}</p>}
           {!timelineLoading && timeline && (
-            <TimelineView
+            <DevelopmentLineView
               timeline={timeline}
               orientation={orientation}
               expandedGroup={expandedGroup}
@@ -237,8 +237,8 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
                 setTab('content');
                 setChapterIndex(index);
               }}
-              view={timelineView}
-              onViewChange={setTimelineView}
+              view={developmentLineView}
+              onViewChange={setDevelopmentLineView}
             />
           )}
           {!timelineLoading && (

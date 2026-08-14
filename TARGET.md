@@ -1,8 +1,8 @@
 【项目目标】
 在当前开发环境下（已安装 VSCode、Node.js），生成一个可直接运行的**小说创作平台 Web 应用**。项目不连接任何数据库，后端数据使用本地 JSON 文件持久化。前端为 React 单页应用（SPA），后端为 Express，调用 DeepSeek 大模型辅助创作。
 
-当前版本：0.8.50  
-最近更新：2026-08-14 0.8.50 修复：点发展线白屏（useEffect 未 import）+ 恢复默认纸纹主题
+当前版本：0.8.51  
+最近更新：2026-08-15 0.8.51 内部命名彻底统一：TimelineView → DevelopmentLineView
 
 【文档职责】
 - `TARGET.md`：每次更新的目标文件。每次更新前先修改本文档，按“日期 + 版本”划分，写明待更新说明、待更新功能；开发完成后记录实际完成内容。
@@ -2229,6 +2229,19 @@ Novel Agent/
 
 完成内容：
 - 修复 + headless 实测：发展线正常渲染（5 组、无 console/pageerror）；主题恢复 paper；版本号统一 0.8.50；本地提交未推送（按协作规矩）。
+
+### 2026-08-15 v0.8.51 内部命名彻底统一：TimelineView → DevelopmentLineView
+
+待更新说明：
+- 0.8.6 改名“时间线→发展线”时保留了内部组件名 TimelineView 与 timeline-* CSS 类名（纯内部实现），0.8.47 只清了外部别名；用户要求彻底统一。
+
+待更新功能：
+- TimelineView.jsx → DevelopmentLineView.jsx（组件名同步）；
+- JSX 类名 timeline-* → development-line-*（39 处 CSS 选择器同步）；
+- BookSidePanel import/使用与内部 state（timelineView → developmentLineView）。
+
+完成内容：
+- 内部命名全部统一为“发展线”；build 通过、页面无白屏、dist CSS 类名正确、client/src 无 timeline- 残留；版本号统一 0.8.51；本地提交未推送（按协作规矩）。
 
 ### 后续建议方向（交接快照 2026-08-13）
 
