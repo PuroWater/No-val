@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { deleteChapters, validateBatchDelete } from '../src/services/bookService.js';
+import { deleteChapters, validateBatchDelete, isWithinTarget, buildRedoRemark } from '../src/services/bookService.js';
 import { renumberChapterPrefixes, trimChapterToLimit } from '../src/lib/chapterUtils.js';
 
 test('validateBatchDelete enforces count range and keeps at least one chapter', () => {
@@ -95,4 +95,22 @@ test('renumberChapterPrefixes collects changed chapter ids', () => {
   const collect = new Set();
   renumberChapterPrefixes(book, { fromIndex: 1, collect });
   assert.deepEqual([...collect].sort(), ['c1', 'c3']);
+});
+
+test('isWithinTarget accepts 80%-120% range and rejects outside', () => {
+  assert.equal(isWithinTarget(800, 1000), true);
+  assert.equal(isWithinTarget(1000, 1000), true);
+  assert.equal(isWithinTarget(1200, 1000), true);
+  assert.equal(isWithinTarget(799, 1000), false);
+  assert.equal(isWithinTarget(1201, 1000), false);
+  // 目标无效视为达标（交给 trim 兜底）
+  assert.equal(isWithinTarget(500, 0), true);
+  assert.equal(isWithinTarget(500, NaN), true);
+});
+
+test('buildRedoRemark states target range and strict rewrite requirement', () => {
+  const remark = buildRedoRemark(500, 1000);
+  assert.ok(remark.includes('上次生成约 500 字'));
+  assert.ok(remark.includes('800-1200 字'));
+  assert.ok(remark.includes('不要补写'));
 });

@@ -55,105 +55,78 @@ export async function reviewChapter(book, chapterIndex, { instruction = '', sett
   return { pass: false, issues: String(result.issues || ''), revised };
 }
 
-// 正文长度兜底：目标字数不足 85% 时，带章节结尾续写补齐（最多 2 轮），避免“写不满”；
-// 补写失败降级为保留已写内容，不阻断生成。
-async function ensureChapterLength(book, chapterIndex, targetWords, settings = {}, signal, chatContext = '') {
-  const chapter = book.chapters[chapterIndex];
-  if (!chapter) return;
-  const target = Math.round(Number(targetWords) * 0.85);
-  if (!Number.isFinite(target) || target <= 0) return;
-  // 有下一章时把其开头作为衔接参考（与 rewriteChapter 逻辑一致），无则不传
-  const next = chapterIndex < book.chapters.length - 1 ? book.chapters[chapterIndex + 1] : null;
-  const nextText = next
-    ? `下一章开头（衔接参考，补写内容应自然过渡到此处，不要重复）：\n${String(next.content || '').slice(0, 400)}`
-    : '';
-  let content = String(chapter.content || '');
-  for (let round = 0; round < 2 && content.length < target; round += 1) {
-    const remaining = Math.max(500, Math.round(Number(targetWords)) - content.length);
-    // 有界上下文：只节选开头 300 字 + 结尾 1500 字作为衔接依据，控制输入成本
-    const contentHead = content.slice(0, 300);
-    const contentTail = content.slice(-1500);
-    try {
-      const result = await callModel(
-        () => ({
-          system: writingSystem('续写'),
-          user: [
-            `章节标题：《${chapter.title}》`,
-            chatContextRef(chatContext, 1500),
-            `本章已写约 ${content.length} 字，目标约 ${targetWords} 字，请直接衔接章节结尾继续书写约 ${remaining} 字的情节。`,
-            `要求：保持人物、设定与情节连贯，不要重复已有内容，不要提前收尾；本章总长控制在约 ${targetWords} 字，不要大幅超出。`,
-            PARAGRAPH_RULE,
-            nextText,
-            `本章已写内容（衔接依据，节选开头 300 字 + 结尾 1500 字）：\n${contentHead}\n……\n${contentTail}`,
-            '返回 JSON：{"content":"续写正文"}。'
-          ].filter(Boolean).join('\n'),
-          maxTokens: maxTokensForWords(remaining),
-          thinkingType: settings.thinkingForWriting ? 'enabled' : 'disabled'
-        }),
-        (r) => r && typeof r.content === 'string' && r.content.trim().length > 0
-      );
-      content = `${content}${String(result.content).trim()}`;
-      content = trimChapterToLimit(content, targetWords);
-      chapter.content = content;
-    } catch (err) {
-      console.error('[length] 章节补写失败，保留已写内容:', err.message);
-      break;
-    }
-  }
+// 字数达标判断（纯函数）：正文长度是否在目标 80%-120% 区间；目标无效视为达标（交给 trim 兜底）。
+export function isWithinTarget(length, targetWords) {
+  const target = Number(targetWords);
+  if (!Number.isFinite(target) || target <= 0) return true;
+  const ratio = Number(length) / target;
+  return ratio >= 0.8 && ratio <= 1.2;
 }
 
-// 首轮产出后字数收敛：正文不在目标 80%-120% 内时做一次“收敛重写”（不足扩写、超出压缩），
-// 保留用户要求与完整结尾；调用失败降级保留原内容，由外层 trim/ensure 兜底。
-// create/rewrite/ensure 共用同一套字数约束理念：先收敛、再兜底。
-async function convergeChapterLength(content, {
+// 打回重写备注（纯函数）：说明上次生成字数不达标，要求严格按目标范围重写（保留情节骨架、不补写不删主线）。
+export function buildRedoRemark(length, targetWords) {
+  const target = Math.round(Number(targetWords) || 0);
+  const min = Math.round(target * 0.8);
+  const max = Math.round(target * 1.2);
+  return `上次生成约 ${length} 字，未达到目标范围（需 ${min}-${max} 字）。请严格按该范围重写本章：保留已有情节骨架与完整结尾，不足则充实细节、超出则精简冗余，不要补写、不要删减主线、不要提前收尾。`;
+}
+
+// 一次写正文 + 字数检查 + 打回重写（最多 1 次，走“改写”语义保留首轮内容）。
+// baseContent 为空 = 新建首轮；非空 = 改写首轮或打回（基于已有内容改写）。
+// 打回：字数不在 80%-120% 时基于当前内容再走一次改写，remark 说明原因；打回后仍不达标则接受现状。
+async function writeBodyWithLengthControl({
   chapterWords,
   title = '',
   instruction = '',
+  remark = '',
+  baseContent = '',
+  summary = '',
+  contextLines = '',
   chatContext = '',
-  prevTail = '',
-  nextHead = '',
   settings = {},
   signal,
-  role = '创作'
-} = {}) {
+  chapterNo = ''
+}) {
   const target = Math.round(Number(chapterWords) || 0);
-  const text = String(content || '');
-  if (!Number.isFinite(target) || target <= 0) return text;
-  const ratio = text.length / target;
-  if (ratio >= 0.8 && ratio <= 1.2) return text;
-  const direction = ratio < 1 ? '扩写' : '压缩';
-  try {
+  const run = async (current, currentTitle, currentInstruction, currentRemark) => {
+    const isRewrite = Boolean(current);
+    const user = isRewrite
+      ? `根据修改意见改写章节，本章约 ${target} 字。${PARAGRAPH_RULE}返回 JSON：{"title":"章节标题","content":"新内容"}。\n原章节：\n${currentTitle}\n${current}\n${summary ? `本章摘要：${summary}\n` : ''}修改意见：${currentInstruction || '请按用户意图润色重写本章'}${currentRemark ? `\n补充说明：${currentRemark}` : ''}${chatContextRef(chatContext)}\n附近章节语境：\n${contextLines}`
+      : `创作新章节（插入为第 ${chapterNo} 章），本章约 ${target} 字。${currentRemark ? `\n补充说明：${currentRemark}` : ''}\n章节标题统一为“第X章 + 标题”格式；${PARAGRAPH_RULE}\n返回 JSON：{"title":"章节标题","content":"章节正文"}。\n用户指令：${currentInstruction || '继续创作'}${chatContextRef(chatContext)}\n${contextLines}`;
     const result = await callModel(
       () => ({
-        system: writingSystem('收敛'),
-        user: [
-          `当前章节正文约 ${text.length} 字，目标约 ${target} 字（可接受 80%-120%），请${direction}至该范围。`,
-          direction === '压缩'
-            ? '要求：保留核心情节、用户修改要求与完整结尾，删除冗余描写、重复段落与拖沓过渡，不要使用省略号或截断。'
-            : '要求：在保持已有情节连贯与结尾不变的前提下，补充细节、环境、对话与剧情推进，不要重复已有句子，不要提前收尾。',
-          instruction ? `写作/修改要求：${instruction}` : '',
-          `章节标题：《${title || '本章'}》`,
-          prevTail ? `上一章结尾（衔接参考）：${prevTail}` : '',
-          nextHead ? `下一章开头（衔接参考）：${nextHead}` : '',
-          chatContextRef(chatContext, 1000),
-          `当前章节全文：\n${text}`,
-          '返回 JSON：{"content":"收敛后的完整章节正文"}。'
-        ].filter(Boolean).join('\n'),
-        maxTokens: maxTokensForWords(Math.max(target, text.length)),
+        system: writingSystem(isRewrite ? '改写' : '创作'),
+        user,
+        maxTokens: maxTokensForWords(target),
         thinkingType: settings.thinkingForWriting ? 'enabled' : 'disabled'
       }),
       (r) => r && typeof r.content === 'string' && r.content.trim().length > 0
     );
-    return String(result.content).trim();
-  } catch (err) {
-    console.error('[length] 字数收敛失败，保留原内容:', err.message);
-    return text;
+    return { title: String(result.title || '').trim(), content: String(result.content || '').trim() };
+  };
+
+  // 首轮产出（新建或改写）
+  const first = await run(baseContent, title, instruction, remark);
+  let finalTitle = first.title || title;
+  let content = first.content;
+  // 打回一次：字数不达标时基于首轮内容再走一次“改写”（保留情节骨架），remark 说明原因
+  if (target > 0 && !isWithinTarget(content.length, target)) {
+    const mergedRemark = [remark, buildRedoRemark(content.length, target)].filter(Boolean).join('\n');
+    try {
+      const redo = await run(content, finalTitle, instruction, mergedRemark);
+      content = redo.content || content;
+      finalTitle = redo.title || finalTitle;
+    } catch (err) {
+      console.error('[length] 打回重写失败，保留首轮内容:', err.message);
+    }
   }
+  // 150% 上限截断兜底（仅超长；不足由打回重写处理，打回后仍不足则接受现状）
+  return { title: finalTitle, content: target > 0 ? trimChapterToLimit(content, target) : content };
 }
 
 // 新建章节（AI 工具/续写兼容入口）：可追加末尾或插入锚点章后。
 // 内部一次写正文调用（开思考、大预算，只产 title/content），写后自动维护章节元数据并重排受影响前缀。
-export async function createChapter(book, { anchorIndex, title, instruction, settings = {}, signal, position = 'after', chatContext = '' } = {}) {
+export async function createChapter(book, { anchorIndex, title, instruction, remark = '', settings = {}, signal, position = 'after', chatContext = '' } = {}) {
   const chapterWords = clampOutput(settings.chapterWords, 1000, 10000, 2000);
   const insertAt = Number.isInteger(anchorIndex) && anchorIndex >= 0 && anchorIndex < book.chapters.length
     ? (position === 'before' ? anchorIndex : anchorIndex + 1)
@@ -161,35 +134,25 @@ export async function createChapter(book, { anchorIndex, title, instruction, set
   const prev = insertAt > 0 ? book.chapters[insertAt - 1] : null;
   const next = insertAt < book.chapters.length ? book.chapters[insertAt] : null;
   const context = creationContextRef(book, prev, next);
-  const result = await callModel(
-    () => ({
-      system: writingSystem('创作'),
-      user: `创作新章节（插入为第 ${insertAt + 1} 章），本章约 ${chapterWords} 字。\n章节标题统一为“第X章 + 标题”格式；${PARAGRAPH_RULE}\n返回 JSON：{"title":"章节标题","content":"章节正文"}。\n用户指令：${instruction || '继续创作'}${chatContextRef(chatContext)}\n${context}`,
-      maxTokens: maxTokensForWords(chapterWords),
-      thinkingType: settings.thinkingForWriting ? 'enabled' : 'disabled'
-    }),
-    (result) => result && typeof result.content === 'string' && result.content.trim().length > 0
-  );
-  const now = new Date().toISOString();
-  // 新章标题强制按当前位置编号：去掉 AI 可能携带的任意“第N章”前缀再按位置补齐
-  const rawTitle = String(result.title || title || '').trim() || '';
-  const cleanedTitle = rawTitle.replace(/^第\s*[0-9零一二两三四五六七八九十百千]+\s*章[\s:：]*/, '');
-  // 字数收敛：不在 80%-120% 内先收敛一次，再按 150% 上限截断兜底
-  const content = await convergeChapterLength(String(result.content || '').trim(), {
+  const body = await writeBodyWithLengthControl({
     chapterWords,
-    title: cleanedTitle,
+    title,
     instruction,
+    remark,
+    contextLines: context,
     chatContext,
-    prevTail: prev?.content?.slice(-300),
-    nextHead: next?.content?.slice(0, 300),
     settings,
     signal,
-    role: '创作'
+    chapterNo: insertAt + 1
   });
+  const now = new Date().toISOString();
+  // 新章标题强制按当前位置编号：去掉 AI 可能携带的任意“第N章”前缀再按位置补齐
+  const rawTitle = String(body.title || title || '').trim() || '';
+  const cleanedTitle = rawTitle.replace(/^第\s*[0-9零一二两三四五六七八九十百千]+\s*章[\s:：]*/, '');
   const chapter = {
     id: nextChapterId(book),
     title: ensureChapterTitle(insertAt, cleanedTitle),
-    content: trimChapterToLimit(content, chapterWords),
+    content: body.content,
     summary: '',
     events: [],
     createdAt: now,
@@ -200,7 +163,6 @@ export async function createChapter(book, { anchorIndex, title, instruction, set
   // 新章自身（AI 可能返回“第一章/第N章”等任意前缀）+ 其后章节统一按当前位置重排，
   // collect 收集受影响章节 id 供上层 changeLog 写回，避免重排结果在写回时丢失。
   renumberChapterPrefixes(book, { fromIndex: insertAt, collect: affectedIds });
-  await ensureChapterLength(book, insertAt, chapterWords, settings, signal, chatContext);
   if (settings.reviewAfterWrite) {
     try {
       await reviewChapter(book, insertAt, { instruction, settings, signal });
@@ -218,37 +180,28 @@ export async function createChapter(book, { anchorIndex, title, instruction, set
 }
 
 // 改写章节（AI 工具入口）：一次写正文调用（开思考、大预算，只产 title/content），写后自动维护章节元数据。
-export async function rewriteChapter(book, chapterIndex, instruction, settings = {}, chatContext = '') {
+export async function rewriteChapter(book, chapterIndex, instruction, settings = {}, chatContext = '', remark = '') {
   const target = book.chapters[chapterIndex];
   if (!target) throw new Error('章节不存在');
   const chapterWords = clampOutput(settings.chapterWords, 1000, 10000, 2000);
   const prev = chapterIndex > 0 ? book.chapters[chapterIndex - 1] : null;
   const next = chapterIndex < book.chapters.length - 1 ? book.chapters[chapterIndex + 1] : null;
   const context = rewriteContextRef(book, prev, next);
-  const result = await callModel(
-    () => ({
-      system: writingSystem('改写'),
-      user: `根据修改意见改写章节，本章约 ${chapterWords} 字。${PARAGRAPH_RULE}返回 JSON：{"title":"章节标题","content":"新内容"}。\n原章节：\n${target.title}\n${target.content}\n本章摘要：${target.summary || '无'}\n修改意见：${instruction}${chatContextRef(chatContext)}\n附近章节语境：\n${context}`,
-      maxTokens: maxTokensForWords(chapterWords),
-      thinkingType: settings.thinkingForWriting ? 'enabled' : 'disabled'
-    }),
-    (result) => result && typeof result.content === 'string' && result.content.trim().length > 0
-  );
-  const content = await convergeChapterLength(String(result.content || '').trim(), {
+  const body = await writeBodyWithLengthControl({
     chapterWords,
     title: target.title,
     instruction,
+    remark,
+    baseContent: target.content,
+    summary: target.summary,
+    contextLines: context,
     chatContext,
-    prevTail: prev?.content?.slice(-300),
-    nextHead: next?.content?.slice(0, 300),
     settings,
-    signal: settings.signal,
-    role: '改写'
+    signal: settings.signal
   });
   // 标题按当前位置规范化（与 createChapter 一致），防止模型返回无“第N章”前缀的标题覆盖后丢失格式
-  target.title = ensureChapterTitle(chapterIndex, String(result.title || target.title).trim());
-  target.content = trimChapterToLimit(content, chapterWords);
-  await ensureChapterLength(book, chapterIndex, chapterWords, settings, settings.signal, chatContext);
+  target.title = ensureChapterTitle(chapterIndex, String(body.title || target.title).trim());
+  target.content = body.content;
   if (settings.reviewAfterWrite) {
     try {
       await reviewChapter(book, chapterIndex, { instruction, settings, signal: settings.signal });

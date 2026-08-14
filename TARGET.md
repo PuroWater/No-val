@@ -1,8 +1,8 @@
 【项目目标】
 在当前开发环境下（已安装 VSCode、Node.js），生成一个可直接运行的**小说创作平台 Web 应用**。项目不连接任何数据库，后端数据使用本地 JSON 文件持久化。前端为 React 单页应用（SPA），后端为 Express，调用 DeepSeek 大模型辅助创作。
 
-当前版本：0.8.40  
-最近更新：2026-08-14 0.8.40 写正文规则：章节收尾 + 脉络扩写
+当前版本：0.8.41  
+最近更新：2026-08-14 0.8.41 字数打回重写：不达标走改写语义重写一次（+备注），删除补写
 
 【文档职责】
 - `TARGET.md`：每次更新的目标文件。每次更新前先修改本文档，按“日期 + 版本”划分，写明待更新说明、待更新功能；开发完成后记录实际完成内容。
@@ -2083,6 +2083,23 @@ Novel Agent/
 - writingPrompts 新增 CHAPTER_ENDING_RULE（未收尾章节停在悬念/转折/未决冲突，禁止总结式升华收尾，仅全书达目标字数走收束分支时允许完结式收尾）与 OUTLINE_EXPANSION_RULE（分条纲要逐条扩展：覆盖所有要点、保持顺序、不增删主干）；
 - 两条规则注入 writingSystem，create/rewrite/converge/ensure 全部写正文调用生效（单一来源）；
 - 新增 writingPrompts.test.js（规则注入 + 上下文行序/进度断言）；单元测试 73/73、前端构建通过；版本号统一 0.8.40（根/server/client）；本地提交未推送（按协作规矩）。
+
+### 2026-08-14 v0.8.41 字数打回重写：不达标走改写语义重写一次（+备注），删除补写
+
+待更新说明：
+- 字数收敛（convergeChapterLength）语义不理想：扩写/压缩基于现有内容增删，仍可能不达标；
+- 补写（ensureChapterLength）会“衔接结尾继续书写”，可能加戏偏离用户脉络（用户确认删补写）；
+- 用户要求：字数不在 80%-120% 打回重写（走改写语义保留首轮主要内容），加“备注”参数说明原因，最多 1 次，失败接受。
+
+待更新功能：
+- bookService 写链路重构：新增 isWithinTarget / buildRedoRemark 纯函数与 writeBodyWithLengthControl（首轮 → 不达标打回一次 → 仍不达标接受 → 150% 截断兜底）；createChapter/rewriteChapter 共用；
+- 新增 remark 参数（createChapter/rewriteChapter/edit_book schema），打回时系统自动填充“上次生成约 X 字，未达目标范围（需 Y-Z 字），严格按范围重写、保留情节骨架、不补写”；
+- 删除 convergeChapterLength / ensureChapterLength；测试/文档同步。
+
+完成内容：
+- writeBodyWithLengthControl 落地：首轮（新建/改写）→ 字数检查 → 不达标打回一次（改写语义保留首轮内容，remark 说明原因）→ 仍不达标接受；150% 截断兜底保留；
+- remark 通道打通：edit_book 参数 → createChapter/rewriteChapter → 写正文 prompt（“补充说明”）；打回备注自动生成；
+- 删除 convergeChapterLength / ensureChapterLength（补写退役）；单元测试 75/75；版本号统一 0.8.41；本地提交未推送（按协作规矩）。
 
 ### 后续建议方向（交接快照 2026-08-13）
 

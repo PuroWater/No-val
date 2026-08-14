@@ -92,11 +92,12 @@ export function defineReadyTools(book, settings, signal) {
           chapter: { type: 'integer', minimum: 1, description: '章节序号（从 1 开始）。用户以标题或“第X章”指代时，请先调用 read_book(field=chapters) 获取目录再转换为数字序号；new 模式为插入锚点序号（缺省追加末尾）' },
           position: { type: 'string', enum: ['before', 'after'], description: 'new 模式插入位置：before=锚点章之前 / after=锚点章之后（默认 after）' },
           title: { type: 'string', description: '新章标题（仅 mode=new 可选，缺省由创作调用生成）' },
-          instruction: { type: 'string', description: '写作方向（new）或具体改写指令（modify：须含用户核心要求与读章发现的关键衔接/保留元素，供写正文 AI 执行，避免空泛）' }
+          instruction: { type: 'string', description: '写作方向（new）或具体改写指令（modify：须含用户核心要求与读章发现的关键衔接/保留元素，供写正文 AI 执行，避免空泛）' },
+          remark: { type: 'string', description: '可选补充说明（如字数打回原因、评审修改意见），随正文生成一起发给写正文 AI；默认空' }
         },
         required: []
       },
-      handler: async ({ mode = 'modify', chapter, position, title, instruction }, handlerContext = {}) => {
+      handler: async ({ mode = 'modify', chapter, position, title, instruction, remark }, handlerContext = {}) => {
         // 写正文需要“当天+本条”聊天上下文：近期对话 + 本条用户消息
         const chatContext = [handlerContext.history, `用户：${handlerContext.user || ''}`].filter(Boolean).join('\n');
         if (mode === 'delete') {
@@ -122,7 +123,7 @@ export function defineReadyTools(book, settings, signal) {
             anchorIndex = chapter - 1;
           }
           const pos = position === 'before' ? 'before' : 'after';
-          const { chapter: created, affectedIds = [] } = await createChapter(book, { anchorIndex, title, instruction, settings, signal, position: pos, chatContext });
+          const { chapter: created, affectedIds = [] } = await createChapter(book, { anchorIndex, title, instruction, remark, settings, signal, position: pos, chatContext });
           return {
             ok: true,
             data: `已新建第 ${book.chapters.indexOf(created) + 1} 章《${created.title}》，可打开并列窗口查看。`,
@@ -134,7 +135,7 @@ export function defineReadyTools(book, settings, signal) {
         }
         const index = chapter - 1;
         const rewrittenId = book.chapters[index].id;
-        await rewriteChapter(book, index, String(instruction || '').trim() || '请按用户意图润色重写本章', { ...settings, signal }, chatContext);
+        await rewriteChapter(book, index, String(instruction || '').trim() || '请按用户意图润色重写本章', { ...settings, signal }, chatContext, remark);
         return {
           ok: true,
           data: `已修改第 ${index + 1} 章《${book.chapters[index]?.title || '本章'}》。`,

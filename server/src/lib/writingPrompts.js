@@ -1,4 +1,4 @@
-// 写正文公共提示词构造：createChapter / rewriteChapter / ensureChapterLength 共用，
+// 写正文公共提示词构造：createChapter / rewriteChapter 共用，
 // 降低三处拼装漂移。原则：写正文只注入“当天+本条”聊天上下文（有界）+ 章节上下文，不注入全量历史。
 
 // 章节收尾规则：未收尾章节禁止“总结升华式”假闭合收尾（0.8.40）。
