@@ -1954,8 +1954,8 @@ ne-tooltip-detail {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  max-width: 170px;
-  height: 40px;
+  max-width: 130px;
+  height: 56px;
   padding: 0 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -1967,6 +1967,7 @@ ne-tooltip-detail {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
 
 .chat-model-btn:disabled {
   opacity: 0.6;

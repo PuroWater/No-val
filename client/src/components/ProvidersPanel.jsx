@@ -1,8 +1,9 @@
 // 模型服务管理（0.9.6 v2）：模型条目列表 + 整页弹窗新增/编辑。
 // 前端只做：选厂家 → 自动填默认 URL/模型列表 → 填 Key → 获取模型列表 → 选模型 → 保存。
-// 思考参数/能力由后端按厂家预设 + 所选模型自动推导，前端不提供思考开关。
+// 测试结果用"已保存"同款 toast；删除用项目现有 ConfirmModal；思考参数由后端预设处理。
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
+import ConfirmModal from './ConfirmModal.jsx';
 
 const REMOTE_FETCH_VENDORS = ['anthropic'];
 
@@ -20,9 +21,19 @@ export default function ProvidersPanel() {
   const [fetching, setFetching] = useState(false);
   const [formError, setFormError] = useState('');
   const [testingId, setTestingId] = useState('');
-  const [testTip, setTestTip] = useState(null); // 测试结果悬浮提示 { x, y, text }
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const [toasts, setToasts] = useState([]);
+  const toastIdRef = useRef(0);
   const [error, setError] = useState('');
-  const tipTimerRef = useRef(null);
+
+  // 与设置页"已保存"同款 toast
+  function pushToast(text, error = false) {
+    const id = ++toastIdRef.current;
+    setToasts((list) => [...list, { id, text, error }]);
+    setTimeout(() => {
+      setToasts((list) => list.filter((item) => item.id !== id));
+    }, 2000);
+  }
 
   async function load() {
     const data = await api('/providers');
@@ -33,18 +44,7 @@ export default function ProvidersPanel() {
 
   useEffect(() => {
     load().catch((err) => setError(err.message));
-    return () => clearTimeout(tipTimerRef.current);
   }, []);
-
-  function showTestTip(text, x, y) {
-    setTestTip({
-      left: Math.max(8, Math.min(x + 14, window.innerWidth - 270)),
-      top: Math.max(8, Math.min(y + 16, window.innerHeight - 90)),
-      text
-    });
-    clearTimeout(tipTimerRef.current);
-    tipTimerRef.current = setTimeout(() => setTestTip(null), 4000);
-  }
 
   function applyVendor(vendorKey) {
     const preset = presets[vendorKey] || {};
@@ -135,28 +135,26 @@ export default function ProvidersPanel() {
     }
   }
 
-  async function remove(entry) {
-    if (!window.confirm(`删除“${entry.name}（${entry.model}）”？删除后需重新填写才能恢复。`)) return;
+  async function confirmRemove() {
+    if (!pendingDelete) return;
     try {
-      const data = await api('/providers/' + entry.id, { method: 'DELETE' });
+      const data = await api('/providers/' + pendingDelete.id, { method: 'DELETE' });
       setEntries(data.entries || []);
       setActive(data.active || '');
+      setPendingDelete(null);
     } catch (err) {
       setError(err.message);
+      setPendingDelete(null);
     }
   }
 
-  async function test(entry, event) {
+  async function test(entry) {
     setTestingId(entry.id);
-    setTestTip(null);
-    const rect = event?.currentTarget?.getBoundingClientRect?.();
-    const x = rect ? rect.left : window.innerWidth / 2;
-    const y = rect ? rect.top : window.innerHeight / 2;
     try {
       const data = await api('/providers/' + entry.id + '/test', { method: 'POST' });
-      showTestTip('连接成功：' + data.model + ' 回复「' + (data.reply || '') + '」', x, y);
+      pushToast('连接成功：' + data.model + ' 回复「' + (data.reply || '') + '」');
     } catch (err) {
-      showTestTip(err.message, x, y);
+      pushToast(err.message, true);
     } finally {
       setTestingId('');
     }
@@ -194,11 +192,11 @@ export default function ProvidersPanel() {
               {entry.id !== active && (
                 <button className="secondary" onClick={() => activate(entry.id)}>设为当前</button>
               )}
-              <button className="secondary" onClick={(e) => test(entry, e)} disabled={testingId === entry.id}>
+              <button className="secondary" onClick={() => test(entry)} disabled={testingId === entry.id}>
                 {testingId === entry.id ? '测试中…' : '测试连接'}
               </button>
               <button className="secondary" onClick={() => startEdit(entry)}>编辑</button>
-              <button className="danger" onClick={() => remove(entry)}>删除</button>
+              <button className="danger" onClick={() => setPendingDelete(entry)}>删除</button>
             </div>
           </div>
         ))}
@@ -236,6 +234,17 @@ export default function ProvidersPanel() {
               </label>
             </div>
 
+            <div className="model-fetch-row">
+              <span className="model-fetch-label">模型列表</span>
+              {noRemoteList ? (
+                <span className="muted">该厂家无公开模型列表接口，请从下方推荐模型中选择。</span>
+              ) : (
+                <button className="secondary" onClick={fetchModels} disabled={fetching || !form.baseUrl.trim()}>
+                  {fetching ? '获取中…' : '获取模型列表'}
+                </button>
+              )}
+            </div>
+
             {hasAnyModels ? (
               <select
                 className="model-modal-select"
@@ -262,17 +271,6 @@ export default function ProvidersPanel() {
               />
             )}
 
-            <div className="model-fetch-row">
-              <span className="model-fetch-label">模型列表</span>
-              {noRemoteList ? (
-                <span className="muted">该厂家无公开模型列表接口，请从上方推荐模型中选择。</span>
-              ) : (
-                <button className="secondary" onClick={fetchModels} disabled={fetching || !form.baseUrl.trim()}>
-                  {fetching ? '获取中…' : '获取模型列表'}
-                </button>
-              )}
-            </div>
-
             {formError && <p className="form-error">{formError}</p>}
             <div className="modal-actions">
               <button className="primary" onClick={submit} disabled={!form.model.trim()}>
@@ -284,9 +282,20 @@ export default function ProvidersPanel() {
         </div>
       )}
 
-      {testTip && (
-        <div className="chat-date-tooltip" style={{ left: testTip.left, top: testTip.top }}>
-          {testTip.text}
+      <ConfirmModal
+        open={Boolean(pendingDelete)}
+        title="删除模型"
+        message={`删除“${pendingDelete?.name}（${pendingDelete?.model}）”？删除后需重新填写才能恢复。`}
+        confirmText="删除"
+        onConfirm={confirmRemove}
+        onCancel={() => setPendingDelete(null)}
+      />
+
+      {toasts.length > 0 && (
+        <div className="toast-layer">
+          {toasts.map((toast) => (
+            <div key={toast.id} className={`saved-toast${toast.error ? ' error' : ''} long`}>{toast.text}</div>
+          ))}
         </div>
       )}
     </div>
