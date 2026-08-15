@@ -150,7 +150,9 @@ export async function runTask({
       console.log(`[tool] ${name} replay（同 call.id 缓存）args=${logArgs(normalizedArgs)}`);
       messages.push({
         role: 'assistant',
-        tool_calls: [{ id: callId, type: 'function', function: { name, arguments: JSON.stringify(normalizedArgs || {}) } }]
+        tool_calls: [{ id: callId, type: 'function', function: { name, arguments: JSON.stringify(normalizedArgs || {}) } }],
+        // 0.9.1：DeepSeek 思考模式要求原样回传 reasoning_content，否则 400
+        ...(result.reasoningContent ? { reasoning_content: result.reasoningContent } : {})
       });
       messages.push({ role: 'tool', tool_call_id: callId, content: String(cached.data || '') });
       continue;
@@ -176,7 +178,9 @@ export async function runTask({
     if (outcome.ok) executed.set(callId, outcome);
     messages.push({
       role: 'assistant',
-      tool_calls: [{ id: callId, type: 'function', function: { name, arguments: JSON.stringify(normalizedArgs || {}) } }]
+      tool_calls: [{ id: callId, type: 'function', function: { name, arguments: JSON.stringify(normalizedArgs || {}) } }],
+      // 0.9.1：DeepSeek 思考模式要求原样回传 reasoning_content，否则 400
+      ...(result.reasoningContent ? { reasoning_content: result.reasoningContent } : {})
     });
     messages.push({ role: 'tool', tool_call_id: callId, content: String(outcome.data || '') });
   }

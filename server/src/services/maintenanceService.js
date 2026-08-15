@@ -111,7 +111,7 @@ export async function maintainChapterMeta(book, { chapterIndex, mode = 'modify',
       user,
       temperature: 0.4,
       maxTokens: 16384,
-      thinkingType: 'disabled'
+      thinkingType: settings.thinkingEnabled ? 'enabled' : 'disabled'
     }),
     (r) => r && typeof r.summary === 'string' && r.summary.trim()
   );
@@ -149,7 +149,7 @@ export async function initializeBookMeta(book, signal) {
       user: `根据各章摘要生成每章结构化事件。\n章节：\n${chapters}\n返回 JSON：{"chapters":[{"chapterIndex":0,"events":[{"event":"事件","characters":["人物"],"time":"文中时间点（可选）","context":["大背景","场景"]}]}]}。事件规则：事件必须能在对应章节摘要中找到依据；每章只输出最重要的 3 个事件（最多 3 个，按重要性排序）；每条 event 正文不超过 50 字（简洁概括事件本身）。背景规则：context[0] 是本章主线背景/阶段（如"家族""北境矿脉之行"），一章只允许一个，参考前后章保持一致；context[1] 是场景：事件实际发生的地点/推进节点，**不必在地理上属于 context[0]**，并体现剧情推进；当事件地点离开大背景地理范围时，**优先用「大背景/地点」拼合模板**（如北境主线章回到家族 → "家族/藏书阁"），地点在大背景内时直接写地点；大背景下场景最多 3 个；context 只允许两层（大背景 + 场景），不要第三层；每条事件都必须给出 context（至少 1 层），不得返回空数组。`,
       temperature: 0.4,
       maxTokens: 16384,
-      thinkingType: 'disabled'
+      thinkingType: settings.thinkingEnabled ? 'enabled' : 'disabled'
     }),
     (r) => Array.isArray(r?.chapters)
   );

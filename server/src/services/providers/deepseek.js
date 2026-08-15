@@ -80,6 +80,7 @@ export async function chat({
   const message = data.choices?.[0]?.message || {};
   return {
     content: typeof message.content === 'string' ? message.content : '',
+    reasoningContent: typeof message.reasoning_content === 'string' ? message.reasoning_content : '',
     toolCalls: Array.isArray(message.tool_calls)
       ? message.tool_calls.map((call) => ({
           id: call.id,

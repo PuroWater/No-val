@@ -13,8 +13,8 @@ export async function finalizeDraftBook(book, settings = {}) {
     () => ({
       system: '你是小说构思定稿助手。只返回 JSON，不要包含 Markdown。',
       user: `根据以下构思确定小说书名与简介：\n构思：${concept || '（无）'}\n返回 JSON：{"title":"书名（简洁有力）","outline":"60-120 字简介，不剧透结尾"}。`,
-      maxTokens: 4096,
-      thinkingType: 'disabled'
+      maxTokens: 16384,
+      thinkingType: settings.thinkingEnabled ? 'enabled' : 'disabled'
     }),
     (r) => r && typeof r.title === 'string' && String(r.title).trim() && typeof r.outline === 'string',
     1,

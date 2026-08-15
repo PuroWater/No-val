@@ -392,8 +392,13 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
   // 路由产出意图 → 任务单（工具白名单 + 步骤 + 完成条件），执行器按任务单执行
   // 输出规模信任守卫：仅当用户消息明确提到 章/字数/每章 时才采用路由解析的 output，
   // 防止模型虚构 chapterWords/chapters 覆盖用户设置（自查发现“再写一章”被虚构 1000 字）。
-  const safeOutput = /章|字数|每章/.test(content) ? route.output : null;
-  const plan = buildPlan(route.intent, { output: safeOutput, target: route.target, settings });
+  // 输出规模信任守卫：字段级——消息提“章”才采用 chapters，提“字数/每章”才采用 chapterWords，
+  // 防止模型虚构越界规模覆盖用户设置（自查发现“再写一章”被虚构 chapterWords 触发超限）。
+  const safeOutput = {};
+  if (/章/.test(content) && Number.isInteger(route.output?.chapters)) safeOutput.chapters = route.output.chapters;
+  if (/字数|每章/.test(content) && Number.isFinite(route.output?.chapterWords)) safeOutput.chapterWords = route.output.chapterWords;
+  const finalOutput = Object.keys(safeOutput).length > 0 ? safeOutput : null;
+  const plan = buildPlan(route.intent, { output: finalOutput, target: route.target, settings });
   if (settings.confirmBeforeWrite && !isConfirmReply && WRITE_INTENTS.has(route.intent)) {
     book.pendingAction = { intent: route.intent, output: route.output, target: route.target, content };
     replaceProcessing(book, `确认执行：${intentConfirmText(route.intent, route.output, route.target, settings)}\n\n回复“确认”继续，或直接提出修改。`, 'question');
@@ -453,7 +458,8 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
   });
   let outcome = decision.outcome || {};
   // 写意图完成后确定性补卡：即使模型未调用 open_book_widget，也强制展示书籍卡片并定位变更章
-  if (WRITE_INTENTS.has(route.intent) && outcome.kind !== 'book') {
+  // 0.9.1：meta（refresh_chapter_meta）也纳入确定性补卡，开思考时模型偶发不调 open_book_widget 也能出卡片
+  if ((WRITE_INTENTS.has(route.intent) || route.intent === 'meta') && outcome.kind !== 'book') {
     outcome = { ...outcome, kind: 'book' };
   }
   const extra = finalOutcomeExtra(book, outcome, changeLog);
