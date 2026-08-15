@@ -11,6 +11,7 @@ import {
 } from '../lib/providersStore.js';
 import { getProvider } from '../services/providers/index.js';
 import { listRemoteModels } from '../services/modelList.js';
+import { friendlyProviderError } from '../lib/providerErrors.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -115,7 +116,7 @@ router.post('/:id/test', async (req, res) => {
     });
     res.json({ ok: true, model: record.model, reply: String(result.content || '').slice(0, 60) });
   } catch (err) {
-    res.status(400).json({ error: '连接失败：' + err.message });
+    res.status(400).json({ error: friendlyProviderError(err) });
   }
 });
 
@@ -142,7 +143,7 @@ router.post('/fetch-models', async (req, res) => {
     const models = await listRemoteModels({ baseUrl, apiKey, presetModels });
     res.json({ models });
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    res.status(400).json({ error: friendlyProviderError(err) });
   }
 });
 
