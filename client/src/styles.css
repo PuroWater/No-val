@@ -775,10 +775,18 @@ button, input, textarea, select {
 }
 
 .character-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--panel);
   padding: 10px 12px;
+}
+
+.character-card-body {
+  flex: 1;
+  min-width: 0;
 }
 
 .character-card-head {
@@ -797,11 +805,11 @@ button, input, textarea, select {
 }
 
 .character-history-toggle {
-  margin-left: auto;
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 72px;
+  min-width: 84px;
   font-size: 13px;
   line-height: 1;
   padding: 6px 12px;
