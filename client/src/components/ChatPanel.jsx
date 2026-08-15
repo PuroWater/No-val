@@ -36,6 +36,9 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
   const messagesRef = useRef(null);
   const [selectedDate, setSelectedDate] = useState('__today__');
   const [enterToSend, setEnterToSend] = useState(true);
+  // 0.9.6 v2 输入框右侧模型选择器：列出全部模型条目，切换即全局激活
+  const [modelEntries, setModelEntries] = useState([]);
+  const [activeModelId, setActiveModelId] = useState('');
   // 每本书独立维护聊天输入草稿：存 sessionStorage，页面不关闭（含路由切换/刷新）期间保活。
   const draftKey = bookId ? `novel_chat_draft_${bookId}` : 'novel_chat_draft_new';
 
@@ -152,6 +155,15 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
       .then((data) => setEnterToSend(data.settings.enterToSend !== false))
       .catch(() => {});
   }, []);
+  useEffect(() => {
+    api('/providers')
+      .then((data) => {
+        setModelEntries(data.entries || []);
+        setActiveModelId(data.active || '');
+      })
+      .catch(() => {});
+  }, []);
+
 
   useEffect(() => {
     const saved = sessionStorage.getItem(draftKey);
@@ -231,6 +243,18 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
       ));
     } finally {
       setSending(false);
+    }
+  }
+
+  // 切换模型：全局激活所选条目，前端不管理思考参数（由后端预设按厂家+模型自动配置）
+  async function switchModel(id) {
+    if (!id || id === activeModelId) return;
+    try {
+      const data = await api('/providers/' + id + '/activate', { method: 'POST' });
+      setActiveModelId(data.active || '');
+      setModelEntries(data.entries || []);
+    } catch (err) {
+      setError(err.message);
     }
   }
 
@@ -347,6 +371,21 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
             }
           }}
         />
+        {modelEntries.length > 0 && (
+          <select
+            className="chat-model-select"
+            value={activeModelId}
+            onChange={(e) => switchModel(e.target.value)}
+            disabled={sending || hasProcessing}
+            title="切换当前模型（全局生效）"
+          >
+            {modelEntries.map((entry) => (
+              <option key={entry.id} value={entry.id}>
+                {entry.name} · {entry.model}
+              </option>
+            ))}
+          </select>
+        )}
         <button
           className={`primary${canAbort ? ' stop' : ''}`}
           onClick={canAbort ? abortSend : () => sendMessage()}

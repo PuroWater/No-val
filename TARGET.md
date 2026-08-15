@@ -2772,26 +2772,24 @@ Novel Agent/
 完成内容：
 - 事件瘦身全链路落地；单元测试 82/82、前端 build 通过；版本号统一 0.9.5（根/server/client）；本地提交未推送。
 
-### 2026-08-15 v0.9.6 模型服务自定义（provider 正式方案）
+### 2026-08-15 v0.9.6 模型服务自定义 v2（供应商预设 + 模型管理 + 聊天模型选择器）
 
 待更新说明：
-- provider 只有环境变量+deepseek 单实现，无法在设置页接入 OpenAI/Ollama/中转/本地模型；MODEL_PROVIDER 为开发期缓兵之计。
+- 0.9.6 初版只有单一 openai-compatible 适配器 + 4 家预设，模型列表过时（gpt-4o/o1/o3 等已淘汰），且设置页仍保留供应商能力联动（前端管思考），不符合"后端预设 + 前端只管选厂家/Key/模型"的目标。
 
 待更新功能：
-- provider 配置迁入用户数据 data/providers.json（设置页"模型服务"可增删改/设当前/测试连接），无文件时用环境变量推导默认 deepseek（兼容现有部署，不自动落盘）；
-- 统一 openai-compatible 适配器（覆盖 DeepSeek/OpenAI/Ollama/各类中转与本地模型）：thinkingStyle（deepseek 的 thinking 字段 / openai 的 reasoning_effort / none 不支持思考）自适应；返回 content/reasoningContent/toolCalls/usage/finishReason；能力错误（400/422 + thinking/reasoning）结构化提示；
-- 能力声明 capabilities（supportsThinking 等）：设置页据此禁用/提示思考开关，请求层按能力自动适配；
-- 路由 /api/providers：GET（apiKey 脱敏）/ POST / PUT / DELETE / activate / test（测试连接）；
-- 删除旧 deepseek.js 与 modelConfig.js（被 openai-compatible + providersStore 取代）；apiKey 明文存 data/providers.json（本地单机，文档注明）。
+- 供应商后端预设 VENDOR_PRESETS（DeepSeek/OpenAI/Anthropic/OpenRouter/Grok/Kimi/GLM/MiniMax/Ollama/自定义），各家默认协议/URL/思考参数/模型列表（2026-08 现状）；
+- 新增 anthropic Messages 协议适配器（/v1/messages、x-api-key、thinking budget_tokens、tool_use/tool_result）；modelClient 按 entry.protocol 分发；
+- /providers/fetch-models 拉模型列表（预设优先 + 远端补缺）；apiKey 脱敏；
+- 前端模型管理弹窗（选厂家→填 Key→拉列表→选模型→新增/编辑）；聊天输入框右侧模型选择器（切换=全局激活）；设置页模型思考去掉能力联动。
 
 完成内容：
-- 后端数据层+适配器+路由+modelClient 重构、前端"模型服务"管理 UI + 思考开关能力联动；单元测试 95/95、前端 build 通过；golden eval 8/8（deepseek 经新适配器全链回归）+ provider 路由真机冒烟（GET/测试连接/POST/PUT/激活/删除）通过；版本号统一 0.9.6（根/server/client）；功能分支 codex/0.9.6-provider-custom，本地提交未推送。
+- v2 全链路落地（数据层/双协议适配器/路由/前端弹窗+选择器）；单元测试 110/110、前端 build 通过、golden eval 8/8（deepseek v2 链路全链回归）+ provider 路由真机冒烟 + 真实模型调用冒烟通过；版本号统一 0.9.6（根/server/client）；功能分支 codex/0.9.6-provider-custom，本地提交未推送。
 
 ### 后续建议方向（2026-08-15 更新）
 
 - **v1.0 再做（记账，用户 2026-08-15 定）**：
-  1. provider 正式方案：当前 MODEL_PROVIDER 环境变量为开发期缓兵之计；仅当要接多家 AI 才值得做。
-  2. 写作风格模板走 skill 系统（去预制味后续）：提供不同风格模板；提示词仅做轻量优化（0.8.48 已做回复自然化）。
+  1. 写作风格模板走 skill 系统（去预制味后续）：提供不同风格模板；提示词仅做轻量优化（0.8.48 已做回复自然化）。
 
 已全部完成：并列上移（0.8.43）、前端拆组件（0.8.44）、乐观锁（0.8.45）、golden eval 扩展（0.8.46）、兼容别名清理（0.8.47）、刷新即中断（0.8.48）、长书大图优化（0.8.49）、内部命名统一（0.8.51/0.8.52）、旧数据迁移清理（0.8.53）。
 

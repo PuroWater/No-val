@@ -48,8 +48,6 @@ export default function SettingsPage() {
   const [toasts, setToasts] = useState([]);
   const toastIdRef = useRef(0);
   const [permanentTarget, setPermanentTarget] = useState(null);
-  const [providerThinkingSupported, setProviderThinkingSupported] = useState(true);
-  const [providerThinkingMandatory, setProviderThinkingMandatory] = useState(false);
 
   async function loadTrash() {
     const data = await api('/books/trash');
@@ -85,12 +83,6 @@ export default function SettingsPage() {
       applySettings(data.settings);
     });
     loadTrash();
-    api('/providers')
-      .then((data) => {
-        setProviderThinkingSupported(data.activeProvider?.capabilities?.supportsThinking !== false);
-        setProviderThinkingMandatory(data.activeProvider?.capabilities?.thinkingMandatory === true);
-      })
-      .catch(() => {});
   }, []);
 
   async function save(nextTheme, nextSize, nextChapters, nextWords, nextEnter, nextOrientation, nextThinkingMode, nextThinkingStages, nextReview, nextConfirm) {
@@ -190,7 +182,7 @@ export default function SettingsPage() {
                 <span>背景风格</span>
                 <div className="option-row">
                   {THEMES.map((item) => (
-                    <button key={item.value} className={theme === item.value ? 'active' : ''} onClick={() => { setTheme(item.value); save(item.value, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, thinkingMode, thinkingStages, reviewAfterWrite); }}>
+                  <button key={item.value} className={theme === item.value ? 'active' : ''} onClick={() => { setTheme(item.value); save(item.value, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, thinkingMode, thinkingStages, reviewAfterWrite); }}>
                       {item.label}
                     </button>
                   ))}
@@ -200,7 +192,7 @@ export default function SettingsPage() {
                 <span>字号</span>
                 <div className="option-row">
                   {SIZES.map((item) => (
-                    <button key={item.value} className={fontSize === item.value ? 'active' : ''} onClick={() => { setFontSize(item.value); save(theme, item.value, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, thinkingMode, thinkingStages, reviewAfterWrite); }}>
+                  <button key={item.value} className={fontSize === item.value ? 'active' : ''} onClick={() => { setFontSize(item.value); save(theme, item.value, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, thinkingMode, thinkingStages, reviewAfterWrite); }}>
                       {item.label}
                     </button>
                   ))}
@@ -311,25 +303,20 @@ export default function SettingsPage() {
               <div className="settings-group">
                 <span>模型思考</span>
                 <div className="option-row">
-                  {!providerThinkingSupported && <p className="muted">当前模型不支持思考，思考开关已禁用（可在“模型服务”中切换）。</p>}
-                  {providerThinkingSupported && providerThinkingMandatory && <p className="muted">当前模型强制思考，思考开关不可关闭（可在“模型服务”中切换）。</p>}
                   <button
                     className={thinkingMode === 'off' ? 'active' : ''}
-                    disabled={!providerThinkingSupported || providerThinkingMandatory}
                     onClick={() => { setThinkingMode('off'); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, 'off', thinkingStages, reviewAfterWrite); }}
                   >
                     关闭
                   </button>
                   <button
                     className={thinkingMode === 'on' ? 'active' : ''}
-                    disabled={!providerThinkingSupported || providerThinkingMandatory}
                     onClick={() => { setThinkingMode('on'); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, 'on', thinkingStages, reviewAfterWrite); }}
                   >
                     开启
                   </button>
                   <button
                     className={thinkingMode === 'custom' ? 'active' : ''}
-                    disabled={!providerThinkingSupported || providerThinkingMandatory}
                     onClick={() => { setThinkingMode('custom'); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, 'custom', thinkingStages, reviewAfterWrite); }}
                     onMouseEnter={(event) => setCustomTip({ x: event.clientX, y: event.clientY })}
                     onMouseMove={(event) => setCustomTip({ x: event.clientX, y: event.clientY })}
@@ -363,13 +350,13 @@ export default function SettingsPage() {
                           {item.label}
                         </span>
                         <span className="stage-buttons">
-                          <button
+                  <button
                             className={!thinkingStages[item.key] ? 'active' : ''}
                             onClick={() => setStageThinking(item.key, false)}
                           >
                             关
                           </button>
-                          <button
+                  <button
                             className={thinkingStages[item.key] ? 'active' : ''}
                             onClick={() => setStageThinking(item.key, true)}
                           >
@@ -427,7 +414,7 @@ export default function SettingsPage() {
             </>
           )}
           {activeSetting === 'providers' && (
-            <ProvidersPanel onThinkingSupportChange={setProviderThinkingSupported} onThinkingMandatoryChange={setProviderThinkingMandatory} />
+            <ProvidersPanel />
           )}
           {activeSetting === 'trash' && (
             <TrashPanel

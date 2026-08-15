@@ -2,13 +2,13 @@
 // chatCompletion：JSON 模式（路由/聊天/正文生成），带 JSON 修复兜底；
 // chatTools：原生 function calling（工具循环），返回 { content, toolCalls }。
 import { getProvider } from './providers/index.js';
-import { getActiveProvider } from '../lib/providersStore.js';
+import { getActiveModelEntry } from '../lib/providersStore.js';
 
-// 每次调用取 active provider 记录（providers.json 或环境变量默认），配置随请求传入适配器
+// 每次调用取 active 模型条目（providers.json 或环境变量默认），按协议分发到对应适配器
 function activeCall(options) {
-  const record = getActiveProvider();
-  const provider = getProvider(record.type);
-  return provider.chat({ ...options, config: record });
+  const entry = getActiveModelEntry();
+  const provider = getProvider(entry.protocol);
+  return provider.chat({ ...options, entry });
 }
 
 export function parseJson(text) {

@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-- 当前版本：0.9.6（0.8.19 意图级工具白名单 + 卡片语义/展示修正；0.8.20 read_book 单章默认全文 + 改写指令携带衔接建议 + 严格触发条件；0.8.21 彻底禁止范围读取 + 工具调用日志 + 移除前端重试按钮；0.8.22 字数收敛泛化 + 新书走新建章流程；0.8.23 路由只判意图、禁止用摘要判断剧情；0.8.24 行为约束单一来源 agentRules；0.8.25 watch 稳定性 + 启动自愈清理残留 processing；0.8.26-0.8.28 章节保存静默 + 路由层规模守卫；0.8.29 剧情衔接质疑不再误判；0.8.30 删除 context_edit 工具与意图；0.8.31 防旧工具名幻觉 + 写操作完成确定性补卡；0.8.32 标题修复路由 + 改写标题前缀规范化；0.8.33 路由注入工具清单；0.8.34 仅改内容触发维护；0.8.38 清理并列实验残留；0.8.39 删除全书概况：只维护章节摘要与事件；0.8.40 写正文规则：章节收尾 + 脉络扩写；0.8.41 字数打回重写（+备注）、删除补写；0.8.42 衔接评审任务单 + 前端文案/发展线美化；0.8.43 修复并列查看聊天上移；0.8.44 前端大文件拆子组件；0.8.45 乐观锁覆盖手动新建章与回收站；0.8.46 golden eval 扩展；0.8.47 兼容别名清理；0.8.48 刷新即中断 + 回复自然化；0.8.49 长书大图渲染优化；0.8.50 修复发展线白屏；0.8.51 内部命名统一 DevelopmentLineView；0.8.52 内部命名补全；0.8.53 清理旧数据迁移 + TARGET 规划整理；0.8.54 竖排发展线居中；0.8.55 发展线画布左上对齐 + 记账 v1.0；0.8.56 竖排背景按钮中线对齐；0.8.57 画布分方向对齐；0.9.0 重构：删除关系网 + 统一思考开关 + 人物一致性体系；0.9.1 思考开关实测与加固；0.9.2 路由提示词注入默认输出规模；0.9.3 模型思考细分开关（三态+五档自定义）；0.9.4 客户端稳定重试令牌；0.9.5 事件结构瘦身（删伏笔字段与 time）；0.9.6 模型服务自定义（provider 正式方案））
+- 当前版本：0.9.6（0.8.19 意图级工具白名单 + 卡片语义/展示修正；0.8.20 read_book 单章默认全文 + 改写指令携带衔接建议 + 严格触发条件；0.8.21 彻底禁止范围读取 + 工具调用日志 + 移除前端重试按钮；0.8.22 字数收敛泛化 + 新书走新建章流程；0.8.23 路由只判意图、禁止用摘要判断剧情；0.8.24 行为约束单一来源 agentRules；0.8.25 watch 稳定性 + 启动自愈清理残留 processing；0.8.26-0.8.28 章节保存静默 + 路由层规模守卫；0.8.29 剧情衔接质疑不再误判；0.8.30 删除 context_edit 工具与意图；0.8.31 防旧工具名幻觉 + 写操作完成确定性补卡；0.8.32 标题修复路由 + 改写标题前缀规范化；0.8.33 路由注入工具清单；0.8.34 仅改内容触发维护；0.8.38 清理并列实验残留；0.8.39 删除全书概况：只维护章节摘要与事件；0.8.40 写正文规则：章节收尾 + 脉络扩写；0.8.41 字数打回重写（+备注）、删除补写；0.8.42 衔接评审任务单 + 前端文案/发展线美化；0.8.43 修复并列查看聊天上移；0.8.44 前端大文件拆子组件；0.8.45 乐观锁覆盖手动新建章与回收站；0.8.46 golden eval 扩展；0.8.47 兼容别名清理；0.8.48 刷新即中断 + 回复自然化；0.8.49 长书大图渲染优化；0.8.50 修复发展线白屏；0.8.51 内部命名统一 DevelopmentLineView；0.8.52 内部命名补全；0.8.53 清理旧数据迁移 + TARGET 规划整理；0.8.54 竖排发展线居中；0.8.55 发展线画布左上对齐 + 记账 v1.0；0.8.56 竖排背景按钮中线对齐；0.8.57 画布分方向对齐；0.9.0 重构：删除关系网 + 统一思考开关 + 人物一致性体系；0.9.1 思考开关实测与加固；0.9.2 路由提示词注入默认输出规模；0.9.3 模型思考细分开关（三态+五档自定义）；0.9.4 客户端稳定重试令牌；0.9.5 事件结构瘦身（删伏笔字段与 time）；0.9.6 模型服务自定义 v2（供应商预设 + 模型管理 + 聊天模型选择器））
 - 当前分支：Develop
 - 技术栈：React 18 + Vite 5，Express 4，Node.js 18+，JSON 本地持久化
 - 大模型：DeepSeek，模型默认 `deepseek-v4-flash`
@@ -1957,14 +1957,14 @@ npm start
 完成结果：事件字段瘦身、旧数据自动清理、AI 伏笔管理方向取消；单元测试 82/82、前端 build 通过；版本号统一 0.9.5（根/server/client）；本地提交未推送。
 
 
-### 2026-08-15 v0.9.6 模型服务自定义（provider 正式方案）
+### 2026-08-15 v0.9.6 模型服务自定义 v2（供应商预设 + 模型管理 + 聊天模型选择器）
 
 更新内容：
-- **provider 配置迁入 data/providers.json**：设置页新增"模型服务"管理（列表/新增/编辑/删除/设为当前/测试连接），apiKey 脱敏不回传、留空不修改；无文件时用环境变量推导默认 deepseek（现有 .env 部署零改动，不自动落盘）；
-- **统一 openai-compatible 适配器**（替换原 deepseek.js）：thinkingStyle 三态自适应——deepseek（thinking 字段+reasoning_content）/ openai（reasoning_effort）/ none（不支持思考，如 Ollama）；返回统一 content/reasoningContent/toolCalls/usage/finishReason；能力错误（400/422+thinking/reasoning）结构化提示；
-- **能力声明 capabilities**（supportsThinking 等）：设置页据此禁用/提示思考开关，请求层按能力自动适配；
-- 新增 /api/providers 路由（GET/POST/PUT/DELETE/activate/test 测试连接）；modelClient 改为每次调用取 active provider 记录动态传配置；删除 modelConfig.js（被 providersStore 取代）；
-- 前端"模型服务"tab + 表单（预设 DeepSeek/OpenAI/Ollama/自定义）+ 思考开关能力联动；apiKey 明文存 data/providers.json（本地单机，文档已注明风险）。
+- **供应商后端预设 VENDOR_PRESETS（2026-08 现状）**：DeepSeek / OpenAI / Anthropic Claude / OpenRouter / xAI Grok / Moonshot Kimi / 智谱 GLM / MiniMax / Ollama（本地）/ 自定义，每家写死默认协议（openai 兼容 / anthropic Messages）、默认 URL、默认模型、思考参数风格（deepseek 的 thinking 字段 / openai 系 reasoning_effort / anthropic 的 budget_tokens / none 不支持）、maxOutputTokens 与常见模型列表（含强制思考标注）；模型数据统一存 data/providers.json 的 entries[]（每条 = 供应商 + Key + 具体模型），无文件时用环境变量推导默认 deepseek（不自动落盘）；
+- **协议适配器双实现**：openaiCompatible（/chat/completions，覆盖 DeepSeek/OpenAI/OpenRouter/xAI/Kimi/GLM/MiniMax/Ollama/中转/本地）+ 新增 anthropic（/v1/messages，x-api-key + anthropic-version 头，system 提为顶层字段，tool_use/tool_result 块转换，thinking budget_tokens + temperature=1）；modelClient 按 entry.protocol 分发；强制思考模型忽略关思考设置；400/422 + thinking/reasoning 结构化提示；
+- **拉模型列表 /providers/fetch-models**：openai 兼容厂商走 GET baseUrl/models（兼容 {data:[{id}]} 与 Ollama {models:[{name}]}），预设列表优先、远端补缺（fromRemote 标注）；Anthropic 无公开列表接口，前端对该厂家隐藏按钮；
+- **前端"模型服务"重做**：模型条目列表 + "＋ 新增模型"整页弹窗（选厂家 → 自动填默认 URL/模型列表 → 填 Key → 获取模型列表 → 选模型 → 新增并设为当前）；编辑复用弹窗（Key 留空不修改）；删除/测试连接/设为当前；前端完全不管理思考开关/强度（报错由用户自行调整）；
+- **聊天输入框右侧模型选择器**：列出全部模型条目，切换即全局激活（POST /:id/activate）；设置页"模型思考"去掉供应商能力联动禁用（思考开关自由切换，报错用户自己开关）。
 
-完成结果：provider 从"环境变量+deepseek 专用"升级为"设置页可管理、OpenAI 兼容协议通用、能力自适应"；单元测试 95/95、前端 build 通过、golden eval 8/8（deepseek 经新适配器全链回归）+ provider 路由真机冒烟通过；版本号统一 0.9.6；功能分支 codex/0.9.6-provider-custom，本地提交未推送。
+完成结果：模型服务从"单 openai 兼容 + 能力联动"升级为"多供应商后端预设 + 双协议适配器 + 模型管理弹窗 + 聊天模型选择器"；单元测试 110/110、前端 build 通过、golden eval 8/8（deepseek 经 v2 链路全链回归）+ provider 路由真机冒烟（CRUD/激活/测试/拉模型列表）+ 真实模型调用冒烟通过；版本号统一 0.9.6（根/server/client）；功能分支 codex/0.9.6-provider-custom，本地提交未推送。
 

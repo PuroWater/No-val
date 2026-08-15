@@ -22,7 +22,7 @@ function jsonResponse(overrides = {}) {
   };
 }
 
-const config = (style) => ({
+const entry = (style) => ({
   baseUrl: 'https://example.com/v1',
   apiKey: 'sk-test',
   model: 'test-model',
@@ -33,7 +33,7 @@ test('deepseek style sends thinking param and reasoning_effort', async () => {
   const capture = {};
   const restore = withFetch(capture, jsonResponse());
   try {
-    await chat({ user: 'hi', thinkingType: 'enabled', reasoningEffort: 'high', config: config('deepseek') });
+    await chat({ user: 'hi', thinkingType: 'enabled', reasoningEffort: 'high', entry: entry('deepseek') });
     assert.deepEqual(capture.body.thinking, { type: 'enabled' });
     assert.equal(capture.body.reasoning_effort, 'high');
     assert.ok(capture.url.endsWith('/chat/completions'));
@@ -44,7 +44,7 @@ test('deepseek style disabled thinking', async () => {
   const capture = {};
   const restore = withFetch(capture, jsonResponse());
   try {
-    await chat({ user: 'hi', thinkingType: 'disabled', config: config('deepseek') });
+    await chat({ user: 'hi', thinkingType: 'disabled', entry: entry('deepseek') });
     assert.deepEqual(capture.body.thinking, { type: 'disabled' });
     assert.equal(capture.body.reasoning_effort, undefined);
   } finally { restore(); }
@@ -54,7 +54,7 @@ test('openai style uses reasoning_effort without thinking field', async () => {
   const capture = {};
   const restore = withFetch(capture, jsonResponse());
   try {
-    await chat({ user: 'hi', thinkingType: 'enabled', reasoningEffort: 'low', config: config('openai') });
+    await chat({ user: 'hi', thinkingType: 'enabled', reasoningEffort: 'low', entry: entry('openai') });
     assert.equal(capture.body.thinking, undefined);
     assert.equal(capture.body.reasoning_effort, 'low');
   } finally { restore(); }
@@ -64,7 +64,7 @@ test('none style sends no thinking params and allows empty apiKey', async () => 
   const capture = {};
   const restore = withFetch(capture, jsonResponse());
   try {
-    await chat({ user: 'hi', thinkingType: 'enabled', reasoningEffort: 'high', config: { ...config('none'), apiKey: '' } });
+    await chat({ user: 'hi', thinkingType: 'enabled', reasoningEffort: 'high', entry: { ...entry('none'), apiKey: '' } });
     assert.equal(capture.body.thinking, undefined);
     assert.equal(capture.body.reasoning_effort, undefined);
   } finally { restore(); }
@@ -73,7 +73,7 @@ test('none style sends no thinking params and allows empty apiKey', async () => 
 test('non-none style without apiKey throws friendly error', async () => {
   const restore = withFetch({}, jsonResponse());
   try {
-    await assert.rejects(() => chat({ user: 'hi', config: { ...config('deepseek'), apiKey: '' } }), /模型 API Key/);
+    await assert.rejects(() => chat({ user: 'hi', entry: { ...entry('deepseek'), apiKey: '' } }), /模型 API Key/);
   } finally { restore(); }
 });
 
@@ -87,7 +87,7 @@ test('response normalizes content/reasoningContent/toolCalls/usage/finishReason'
     }
   }));
   try {
-    const result = await chat({ user: 'hi', config: config('deepseek') });
+    const result = await chat({ user: 'hi', entry: entry('deepseek') });
     assert.equal(result.content, '回答');
     assert.equal(result.reasoningContent, '思考中');
     assert.deepEqual(result.toolCalls, [{ id: 'c1', name: 'edit_book', arguments: { mode: 'new' } }]);
@@ -104,7 +104,7 @@ test('capability error appends hint', async () => {
     text: async () => '{"error":"thinking is not supported"}'
   });
   try {
-    await assert.rejects(() => chat({ user: 'hi', config: config('deepseek') }), /模型可能不支持思考或关思考/);
+    await assert.rejects(() => chat({ user: 'hi', entry: entry('deepseek') }), /模型可能不支持思考或关思考/);
   } finally { restore(); }
 });
 
@@ -115,7 +115,7 @@ test('mandatory thinking model ignores disabled thinkingType', async () => {
     await chat({
       user: 'hi',
       thinkingType: 'disabled',
-      config: { ...config('deepseek'), capabilities: { thinkingMandatory: true } }
+      entry: { ...entry('deepseek'), capabilities: { thinkingMandatory: true } }
     });
     assert.deepEqual(capture.body.thinking, { type: 'enabled' });
   } finally { restore(); }

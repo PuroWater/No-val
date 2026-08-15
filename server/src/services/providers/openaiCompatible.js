@@ -1,6 +1,6 @@
-// OpenAI 兼容协议适配器（0.9.6）：覆盖 DeepSeek / OpenAI / Ollama / 各类中转与本地模型（/chat/completions）。
+// OpenAI 兼容协议适配器（0.9.6 v2）：覆盖 DeepSeek / OpenAI / OpenRouter / xAI / Kimi / GLM / MiniMax / Ollama / 各类中转与本地模型（/chat/completions）。
 // 业务代码不直接 import 本文件，统一走 services/modelClient.js。
-// config 来自 providers.json 的 active 项：{ baseUrl, apiKey, model, thinkingStyle, capabilities }。
+// entry 来自 providers.json 的 active 模型条目：{ baseUrl, apiKey, model, thinkingStyle, capabilities }。
 // thinkingStyle：deepseek（thinking 字段 + reasoning_content）/ openai（reasoning_effort）/ none（不支持思考）。
 
 function parseToolArguments(raw) {
@@ -24,12 +24,12 @@ export async function chat({
   signal,
   timeoutMs = 120000,
   jsonMode = false,
-  config = {}
+  entry = {}
 }) {
-  const baseUrl = String(config.baseUrl || '').trim() || 'https://api.deepseek.com';
-  const apiKey = String(config.apiKey || '').trim();
-  const model = String(config.model || '').trim() || 'deepseek-v4-flash';
-  const style = config.thinkingStyle || 'deepseek';
+  const baseUrl = String(entry.baseUrl || '').trim() || 'https://api.deepseek.com';
+  const apiKey = String(entry.apiKey || '').trim();
+  const model = String(entry.model || '').trim() || 'deepseek-v4-flash';
+  const style = entry.thinkingStyle || 'deepseek';
   if (!apiKey && style !== 'none') {
     throw new Error('未配置模型 API Key，请在设置页“模型服务”中填写。');
   }
@@ -46,7 +46,7 @@ export async function chat({
   };
   // 思考参数按厂商风格适配；强制思考模型（thinkingMandatory）忽略关思考设置；
   // style=none（如 Ollama）不支持思考则不传任何思考字段
-  const thinkingOn = thinkingType !== 'disabled' || config.capabilities?.thinkingMandatory === true;
+  const thinkingOn = thinkingType !== 'disabled' || entry.capabilities?.thinkingMandatory === true;
   if (style === 'deepseek') {
     body.thinking = { type: thinkingOn ? 'enabled' : 'disabled' };
     if (thinkingOn && reasoningEffort && ['low', 'high', 'max'].includes(reasoningEffort)) {

@@ -1,11 +1,13 @@
-// 模型提供方注册表（0.9.6）：按协议类型注册适配器，业务代码统一走 modelClient。
-// 当前唯一适配器为 openai-compatible（覆盖 DeepSeek/OpenAI/Ollama/各类中转与本地模型）。
+// 模型协议适配器注册表（0.9.6 v2）：按 entry.protocol 分发——
+// openai：OpenAI 兼容 /chat/completions（DeepSeek/OpenAI/OpenRouter/xAI/Kimi/GLM/MiniMax/Ollama/中转/本地）；
+// anthropic：Anthropic Messages /v1/messages（Claude 原生协议）。
 import { provider as openaiCompatible } from './openaiCompatible.js';
+import { provider as anthropic } from './anthropic.js';
 
-export const PROVIDERS = { 'openai-compatible': openaiCompatible };
+export const PROVIDERS = { openai: openaiCompatible, anthropic };
 
-export function getProvider(type) {
-  const provider = PROVIDERS[type] || PROVIDERS['openai-compatible'];
-  if (!provider) throw new Error('未注册的模型提供方类型：' + type);
+export function getProvider(protocol) {
+  const provider = PROVIDERS[protocol] || PROVIDERS.openai;
+  if (!provider) throw new Error('未注册的模型协议类型：' + protocol);
   return provider;
 }

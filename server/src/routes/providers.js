@@ -1,106 +1,148 @@
-// 模型服务（provider）管理接口（0.9.6）：列表/新增/编辑/删除/设当前/测试连接。
-// 数据存 data/providers.json（全局）；无文件时用环境变量推导默认 deepseek。
+// 模型服务管理接口（0.9.6 v2）：数据存 data/providers.json（全局，模型条目 entries[]）。
+// 前端流程：选厂家 → 填 Key → 拉模型列表（fetch-models）→ 选模型 → 新增/编辑；apiKey 脱敏不回传。
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
 import {
-  PROVIDER_PRESETS,
-  readProviders,
-  writeProviders,
-  normalizeProviderInput,
-  maskProvider
+  VENDOR_PRESETS,
+  readModelEntries,
+  writeModelEntries,
+  normalizeModelInput,
+  maskEntry
 } from '../lib/providersStore.js';
-import { provider as openaiProvider } from '../services/providers/openaiCompatible.js';
+import { getProvider } from '../services/providers/index.js';
+import { listRemoteModels } from '../services/modelList.js';
 
 const router = Router();
 router.use(requireAuth);
 
-function respond(res, providers, active) {
-  const activeProvider = providers.find((item) => item.id === active) || providers[0] || null;
+function respond(res, entries, active) {
+  const activeEntry = entries.find((item) => item.id === active) || entries[0] || null;
   res.json({
-    providers: providers.map(maskProvider),
+    entries: entries.map(maskEntry),
     active,
-    activeProvider: activeProvider ? maskProvider(activeProvider) : null,
+    activeEntry: activeEntry ? maskEntry(activeEntry) : null,
     presets: Object.fromEntries(
-      Object.entries(PROVIDER_PRESETS).map(([key, preset]) => [
+      Object.entries(VENDOR_PRESETS).map(([key, preset]) => [
         key,
         {
           name: preset.name,
+          protocol: preset.protocol,
           baseUrl: preset.baseUrl,
           defaultModel: preset.defaultModel,
-          models: (preset.models || []).map((item) => ({ id: item.id, label: item.label }))
+          thinkingStyle: preset.thinkingStyle,
+          thinkingDefault: preset.thinkingDefault,
+          maxOutputTokens: preset.maxOutputTokens,
+          models: (preset.models || []).map((item) => ({
+            id: item.id,
+            label: item.label,
+            thinkingMandatory: item.thinkingMandatory === true,
+            thinkingDefault: item.thinkingDefault
+          }))
         }
       ])
     )
   });
 }
 
+function presetModelsFor(vendorKey) {
+  return (VENDOR_PRESETS[vendorKey]?.models || []).map((item) => ({ ...item }));
+}
+
 router.get('/', (req, res) => {
-  const { providers, active } = readProviders();
-  respond(res, providers, active);
+  const { entries, active } = readModelEntries();
+  respond(res, entries, active);
 });
 
 router.post('/', (req, res) => {
-  const { providers } = readProviders();
+  const { entries } = readModelEntries();
   try {
-    const record = normalizeProviderInput(req.body || {}, req.body?.preset);
-    providers.push(record);
-    const active = req.body?.activate ? record.id : readProviders().active;
-    writeProviders(providers, active);
-    respond(res, providers, active);
+    const record = normalizeModelInput(req.body || {}, req.body?.vendor || 'custom');
+    entries.push(record);
+    const active = req.body?.activate ? record.id : readModelEntries().active;
+    writeModelEntries(entries, active);
+    respond(res, entries, active);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
 
 router.put('/:id', (req, res) => {
-  const { providers } = readProviders();
-  const index = providers.findIndex((item) => item.id === req.params.id);
+  const { entries } = readModelEntries();
+  const index = entries.findIndex((item) => item.id === req.params.id);
   if (index === -1) return res.status(404).json({ error: '模型服务不存在' });
   try {
-    const record = normalizeProviderInput(req.body || {}, req.body?.preset, providers[index]);
-    providers[index] = record;
-    writeProviders(providers, readProviders().active);
-    respond(res, providers, readProviders().active);
+    const record = normalizeModelInput(req.body || {}, req.body?.vendor || 'custom', entries[index]);
+    entries[index] = record;
+    writeModelEntries(entries, readModelEntries().active);
+    respond(res, entries, readModelEntries().active);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
 
 router.delete('/:id', (req, res) => {
-  const { providers, active } = readProviders();
-  const index = providers.findIndex((item) => item.id === req.params.id);
+  const { entries, active } = readModelEntries();
+  const index = entries.findIndex((item) => item.id === req.params.id);
   if (index === -1) return res.status(404).json({ error: '模型服务不存在' });
-  providers.splice(index, 1);
-  const nextActive = active === req.params.id ? (providers[0]?.id || 'deepseek') : active;
-  writeProviders(providers, nextActive);
-  respond(res, providers, nextActive);
+  entries.splice(index, 1);
+  const nextActive = active === req.params.id ? (entries[0]?.id || 'deepseek') : active;
+  writeModelEntries(entries, nextActive);
+  respond(res, entries, nextActive);
 });
 
 router.post('/:id/activate', (req, res) => {
-  const { providers } = readProviders();
-  if (!providers.some((item) => item.id === req.params.id)) {
+  const { entries } = readModelEntries();
+  if (!entries.some((item) => item.id === req.params.id)) {
     return res.status(404).json({ error: '模型服务不存在' });
   }
-  writeProviders(providers, req.params.id);
-  respond(res, providers, req.params.id);
+  writeModelEntries(entries, req.params.id);
+  respond(res, entries, req.params.id);
 });
 
 router.post('/:id/test', async (req, res) => {
-  const { providers } = readProviders();
-  const record = providers.find((item) => item.id === req.params.id);
+  const { entries } = readModelEntries();
+  const record = entries.find((item) => item.id === req.params.id);
   if (!record) return res.status(404).json({ error: '模型服务不存在' });
   try {
-    const result = await openaiProvider.chat({
+    const provider = getProvider(record.protocol);
+    const result = await provider.chat({
       system: '你是连通性测试助手。',
       user: '请只回复两个字母：ok',
-      maxTokens: 16,
+      maxTokens: 32,
       thinkingType: 'disabled',
       timeoutMs: 20000,
-      config: record
+      entry: record
     });
     res.json({ ok: true, model: record.model, reply: String(result.content || '').slice(0, 60) });
   } catch (err) {
     res.status(400).json({ error: '连接失败：' + err.message });
+  }
+});
+
+// 拉取模型列表：body.id 用已存条目（编辑场景）；否则用 body 的 vendor/baseUrl/apiKey（新增场景）。
+// 返回合并后的列表（预设优先 + 远端补缺）。
+router.post('/fetch-models', async (req, res) => {
+  const body = req.body || {};
+  try {
+    let baseUrl = String(body.baseUrl || '').trim();
+    let apiKey = typeof body.apiKey === 'string' ? body.apiKey.trim() : '';
+    let presetModels = presetModelsFor(String(body.vendor || ''));
+    if (body.id) {
+      const { entries } = readModelEntries();
+      const record = entries.find((item) => item.id === body.id);
+      if (!record) return res.status(404).json({ error: '模型服务不存在' });
+      baseUrl = record.baseUrl || baseUrl;
+      apiKey = record.apiKey || apiKey;
+      presetModels = presetModelsFor(record.vendor);
+    }
+    if (!baseUrl) {
+      return res.status(400).json({ error: '接口地址（baseUrl）不能为空' });
+    }
+    // 本地厂商（如 Ollama）可无 Key 拉列表；需要鉴权的厂商未填 Key 时由远端返回错误并透出提示
+    const models = await listRemoteModels({ baseUrl, apiKey, presetModels });
+    res.json({ models });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 });
 
