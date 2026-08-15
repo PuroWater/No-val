@@ -1,9 +1,10 @@
 // 模型服务管理（0.9.6 v2）：模型条目列表 + 整页弹窗新增/编辑。
-// 前端只做：选厂家 → 自动填默认 URL/模型列表 → 填 Key → 获取模型列表 → 选模型 → 保存。
+// 前端只做：选供应商 → 自动填默认 URL/模型列表 → 填 Key → 获取模型列表 → 选模型 → 保存。
 // 测试结果用"已保存"同款 toast；删除用项目现有 ConfirmModal；思考参数由后端预设处理。
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import ConfirmModal from './ConfirmModal.jsx';
+import ModelSelect from './ModelSelect.jsx';
 
 const REMOTE_FETCH_VENDORS = ['anthropic'];
 
@@ -209,7 +210,7 @@ export default function ProvidersPanel() {
               <button className="modal-close" onClick={closeModal} aria-label="关闭">×</button>
             </div>
             <div className="form-grid">
-              <label>厂家
+              <label>供应商
                 <select
                   value={form.vendor}
                   onChange={(e) => applyVendor(e.target.value)}
@@ -223,7 +224,7 @@ export default function ProvidersPanel() {
               <label>接口地址（baseUrl）
                 <input value={form.baseUrl} onChange={(e) => setForm({ ...form, baseUrl: e.target.value })} placeholder="https://api.deepseek.com" />
               </label>
-              <label>API Key{modal.mode === 'edit' ? '（留空不修改）' : ''}
+              <label>API Key
                 <input
                   value={form.apiKey}
                   onChange={(e) => setForm({ ...form, apiKey: e.target.value })}
@@ -236,7 +237,7 @@ export default function ProvidersPanel() {
             <div className="model-fetch-row">
               <span className="model-fetch-label">模型列表</span>
               {noRemoteList ? (
-                <span className="muted">该厂家无公开模型列表接口，请从下方推荐模型中选择。</span>
+                <span className="muted">该供应商无公开模型列表接口，请从下方推荐模型中选择。</span>
               ) : (
                 <button className="secondary" onClick={fetchModels} disabled={fetching || !form.baseUrl.trim()}>
                   {fetching ? '获取中…' : '获取模型列表'}
@@ -245,22 +246,15 @@ export default function ProvidersPanel() {
             </div>
 
             {hasAnyModels ? (
-              <select
-                className="model-modal-select"
+              <ModelSelect
                 value={form.model}
-                onChange={(e) => setForm({ ...form, model: e.target.value })}
-              >
-                {presetModels.length > 0 && (
-                  <optgroup label="推荐">
-                    {presetModels.map((m) => <option key={m.id} value={m.id}>{m.label || m.id}</option>)}
-                  </optgroup>
-                )}
-                {remoteModels.length > 0 && (
-                  <optgroup label="远端模型">
-                    {remoteModels.map((m) => <option key={m.id} value={m.id}>{m.label || m.id}</option>)}
-                  </optgroup>
-                )}
-              </select>
+                onChange={(model) => setForm({ ...form, model })}
+                groups={[
+                  ...(presetModels.length > 0 ? [{ label: '已有模型预设，可点击按钮刷新最新模型', options: presetModels.map((m) => ({ id: m.id, label: m.label || m.id })) }] : []),
+                  ...(remoteModels.length > 0 ? [{ label: '远端模型', options: remoteModels.map((m) => ({ id: m.id, label: m.label || m.id })) }] : [])
+                ]}
+                placeholder="请选择模型"
+              />
             ) : (
               <input
                 className="model-modal-select"
@@ -273,7 +267,7 @@ export default function ProvidersPanel() {
             {formError && <p className="form-error">{formError}</p>}
             <div className="modal-actions">
               <button className="primary" onClick={submit} disabled={!form.model.trim()}>
-                {modal.mode === 'edit' ? '保存修改' : '新增并设为当前'}
+                {modal.mode === 'edit' ? '保存修改' : '新增'}
               </button>
               <button className="secondary" onClick={closeModal}>取消</button>
             </div>
