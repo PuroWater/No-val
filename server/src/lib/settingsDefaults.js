@@ -7,7 +7,7 @@ export function defaultSettings(userId) {
     chaptersPerOutput: 3,
     chapterWords: 2000,
     enterToSend: true,
-    thinkingForWriting: false,
+    thinkingEnabled: false,
     developmentLineOrientation: 'vertical',
     reviewAfterWrite: false,
     confirmBeforeWrite: false

@@ -2,7 +2,7 @@ import { readBookById, saveBook } from '../lib/store.js';
 import { nextChapterId } from '../lib/bookUtils.js';
 import { clampOutput, ensureChapterTitle, renumberChapterPrefixes, trimChapterToLimit } from '../lib/chapterUtils.js';
 import { callModel, maxTokensForWords } from '../lib/modelCall.js';
-import { writingSystem, PARAGRAPH_RULE, chatContextRef, creationContextRef, rewriteContextRef } from '../lib/writingPrompts.js';
+import { writingSystem, PARAGRAPH_RULE, chatContextRef, creationContextRef, rewriteContextRef, characterContextRef, characterCardsRef } from '../lib/writingPrompts.js';
 import { maintainChapterMeta } from './maintenanceService.js';
 
 export const MAX_BATCH_DELETE = 50;
@@ -34,12 +34,22 @@ export async function reviewChapter(book, chapterIndex, { instruction = '', sett
   if (!target) throw new Error('章节不存在');
   const prev = index > 0 ? book.chapters[index - 1] : null;
   const next = index < book.chapters.length - 1 ? book.chapters[index + 1] : null;
+  // 0.9.0 方案 C：评审辅助人物合理性——注入相关人物近期动向与最新设定快照
+  const relatedNames = [
+    ...(target.events || []).flatMap((event) => event.characters || []),
+    ...(prev?.events || []).flatMap((event) => event.characters || []),
+    ...(next?.events || []).flatMap((event) => event.characters || [])
+  ];
+  const characterInfo = [
+    characterContextRef(book, { untilChapter: index + 1, relatedNames }),
+    characterCardsRef(book, { untilChapter: index + 1, relatedNames })
+  ].filter(Boolean).join('\n');
   const result = await callModel(
     () => ({
-      system: '你是小说章节衔接评审助手。只检查衔接与收尾，不评价文笔，不修改正文。只返回 JSON，不要包含 Markdown。',
-      user: `请评审第 ${index + 1} 章《${target.title}》的衔接质量。\n上一章结尾（节选）：${prev ? String(prev.content || '').slice(-600) : '（无上一章）'}\n本章全文：\n${target.content}\n下一章开头（节选）：${next ? String(next.content || '').slice(0, 600) : '（无下一章）'}\n\n检查点（逐项核对）：\n1) 上一章结尾 → 本章开头是否衔接断裂（如上一章人物已出门，本章开头仍在门内、时间地点不接）；\n2) 本章结尾 → 下一章开头是否衔接断裂（如有下一章）；\n3) 上一章/本章/下一章是否存在“总结升华鸡汤式”收尾（如“他知道明天会更好”“一切才刚刚开始”这类与情节推进无关的升华总结句）。\n\n返回 JSON：{"pass":true|false,"issues":"发现的问题要点（无则空）","instruction":"pass=false 时的修改意见：先摘录问题处的原文，再说明应如何修复本章衔接；必须明确“仅修复衔接问题，不得改变情节主线、人物与本章已有内容”"}。pass=true 时 instruction 返回空字符串。`,
-      maxTokens: 4096,
-      thinkingType: 'disabled'
+      system: '你是小说章节评审助手。重点检查章节衔接与收尾，辅助检查人物合理性；不评价文笔，不修改正文。只返回 JSON，不要包含 Markdown。',
+      user: `请评审第 ${index + 1} 章《${target.title}》的衔接质量与人物合理性。\n上一章结尾（节选）：${prev ? String(prev.content || '').slice(-600) : '（无上一章）'}\n本章全文：\n${target.content}\n下一章开头（节选）：${next ? String(next.content || '').slice(0, 600) : '（无下一章）'}\n人物近期动向与设定：\n${characterInfo || '（无）'}\n\n检查点（逐项核对，衔接为重点）：\n1) 上一章结尾 → 本章开头是否衔接断裂（如上一章人物已出门，本章开头仍在门内、时间地点不接）；\n2) 本章结尾 → 下一章开头是否衔接断裂（如有下一章）；\n3) 上一章/本章/下一章是否存在“总结升华鸡汤式”收尾（如“他知道明天会更好”“一切才刚刚开始”这类与情节推进无关的升华总结句）；\n4) 人物合理性（辅助）：本章人物称呼/身份/能力/实力是否与“人物设定”产生重大矛盾（如父亲变成儿子、性别颠倒、凭空换身份）——注意：修为上涨、继承家产等结合事件看合理的变化不算问题，不要误报。\n\n返回 JSON：{"pass":true|false,"issues":"发现的问题要点（无则空）","instruction":"pass=false 时的修改意见：先摘录问题处的原文，再说明应如何修复；必须明确“仅修复衔接问题与人物合理性重大矛盾，不得改变情节主线与本章已有内容”"}。pass=true 时 instruction 返回空字符串。`,
+      maxTokens: 16384,
+      thinkingType: settings.thinkingEnabled ? 'enabled' : 'disabled'
     }),
     (r) => r && typeof r.pass === 'boolean'
   );
@@ -79,6 +89,7 @@ async function writeBodyWithLengthControl({
   baseContent = '',
   summary = '',
   contextLines = '',
+  characterContext = '',
   chatContext = '',
   settings = {},
   signal,
@@ -88,14 +99,14 @@ async function writeBodyWithLengthControl({
   const run = async (current, currentTitle, currentInstruction, currentRemark) => {
     const isRewrite = Boolean(current);
     const user = isRewrite
-      ? `根据修改意见改写章节，本章约 ${target} 字。${PARAGRAPH_RULE}返回 JSON：{"title":"章节标题","content":"新内容"}。\n原章节：\n${currentTitle}\n${current}\n${summary ? `本章摘要：${summary}\n` : ''}修改意见：${currentInstruction || '请按用户意图润色重写本章'}${currentRemark ? `\n补充说明：${currentRemark}` : ''}${chatContextRef(chatContext)}\n附近章节语境：\n${contextLines}`
-      : `创作新章节（插入为第 ${chapterNo} 章），本章约 ${target} 字。${currentRemark ? `\n补充说明：${currentRemark}` : ''}\n章节标题统一为“第X章 + 标题”格式；${PARAGRAPH_RULE}\n返回 JSON：{"title":"章节标题","content":"章节正文"}。\n用户指令：${currentInstruction || '继续创作'}${chatContextRef(chatContext)}\n${contextLines}`;
+      ? `根据修改意见改写章节，本章约 ${target} 字。${PARAGRAPH_RULE}返回 JSON：{"title":"章节标题","content":"新内容"}。\n原章节：\n${currentTitle}\n${current}\n${summary ? `本章摘要：${summary}\n` : ''}修改意见：${currentInstruction || '请按用户意图润色重写本章'}${currentRemark ? `\n补充说明：${currentRemark}` : ''}${chatContextRef(chatContext)}\n附近章节语境：\n${contextLines}${characterContext ? `\n${characterContext}` : ''}`
+      : `创作新章节（插入为第 ${chapterNo} 章），本章约 ${target} 字。${currentRemark ? `\n补充说明：${currentRemark}` : ''}\n章节标题统一为“第X章 + 标题”格式；${PARAGRAPH_RULE}\n返回 JSON：{"title":"章节标题","content":"章节正文"}。\n用户指令：${currentInstruction || '继续创作'}${chatContextRef(chatContext)}\n${contextLines}${characterContext ? `\n${characterContext}` : ''}`;
     const result = await callModel(
       () => ({
         system: writingSystem(isRewrite ? '改写' : '创作'),
         user,
         maxTokens: maxTokensForWords(target),
-        thinkingType: settings.thinkingForWriting ? 'enabled' : 'disabled'
+        thinkingType: settings.thinkingEnabled ? 'enabled' : 'disabled'
       }),
       (r) => r && typeof r.content === 'string' && r.content.trim().length > 0
     );
@@ -131,12 +142,20 @@ export async function createChapter(book, { anchorIndex, title, instruction, rem
   const prev = insertAt > 0 ? book.chapters[insertAt - 1] : null;
   const next = insertAt < book.chapters.length ? book.chapters[insertAt] : null;
   const context = creationContextRef(book, prev, next);
+  const relatedNames = [
+    ...(prev?.events || []).flatMap((event) => event.characters || []),
+    ...(next?.events || []).flatMap((event) => event.characters || [])
+  ];
   const body = await writeBodyWithLengthControl({
     chapterWords,
     title,
     instruction,
     remark,
     contextLines: context,
+    characterContext: [
+      characterContextRef(book, { untilChapter: insertAt, relatedNames }),
+      characterCardsRef(book, { untilChapter: insertAt, relatedNames })
+    ].filter(Boolean).join('\n'),
     chatContext,
     settings,
     signal,
@@ -172,7 +191,7 @@ export async function createChapter(book, { anchorIndex, title, instruction, rem
     }
   }
   try {
-    await maintainChapterMeta(book, { chapterIndex: insertAt, mode: 'new', signal });
+    await maintainChapterMeta(book, { chapterIndex: insertAt, mode: 'new', signal, settings });
   } catch (err) {
     console.error('[maintenance] 新章元数据维护失败（保留旧值）:', err.message);
   }
@@ -188,6 +207,11 @@ export async function rewriteChapter(book, chapterIndex, instruction, settings =
   const prev = chapterIndex > 0 ? book.chapters[chapterIndex - 1] : null;
   const next = chapterIndex < book.chapters.length - 1 ? book.chapters[chapterIndex + 1] : null;
   const context = rewriteContextRef(book, prev, next);
+  const relatedNames = [
+    ...(target.events || []).flatMap((event) => event.characters || []),
+    ...(prev?.events || []).flatMap((event) => event.characters || []),
+    ...(next?.events || []).flatMap((event) => event.characters || [])
+  ];
   const body = await writeBodyWithLengthControl({
     chapterWords,
     title: target.title,
@@ -196,6 +220,10 @@ export async function rewriteChapter(book, chapterIndex, instruction, settings =
     baseContent: target.content,
     summary: target.summary,
     contextLines: context,
+    characterContext: [
+      characterContextRef(book, { untilChapter: chapterIndex + 1, relatedNames }),
+      characterCardsRef(book, { untilChapter: chapterIndex + 1, relatedNames })
+    ].filter(Boolean).join('\n'),
     chatContext,
     settings,
     signal: settings.signal
@@ -215,7 +243,7 @@ export async function rewriteChapter(book, chapterIndex, instruction, settings =
     }
   }
   try {
-    await maintainChapterMeta(book, { chapterIndex, mode: 'modify', signal: settings.signal });
+    await maintainChapterMeta(book, { chapterIndex, mode: 'modify', signal: settings.signal, settings });
   } catch (err) {
     console.error('[maintenance] 改写元数据维护失败（保留旧值）:', err.message);
   }

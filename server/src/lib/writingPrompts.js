@@ -62,3 +62,45 @@ export function rewriteContextRef(book, prev, next) {
     next ? `下一章开头（节选）：${next.content.slice(0, 400)}` : ''
   ].filter(Boolean).join('\n');
 }
+
+// 写正文注入：目标章上下文相关人物的近期动向（0.9.0 方案 A）。
+// 只取 untilChapter（不含）之前每个人物最近的 3-5 条事件，局部有界。
+import { buildCharacterIndex } from '../services/storyMetaService.js';
+
+export function characterContextRef(book, { untilChapter = Number.MAX_SAFE_INTEGER, relatedNames = [] } = {}) {
+  const names = [...new Set((relatedNames || []).map((n) => String(n).trim()).filter(Boolean))];
+  if (names.length === 0) return '';
+  const index = buildCharacterIndex(book);
+  const lines = [];
+  for (const name of names) {
+    const record = index[name];
+    if (!record) continue;
+    const recent = [];
+    for (const chapter of record.chapters) {
+      if (chapter >= untilChapter) continue;
+      (record.events[chapter] || []).forEach((ev) => recent.push({ chapter, ev }));
+    }
+    recent.sort((a, b) => b.chapter - a.chapter);
+    const pick = recent.slice(0, 5).reverse();
+    if (pick.length > 0) {
+      lines.push(`- ${name}：${pick.map((item) => `第${item.chapter + 1}章 ${item.ev}`).join('；')}`);
+    }
+  }
+  return lines.length > 0 ? `相关人物近期动向：\n${lines.join('\n')}` : '';
+}
+
+// 人物设定快照（0.9.0 方案 B）：相关人物截至 untilChapter（不含）的最新历史快照，按章增量、局部有界。
+export function characterCardsRef(book, { untilChapter = Number.MAX_SAFE_INTEGER, relatedNames = [] } = {}) {
+  const names = [...new Set((relatedNames || []).map((n) => String(n).trim()).filter(Boolean))];
+  if (names.length === 0) return '';
+  const lines = [];
+  (book.characters || []).forEach((card) => {
+    if (!names.includes(card.name)) return;
+    const history = (card.history || []).filter((item) => Number(item.chapter) < untilChapter);
+    const latest = history[history.length - 1];
+    if (latest && String(latest.snapshot || '').trim()) {
+      lines.push(`- ${card.name}（第${Number(latest.chapter) + 1}章）：${String(latest.snapshot).trim()}`);
+    }
+  });
+  return lines.length > 0 ? `人物设定（最新）：\n${lines.join('\n')}` : '';
+}

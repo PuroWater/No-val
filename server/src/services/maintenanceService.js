@@ -23,6 +23,17 @@ function cleanEvents(raw) {
     .filter((item) => item.event);
 }
 
+// 人物设定卡快照归一化（0.9.0 方案 B）：只保留有名字且有快照描述的项。
+export function normalizeCharacterUpdates(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item) => ({
+      name: String(item?.name || '').trim(),
+      snapshot: String(item?.snapshot || '').trim()
+    }))
+    .filter((item) => item.name && item.snapshot);
+}
+
 // 事件确定性归一化（维护内核通用规则，非单工具补丁）：
 // 1) 每章最多 3 个事件（prompt 要求按重要性排序，这里做硬上限）；
 // 2) 一章只允许一个主要背景 context[0]：取出现最多的为统一背景，其余事件归入，
@@ -92,7 +103,7 @@ export async function maintainChapterMeta(book, { chapterIndex, mode = 'modify',
     nextEvents ? `下一章事件：${nextEvents}` : '',
     `章节正文：\n${content.slice(0, 12000)}`,
     existingEvents,
-    '返回 JSON：{"summary":"本章 80-150 字剧情摘要","events":[{"event":"事件","characters":["人物"],"time":"文中时间点（可选）","context":["大背景","场景"],"foreshadow":"setup|pay|null","foreshadowFor":"伏笔指向（可选）"}]}。事件规则（分三步）：1) context[0] 为本章主线背景/阶段，一章只允许一个，参考前后章保持一致（如从家族过渡到北境、本章主要是北境则写"北境"）；2) 只选本章正文中最重要的最多 3 个事件（按重要性排序、删除琐碎细节）；3) 每条事件配 context[1] 场景：场景是事件实际发生地点/推进节点，不必地理上属于背景；地点离开大背景地理范围时优先用「大背景/地点」拼合模板（如"家族/藏书阁""家族/矿洞"），在大背景内直接写地点；场景同时体现剧情推进，大背景下场景最多 3 个。其余规则：events 必须能在本章正文中找到依据、不得凭空编造；每条 event 正文不超过 50 字；context 只允许两层（大背景+场景）并延续前后章背景；每条事件 context 至少 1 层、不得为空。'
+    '返回 JSON：{"summary":"本章 80-150 字剧情摘要","events":[{"event":"事件","characters":["人物"],"time":"文中时间点（可选）","context":["大背景","场景"],"foreshadow":"setup|pay|null","foreshadowFor":"伏笔指向（可选）"}],"characters":[{"name":"角色名","snapshot":"本章该角色状态概括（1-3 句）"}]}。事件规则（分三步）：1) context[0] 为本章主线背景/阶段，一章只允许一个，参考前后章保持一致（如从家族过渡到北境、本章主要是北境则写"北境"）；2) 只选本章正文中最重要的最多 3 个事件（按重要性排序、删除琐碎细节）；3) 每条事件配 context[1] 场景：场景是事件实际发生地点/推进节点，不必地理上属于背景；地点离开大背景地理范围时优先用「大背景/地点」拼合模板（如"家族/藏书阁""家族/矿洞"），在大背景内直接写地点；场景同时体现剧情推进，大背景下场景最多 3 个。其余规则：events 必须能在本章正文中找到依据、不得凭空编造；每条 event 正文不超过 50 字；context 只允许两层（大背景+场景）并延续前后章背景；每条事件 context 至少 1 层、不得为空。角色规则：只列本章出现且值得建档的重要角色（主角/重要配角/反派；无关的局部喽啰如无名小妖、路人不要列）；snapshot 概括该角色本章的状态，按故事类型灵活（可以是身份/实力/处境/与主角或关键人物的关系等，不限于玄幻模板）；**仅当该角色状态有重大变化（实力突破、身份改变、重大事件、与主角关系改变）时才给出 snapshot**，若只是出场对话、没有状态变化则不要输出该角色；不得臆想正文未体现的变化。'
   ].filter(Boolean).join('\n');
   const result = await callModel(
     () => ({
@@ -106,6 +117,20 @@ export async function maintainChapterMeta(book, { chapterIndex, mode = 'modify',
   );
   chapter.summary = String(result.summary).trim();
   chapter.events = normalizeChapterEvents(result.events);
+  // 0.9.0 方案 B：人物设定卡增量维护（只处理本章有重大变化的角色，按章追加历史快照）
+  const characterUpdates = normalizeCharacterUpdates(result.characters);
+  if (characterUpdates.length > 0) {
+    if (!Array.isArray(book.characters)) book.characters = [];
+    for (const update of characterUpdates) {
+      const existing = book.characters.find((item) => item.name === update.name);
+      if (existing) {
+        if (!Array.isArray(existing.history)) existing.history = [];
+        existing.history.push({ chapter: index, snapshot: update.snapshot });
+      } else {
+        book.characters.push({ name: update.name, history: [{ chapter: index, snapshot: update.snapshot }] });
+      }
+    }
+  }
   chapter.updatedAt = new Date().toISOString();
   book.updatedAt = chapter.updatedAt;
   return book;

@@ -17,7 +17,7 @@ export function getUserSettings(userId) {
     chaptersPerOutput: clampInt(current.chaptersPerOutput, 1, 5, base.chaptersPerOutput),
     chapterWords: clampInt(current.chapterWords, 1000, 10000, base.chapterWords),
     enterToSend: current.enterToSend !== false,
-    thinkingForWriting: current.thinkingForWriting === true,
+    thinkingEnabled: current.thinkingEnabled === true || current.thinkingForWriting === true,
     developmentLineOrientation: current.developmentLineOrientation === 'horizontal' ? 'horizontal' : 'vertical',
     reviewAfterWrite: current.reviewAfterWrite === true,
     confirmBeforeWrite: current.confirmBeforeWrite === true

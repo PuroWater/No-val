@@ -78,7 +78,8 @@ export async function runTask({
   plan = { termination: { kind: 'none' } },
   maxAttempts = 3,
   maxTokens = 16384,
-  maxSteps = 30
+  maxSteps = 30,
+  thinkingEnabled = false
 }) {
   const state = stateFromPlan(plan);
   const apiTools = toApiTools(toolList);
@@ -107,7 +108,7 @@ export async function runTask({
   for (let step = 0; step < maxSteps; step += 1) {
     let result;
     try {
-      result = await ask({ messages, tools: apiTools, maxTokens, signal, thinkingType: 'disabled' });
+      result = await ask({ messages, tools: apiTools, maxTokens, signal, thinkingType: thinkingEnabled ? 'enabled' : 'disabled' });
     } catch (err) {
       if (/中断|超时/.test(err.message)) throw err;
       state.failures += 1;

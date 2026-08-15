@@ -209,7 +209,7 @@ export function defineReadyTools(book, settings, signal) {
     {
       group: 'read',
       name: 'read_book',
-      description: `查询书籍信息（只读）。field 为 info（书名/简介/章节数/进度/目标字数/构思设定）、meta（完整书籍元数据：状态/目标字数/构思设定与概念/草稿输出规模/关系网概要/时间等）、chapters（章节目录，支持 start/count 分页）、chapter（读取单个章节：target 传单个章节序号，默认返回该章标题/摘要/事件/正文全文；scope=summary 只看标题/摘要/事件、不含正文）、development_line（全书分层发展线）。field=chapter 只支持单章，禁止范围读取：需要查看多章时请分次调用本工具、每次 target 传一个章节号；用户以数字或“第X章”指代时直接传序号，仅标题指代且不确定序号时才先读 chapters。${PLOT_FACT_RULE}`,
+      description: `查询书籍信息（只读）。field 为 info（书名/简介/章节数/进度/目标字数/构思设定）、meta（完整书籍元数据：状态/目标字数/构思设定与概念/草稿输出规模/时间等）、chapters（章节目录，支持 start/count 分页）、chapter（读取单个章节：target 传单个章节序号，默认返回该章标题/摘要/事件/正文全文；scope=summary 只看标题/摘要/事件、不含正文）、development_line（全书分层发展线）。field=chapter 只支持单章，禁止范围读取：需要查看多章时请分次调用本工具、每次 target 传一个章节号；用户以数字或“第X章”指代时直接传序号，仅标题指代且不确定序号时才先读 chapters。${PLOT_FACT_RULE}`,
       parameters: {
         type: 'object',
         properties: {
@@ -257,7 +257,6 @@ export function defineReadyTools(book, settings, signal) {
         }
         if (field === 'meta') {
           const totalWords = book.chapters.reduce((sum, chapter) => sum + (chapter.content || '').length, 0);
-          const relations = book.relations || {};
           return {
             ok: true,
             data: [
@@ -272,7 +271,6 @@ export function defineReadyTools(book, settings, signal) {
               book.draft?.chaptersPerOutput
                 ? `草稿输出规模：${book.draft.chaptersPerOutput} 章 × ${book.draft.chapterWords || '?'} 字`
                 : '',
-              `关系网概要：${(relations.nodes || []).length} 个节点、${(relations.edges || []).length} 条边（${relations.generatedAt ? `生成于 ${new Date(relations.generatedAt).toLocaleString('zh-CN')}、覆盖 ${relations.coveredUpTo || 0} 章` : '尚未生成'}）`,
               `创建时间：${book.createdAt ? new Date(book.createdAt).toLocaleString('zh-CN') : '未知'}`,
               `最近更新：${book.updatedAt ? new Date(book.updatedAt).toLocaleString('zh-CN') : '未知'}`
             ].filter(Boolean).join('\n'),

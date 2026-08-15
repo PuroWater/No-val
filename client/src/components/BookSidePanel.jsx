@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import ChapterEditor from './ChapterEditor.jsx';
 import ChapterDirectory from './ChapterDirectory.jsx';
-import RelationGraph from './RelationGraph.jsx';
+import CharacterCard from './CharacterCard.jsx';
 import DevelopmentLineView from './DevelopmentLineView.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
 
@@ -11,8 +11,6 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
   const [tab, setTab] = useState('content');
   const [chapterIndex, setChapterIndex] = useState(0);
   const [error, setError] = useState('');
-  const [relationsLoading, setRelationsLoading] = useState(false);
-  const [relationsError, setRelationsError] = useState('');
   const [developmentLine, setDevelopmentLine] = useState(null);
   const [developmentLineLoading, setDevelopmentLineLoading] = useState(false);
   const [developmentLineError, setDevelopmentLineError] = useState('');
@@ -125,19 +123,6 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
     // developmentLineTick 供“刷新发展线”按钮手动重新拉取（派生视图，零 AI 成本）。
   }, [tab, bookId, book?.chapters?.length, book?.updatedAt, refreshSignal, developmentLineTick]);
 
-  async function regenerateRelations() {
-    setRelationsLoading(true);
-    setRelationsError('');
-    try {
-      const data = await api(`/books/${book.id}/relations`, { method: 'POST' });
-      setBook(data.book);
-    } catch (err) {
-      setRelationsError(err.message);
-    } finally {
-      setRelationsLoading(false);
-    }
-  }
-
   if (error) return <aside className="book-side-panel"><p className="form-error">{error}</p></aside>;
   if (!book) return <aside className="book-side-panel"><p className="muted">加载中…</p></aside>;
 
@@ -186,7 +171,7 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
       <div className="tabs">
         <button className={tab === 'content' ? 'active' : ''} onClick={() => setTab('content')}>内容</button>
         <button className={tab === 'developmentLine' ? 'active' : ''} onClick={() => setTab('developmentLine')}>发展线</button>
-        <button className={tab === 'relations' ? 'active' : ''} onClick={() => setTab('relations')}>关系网</button>
+        <button className={tab === 'characters' ? 'active' : ''} onClick={() => setTab('characters')}>人物设定</button>
       </div>
       {tab === 'content' ? (
         <div className="book-content">
@@ -212,14 +197,10 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
             )}
           </div>
         </div>
-      ) : tab === 'relations' ? (
+      ) : tab === 'characters' ? (
         <div className="relation-tab">
-          {relationsLoading && <p className="muted">正在生成关系网…</p>}
-          {relationsError && <p className="form-error">{relationsError}</p>}
-          <RelationGraph relations={book.relations} />
-          {!relationsLoading && (
-            <button className="primary" onClick={regenerateRelations}>重新生成关系网</button>
-          )}
+          {(book.characters || []).length === 0 && <p className="muted">暂无角色档案：新建/改写章节时，正文中出现的重要角色会自动建档并记录各章状态变化。</p>}
+          <div className="character-list">{(book.characters || []).map((card) => <CharacterCard key={card.name} card={card} />)}</div>
         </div>
       ) : (
         <div className="relation-tab">

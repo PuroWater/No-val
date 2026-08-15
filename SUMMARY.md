@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-- 当前版本：0.8.38（0.8.19 意图级工具白名单 + 卡片语义/展示修正；0.8.20 read_book 单章默认全文 + 改写指令携带衔接建议 + 严格触发条件；0.8.21 彻底禁止范围读取 + 工具调用日志 + 移除前端重试按钮；0.8.22 字数收敛泛化 + 新书走新建章流程；0.8.23 路由只判意图、禁止用摘要判断剧情；0.8.24 行为约束单一来源 agentRules；0.8.25 watch 稳定性 + 启动自愈清理残留 processing；0.8.26-0.8.28 章节保存静默 + 路由层规模守卫；0.8.29 剧情衔接质疑不再误判；0.8.30 删除 context_edit 工具与意图；0.8.31 防旧工具名幻觉 + 写操作完成确定性补卡；0.8.32 标题修复路由 + 改写标题前缀规范化；0.8.33 路由注入工具清单；0.8.34 仅改内容触发维护；0.8.38 清理并列实验残留；0.8.39 删除全书概况：只维护章节摘要与事件；0.8.40 写正文规则：章节收尾 + 脉络扩写；0.8.41 字数打回重写（+备注）、删除补写；0.8.42 衔接评审任务单 + 前端文案/发展线美化；0.8.43 修复并列查看聊天上移；0.8.44 前端大文件拆子组件；0.8.45 乐观锁覆盖手动新建章与回收站；0.8.46 golden eval 扩展；0.8.47 兼容别名清理；0.8.48 刷新即中断 + 回复自然化；0.8.49 长书大图渲染优化；0.8.50 修复发展线白屏；0.8.51 内部命名统一 DevelopmentLineView；0.8.52 内部命名补全；0.8.53 清理旧数据迁移 + TARGET 规划整理；0.8.54 竖排发展线居中；0.8.55 发展线画布左上对齐 + 记账 v1.0；0.8.56 竖排背景按钮中线对齐；0.8.57 画布分方向对齐）
+- 当前版本：0.8.38（0.8.19 意图级工具白名单 + 卡片语义/展示修正；0.8.20 read_book 单章默认全文 + 改写指令携带衔接建议 + 严格触发条件；0.8.21 彻底禁止范围读取 + 工具调用日志 + 移除前端重试按钮；0.8.22 字数收敛泛化 + 新书走新建章流程；0.8.23 路由只判意图、禁止用摘要判断剧情；0.8.24 行为约束单一来源 agentRules；0.8.25 watch 稳定性 + 启动自愈清理残留 processing；0.8.26-0.8.28 章节保存静默 + 路由层规模守卫；0.8.29 剧情衔接质疑不再误判；0.8.30 删除 context_edit 工具与意图；0.8.31 防旧工具名幻觉 + 写操作完成确定性补卡；0.8.32 标题修复路由 + 改写标题前缀规范化；0.8.33 路由注入工具清单；0.8.34 仅改内容触发维护；0.8.38 清理并列实验残留；0.8.39 删除全书概况：只维护章节摘要与事件；0.8.40 写正文规则：章节收尾 + 脉络扩写；0.8.41 字数打回重写（+备注）、删除补写；0.8.42 衔接评审任务单 + 前端文案/发展线美化；0.8.43 修复并列查看聊天上移；0.8.44 前端大文件拆子组件；0.8.45 乐观锁覆盖手动新建章与回收站；0.8.46 golden eval 扩展；0.8.47 兼容别名清理；0.8.48 刷新即中断 + 回复自然化；0.8.49 长书大图渲染优化；0.8.50 修复发展线白屏；0.8.51 内部命名统一 DevelopmentLineView；0.8.52 内部命名补全；0.8.53 清理旧数据迁移 + TARGET 规划整理；0.8.54 竖排发展线居中；0.8.55 发展线画布左上对齐 + 记账 v1.0；0.8.56 竖排背景按钮中线对齐；0.8.57 画布分方向对齐；0.9.0 重构：删除关系网 + 统一思考开关 + 人物一致性体系）
 - 当前分支：Develop
 - 技术栈：React 18 + Vite 5，Express 4，Node.js 18+，JSON 本地持久化
 - 大模型：DeepSeek，模型默认 `deepseek-v4-flash`
@@ -10,7 +10,7 @@
 
 ## 项目介绍
 
-Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前端使用 React SPA，后端使用 Express API，所有业务数据以 JSON 文件保存在 `data/` 下，不依赖数据库。后端统一调用 DeepSeek 完成小说构思采集、摘要整合、章节生成、续写、改写和关系网提取，前端不直接接触 API Key。
+Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前端使用 React SPA，后端使用 Express API，所有业务数据以 JSON 文件保存在 `data/` 下，不依赖数据库。后端统一调用 DeepSeek 完成小说构思采集、摘要整合、章节生成、续写、改写与人物设定维护，前端不直接接触 API Key。
 
 项目采用“一书一页面”的创作工作台：顶部选择一本历史图书或新建创作会话，聊天记录随书籍持久化，生成后可在聊天中打开并列窗口，边看、边改、边继续创作。
 
@@ -52,14 +52,12 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 
 - 小说生成后，聊天区出现书本样式组件。
 - 书本组件显示书名、章节数，并提供“打开并列窗口”和“详情”入口。
-- 并列窗口与聊天界面同屏显示，可实时查看章节、关系网和编辑内容。
+- 并列窗口与聊天界面同屏显示，可实时查看章节、人物设定、发展线和编辑内容。
 - 章节编辑停止输入 1 秒后自动保存。
 - 手动新建章节必须输入实际章节名：去掉“第n章”前缀后为空（如只按回车或失焦）则不创建。
-- 关系网不会自动生成，仅在点击“重新生成关系网”时由 AI 分析并保存；默认走增量（保留现有关系，只处理新增/变更章节），也可显式全量重建。
-- 关系网生成按“顺序分块增量”实现：每批摘要同时受字符数与章节数上限约束，长篇小说不再一次性发送全部章节摘要。
-- 手动编辑章节正文后不会自动调用模型，可在关系网栏位点击“重新生成关系网”更新。
-- 关系网以主角为中心分层布局，节点大小按重要度区分，支持缩放和平移。
-- 编辑章节后失焦只保存、不触发 AI；真正编辑完成（切换标签、关闭面板、返回导航）时自动维护该章摘要与章节事件；关系网仅在用户主动点击“重新生成关系网”时生成。
+- 人物设定卡（`book.characters`，0.9.0 起）：重要角色自动建档，按章记录状态快照（身份/实力/处境/与主角关系等，按故事类型灵活）；只有状态重大变化（突破/身份改变/重大事件）才追加快照，避免冗余。
+- 人物设定卡是只读派生视图：新建/改写章节时维护 AI 增量产出快照，写正文按操作/位置注入相关人物最新快照与近期动向，保持人物一致性。
+- 编辑章节后失焦只保存、不触发 AI；真正编辑完成（切换标签、关闭面板、返回导航）时自动维护该章摘要/事件与人物设定快照。
 - 章节事件（`chapter.events`）按章节序派生为“章节事迹轴”发展线（0.8.6 前称时间线），零 AI 成本，供详情页发展线标签展示；发展线按 `context[0]` 主线背景（一章一个，参考前后章）→ `context[1]` 场景（实际地点；离开背景地理时用「大背景/地点」拼合模板，如“家族/藏书阁”）分层。
 - 续写、改写、提问全部通过自然语言触发；改写会先询问章节，再询问修改部分。
 - 聊天面板高度固定，对话内容不影响页面整体大小，消息在聊天区内滚动。
@@ -71,10 +69,10 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 - 续写下一章：在聊天中直接输入续写指令。
 - 改写章节：输入修改意见，Agent 判断目标章节并重写。
 - 剧情问答：询问设定、角色或剧情，Agent 直接回答。
-- 续写、改写只自动维护章节摘要与事件；关系网需手动重新生成。
+- 续写、改写自动维护章节摘要/事件，并增量维护人物设定卡。
 - 章节元数据（摘要 `chapter.summary` + 事件 `chapter.events` 内嵌，含事件/人物/背景/伏笔）由后端统一维护内核（`maintainChapterMeta`）自动更新；0.8.39 起不再维护“全书概况”（`storySummary` 已删除），看全局用 `read_book(field=info)` 的简介/章节数/字数/目标字数；删除任意章不触发维护，`refresh_chapter_meta` 可立即刷新指定章。
 - 聊天意图由 Agent 通过 function calling 决策：模型返回标准工具与参数，后端按 schema 硬校验后执行；工具协议为 ReAct 多步循环（默认 4 步），工具结果回填后模型可继续调用或直接回复，失败自动回传重试。
-- 通用读工具 `read_book` 覆盖书籍信息（书名/简介/章节数/进度/目标字数）、章节目录、指定章节内容与分层发展线（`field=info/meta/chapters/chapter/development_line`）；`field=chapter` **只支持单章读取**（`target` 单个章节号，范围在参数校验层被拒绝），默认返回标题/摘要/事件/正文全文（`scope=summary` 只看标题/摘要/事件）；需要多章时分次单章调用；摘要维护保持后端自动，关系网保持手动触发。
+- 通用读工具 `read_book` 覆盖书籍信息（书名/简介/章节数/进度/目标字数）、章节目录、指定章节内容与分层发展线（`field=info/meta/chapters/chapter/development_line`）；`field=chapter` **只支持单章读取**（`target` 单个章节号，范围在参数校验层被拒绝），默认返回标题/摘要/事件/正文全文（`scope=summary` 只看标题/摘要/事件）；需要多章时分次单章调用；摘要/事件与人物设定维护保持后端自动。
 
 ### 删除与回收站
 
@@ -90,12 +88,7 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 - 我的：展示已生成书籍列表，包含书名、章节数、更新时间，并进入设置页。
 - 书架：内部开发阶段占位页面，仅展示前端 UI。
 - 设置：背景风格按“跟随系统 / 浅色 / 深色 / 护眼绿 / 护眼纸纹”顺序排列，默认护眼纸纹；跟随系统自动匹配操作系统深浅色；小 / 中 / 大字号，每次输出章节数（1-5）与每章大致字数（1000-10000），持久化到 `settings.json`。
-- 书籍详情：`内容 / 关系网 / 发展线` 三个标签，关系网使用 SVG 展示人物与势力节点，发展线按大背景/场景/章节展示事件。
-
-### 未来规划（暂不实现）
-
-- 发展线分支（已取消，不做）：过去某时间点对话/文章生成分支（fork）能力已明确不做。
-- 当前版本仅支持按日期查看（过去日期只读、当前日期可输入并自动建档）。
+- 书籍详情：`内容 / 人物设定 / 发展线` 三个标签，人物设定展示角色最新快照与按章历史，发展线按大背景/场景/章节展示事件。
 
 ## 技术架构
 
@@ -113,7 +106,7 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
   - `src/components/BookWidget.jsx`：书本组件。
   - `src/components/BookSidePanel.jsx`：并列阅读与编辑窗口。
   - `src/components/ChapterEditor.jsx`：章节自动保存编辑器。
-  - `src/components/RelationGraph.jsx`：SVG 关系网。
+  - `src/components/CharacterCard.jsx`：人物设定卡（最新快照 + 按章历史）。
   - `src/styles.css`：主题变量与全站样式。
 
 ### 后端 `server/`
@@ -131,7 +124,7 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
   - `src/services/draftTools.js`：构思阶段工具定义（confirm_draft）。
   - `src/services/bookService.js`：已生成图书生命周期与章节编排（`createChapter` / `rewriteChapter` / `deleteChapters` / `updateOutline` / `reviewChapter`）。
   - `src/services/maintenanceService.js`：统一维护内核（`maintainChapterMeta` 单章维护、`initializeBookMeta` 新书一次性初始化）。
-  - `src/services/storyMetaService.js`：故事元数据（关系网增量/分块生成与清洗、章节事迹轴派生视图 `buildDevelopmentLine`）。
+  - `src/services/storyMetaService.js`：故事元数据（人物索引 `buildCharacterIndex` 派生、章节事迹轴派生视图 `buildDevelopmentLine`；0.9.0 起删除关系网）。
   - `src/services/modelClient.js`：统一模型调用门面（chatCompletion JSON 模式 / chatTools 原生 function calling / parseJson）。
   - `src/services/providers/deepseek.js`：DeepSeek 模型适配器（第一个 provider，实现统一 client 接口）。
   - `src/lib/modelConfig.js`：模型提供方配置（provider 选择，`DEEPSEEK_*` 兼容保留）。
@@ -183,13 +176,9 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
       "updatedAt": "..."
     }
   ],
-  "relations": {
-    "nodes": [],
-    "edges": [],
-    "generatedAt": null,
-    "coveredUpTo": 0,
-    "mode": ""
-  },
+  "characters": [
+    { "name": "张三", "history": [{ "chapter": 0, "snapshot": "金丹期修士，与主角为敌" }] }
+  ],
   "chat": [],
   "draft": { "concept": "", "summary": "" },
   "deletedAt": null,
@@ -218,7 +207,6 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 - `GET /api/books/trash`
 - `GET /api/books/:id`
 - `GET /api/books/:id/timeline`（章节事迹轴，按章节序返回 `chapter.events`）
-- `POST /api/books/:id/relations`（支持 `{ mode: 'incremental' | 'full' }`，缺省按标记自动选择）
 - `DELETE /api/books/:id`
 - `POST /api/books/:id/restore`
 - `DELETE /api/books/:id/permanent`
@@ -278,17 +266,17 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 
 ### Git 与协作约定
 
-  - 提交信息必须使用中文，推荐格式 `类型(模块): 中文描述`，示例：`feat(聊天): 新增持久化会话`。
-  - 日常开发在 `Develop` 分支进行，大功能先建功能分支，验证通过后再合并。
-  - 默认只在本地提交/更新，**不主动推送、不提醒推送**；平时功能完成后直接在本地操作，不询问是否推送。
-  - 发布流程（仅当用户说明“准备推送”时确认后执行）：
-    0. 功能完成后先合并回 `develop` 分支，删除已完成的 feature 分支；
-    1. 先 `git pull origin develop` 拉取远端 develop，解决本地冲突；
-    2. `git push origin develop` 推送本地 develop；
-    3. 在 GitHub 网页打开 `https://github.com/PuroWater/Creative-Novel/compare/main...develop` 创建 PR（develop → main）并点击 Merge 合并（create merge commit，勿删 develop 分支）；
-    4. 本地 `git checkout main && git pull origin main` 拉回合并结果；
-    5. 切换回 `develop` 分支继续开发。
-  - 开发新功能前先确认 TARGET 需求，必要时补充设计文档和实施计划。
+- 提交信息必须使用中文，推荐格式 `类型(模块): 中文描述`，示例：`feat(聊天): 新增持久化会话`。
+- 日常开发在 `Develop` 分支进行，大功能先建功能分支，验证通过后再合并。
+- 默认只在本地提交/更新，**不主动推送、不提醒推送**；平时功能完成后直接在本地操作，不询问是否推送。
+- 发布流程（仅当用户说明“准备推送”时确认后执行）：
+  0. 功能完成后先合并回 `develop` 分支，删除已完成的 feature 分支；
+  1. 先 `git pull origin develop` 拉取远端 develop，解决本地冲突；
+  2. `git push origin develop` 推送本地 develop；
+  3. 在 GitHub 网页打开 `https://github.com/PuroWater/Creative-Novel/compare/main...develop` 创建 PR（develop → main）并点击 Merge 合并（create merge commit，勿删 develop 分支）；
+  4. 本地 `git checkout main && git pull origin main` 拉回合并结果；
+  5. 切换回 `develop` 分支继续开发。
+- 开发新功能前先确认 TARGET 需求，必要时补充设计文档和实施计划。
 - 功能完成后必须同步更新 `README.md`、`SUMMARY.md`，涉及需求时同步更新 `TARGET.md`。
 
 ### 质量与安全门禁
@@ -309,7 +297,7 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 - 后端进程必须能访问外网；在沙箱、受限网络或代理拦截环境下，DeepSeek 调用会报“DeepSeek 网络请求失败：fetch failed”，请用普通终端启动后端。
 - 端口 3001 被占用时后端会给出明确提示并退出，可通过 `PORT` 环境变量换端口。
 - 同一本书存在“处理中”消息时禁止再次发送；双标签页并发发送会被后端拦截。
-- `deepseek-v4-flash` 是推理模型，响应会消耗大量 `reasoning_tokens`；小规模元数据/工具调用（概况、事件、摘要、关系网、意图预筛）的 `maxTokens` 统一为 4096，否则推理会吃光预算导致“DeepSeek 未返回内容”。
+- `deepseek-v4-flash` 是推理模型，响应会消耗大量 `reasoning_tokens`；小规模元数据/工具调用（事件、摘要、意图预筛）的 `maxTokens` 统一为 16384，避免推理吃光预算导致“DeepSeek 未返回内容”，否则推理会吃光预算导致“DeepSeek 未返回内容”。
 
 ### Agent 与工具调用约定
 
@@ -334,7 +322,6 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 ### 长小说与全书聚合操作注意事项
 
 - 旧“全量事件迁移/初始化”函数（`ensureChapterEvents`）已删除：旧 `book.timeline → chapter.events` 迁移改由 `normalizeBook` 确定性完成，新书首轮事件与概况走 `initializeBookMeta`（一次性，≤5 章）。未来若需对长书做全量事件补齐，必须先分块，属后续规划。
-- 关系网生成已改为“顺序分块增量”：`full` 置空后逐块重建、`incremental` 只处理 `coveredUpTo` 之后与覆盖范围内近期变更章节，每块受字符数（默认 3500）与章节数（默认 25）上限约束，长篇小说安全；`relations` 记录 `generatedAt` / `coveredUpTo` / `mode` 标记。
 - `maintainChapterMeta` 统一维护内核：输入 = 变更章全文 + 前后章摘要 + 变更章现有 events（O(变更数)），输出 = summary + events，一次关思考调用原子写入，不携带全书事件列表，长小说安全（0.8.39 起不再维护全书概况）。
 - 日常续写、改写、问答、读章已走局部上下文（目标章/前后章摘要与节选 + 当天聊天；0.8.39 起不再注入全书概况与关系网全文），不随章数膨胀，长篇小说在这些路径上没有障碍。
 - 删除章节支持任意章（含中间章）：删除不调 AI、不触发维护（0.8.39 起不再记录 `pendingDeletes`）；插入/删除中间章自动重排标准前缀（`renumberChapterPrefixes`）；章节摘要/事件残留由下一次改写触发维护或 `refresh_chapter_meta` 立即刷新。
@@ -1129,6 +1116,7 @@ npm start
 ### 2026-08-12 v0.7.0 架构清晰化：构思/已生成/维护分文件与章节编排统一
 
 更新内容：
+
 - 文件拆分：新增 `draftService.js` / `draftTools.js`（构思生成独立通道）；新增 `maintenanceService.js`（统一维护内核）；`overviewService.js` 删除；`bookService.js` 瘦身为已生成图书生命周期与章节编排；`maxTokensForWords` / `nextChapterId` / `clampOutput` 移入公共 lib。
 - `edit_book` 重写为 AI 侧薄壳：`mode: new | modify | delete`，参数精简（mode/chapter/title?/instruction?），正文由后端对应函数内部一次 AI 调用产出（开思考、预算按字数放大），工具循环保持小规模；删除 `continue_book`（旧 HTTP 兼容入口保留，内部逐章走 createChapter）；新增 `update_outline` / `refresh_chapter_meta` 小工具。
 - 章节编排：`createChapter`（锚点插入/末尾追加）、`rewriteChapter`、`deleteChapters`（任意单章 + 末尾批量共用）、`updateOutline`；插入/删除中间章自动重排标准前缀（`renumberChapterPrefixes`，跳过非标准标题），`batch_fix_chapter_prefixes` 保留作 AI 兜底。
@@ -1143,6 +1131,7 @@ npm start
 ### 2026-08-12 v0.7.1 代码审查修复边界
 
 更新内容：
+
 - 意图预筛强规则（P1）：确定性操作检测 `detectReadyToolIntent`——命中“续写/改写/删除/插入某章”“批量修改”“查看某章”等明确指令直接判定 tool，不依赖模型分类；解析输出规模前先剔除“第X章”引用，越界走确定性 `OVER_LIMIT_REPLY`；预筛/工具决策提示词增加“操作指令必须 tool、禁止闲聊回避”强规则；构思路径增加“由你发挥/你决定”确定性 confirm 兜底与信息齐全判定强化。
 - 不存在章节引导（P7）：`searchChapters` 对超出章节数的“第N章/纯数字”直接返回空；`read_book` 对越界章节返回“本书目前只有 N 章，没有第 X 章”。
 - changeLog 补录（P2）：`renumberChapterPrefixes` 支持 collect；`createChapter`/`deleteChapters` 返回 `affectedIds` 并由工具层写入 changeLog，插入/删除中间章后的标题重排在写回时不再丢失。
@@ -1160,6 +1149,7 @@ npm start
 ### 2026-08-12 v0.7.2 书级写队列：慢写串行 + 快写旁路
 
 更新内容：
+
 - 新增 `lib/writeQueue.js` 书级 promise 队列（Map<bookId, 尾巴>）：同一本书的写任务按到达顺序串行，前一个失败不阻塞后一个，不同书并行，调用方 await 自己的任务。
 - 慢写入队：聊天消息 `POST /chat/message`、摘要维护 `POST /summary`、关系网 `POST /relations`、章节删除（单个 + 批量）均走 `enqueueBookWrite(bookId, task)`；维护/关系网在聊天完成后基于最新内容执行，旧快照覆盖新内容的竞态消除。
 - 快写旁路：用户手动编辑保存 `PUT` 章节、手动新建空章、回收站操作不排队，写回前重读磁盘最新并只写自己的字段，手动保存不被 AI 长任务卡住；极端并发残留由后续版本号乐观锁补足（记账）。
@@ -1171,6 +1161,7 @@ npm start
 ### 2026-08-12 v0.7.3 存储重构：books/drafts 分目录、每书一文件、软删归档标记
 
 更新内容：
+
 - 存储目录：`data/books/`（status=ready）与 `data/drafts/`（status=draft），每本一个 `<bookId>.json`；软删归档为 `<bookId>.archived.json`，彻底删除即删文件。
 - `lib/store.js` 新增书级 API：`readBookById` / `listBooks({ archived })` / `saveBook`（自动处理归档/恢复与 drafts ↔ books 定稿移动）/ `deleteBookFile`；移除整表 `BOOKS_FILE`。
 - `lib/bootstrap.js` 启动迁移：旧 `books.json` 按 status 拆分到新目录（软删书落 `.archived.json`），迁移成功后删除旧文件与 `.bak`。
@@ -1183,6 +1174,7 @@ npm start
 ### 2026-08-12 v0.7.4 事件结构升级与分层时间线
 
 更新内容：
+
 - event 新字段：`time`（文中时间点）、`context`（背景路径数组，从大到小最多 3 层）、`foreshadow`（setup/pay/null）+ `foreshadowFor`；`normalizeBook` 幂等补默认，旧事件零迁移。
 - `maintainChapterMeta` 升级：输入增加前后章 events（O(常数)）；事件必须来自本章正文；context 延续前后章并随阶段/地点细化；真实调用验证产出两级背景（`["秘境探险","藏宝室"]`）与 setup/pay 伏笔。
 - `read_book`：`field: chapter` 默认带 events（含新字段）；新增 `field: timeline` 分层时间线。
@@ -1195,6 +1187,7 @@ npm start
 ### 2026-08-12 v0.7.5 生成与续写质量修复
 
 更新内容：
+
 - 续写行为修复：汉字章数解析、默认输出规模注入、剧情节奏约束（不提前大结局）；书籍卡片改由 AI 调 open_book_widget 决策。
 - 思考模式开关矩阵：仅正文生成与审校开思考，初筛/工具决策/JSON 修复/维护关思考（4096 思考吃满空响应实测）；正文思考设置项（默认关）。
 - 正文长度兜底与补写：85% 补齐（带全书概况+全文+下一章开头）、105% 上限完整句截断；段落空行约束；超字数收束引导。
@@ -1203,6 +1196,7 @@ npm start
 ### 2026-08-12 v0.7.6 交互与进度、插入与数据修复
 
 更新内容：
+
 - 聊天处理进度条（`GET /api/chat/progress` + 前端轮询，多章第 X/Y 章、单章文本）。
 - 插入方向语义（第X章前/后）、新章标题强制编号；《古神复苏》章节顺序与标题修复。
 - 被 AI 修改提示收紧（仅未保存草稿）、自动刷新不重置章节、删除弹窗文案。
@@ -1212,6 +1206,7 @@ npm start
 ### 2026-08-12 v0.7.7 工具参数与书籍信息结构化
 
 更新内容：
+
 - 工具数字参数强制阿拉伯数字（AI 自然语言转数字），删除 parseTargetWords；章节定位改数字序号。
 - 书籍信息泛化（撤书名硬注入、read 优先引导）、章节目录 start/count 分页、read_book 数字/范围读章（"10"/"5-15"）。
 - 清理死代码 searchChapters/fuzzyScore。
@@ -1220,6 +1215,7 @@ npm start
 ### 2026-08-12 v0.7.8 时间线与外观完善
 
 更新内容：
+
 - 时间线展开方向修正 + 浮窗化；fixed 浮窗 + 视口限制 + 左键拖拽；圆角框与关系网统一。
 - 时间线方向移入设置页（timelineOrientation）；设置页保存参数顺序规范化。
 - 外观更新：设置目录常规置顶；详情标签 内容/时间线/关系网；浮窗样式统一并随滚动对齐。
@@ -1228,6 +1224,7 @@ npm start
 ### 2026-08-12 v0.7.9 时间线画布化与浮窗合并
 
 更新内容：
+
 - 事件 50 字约束：维护 prompt 要求每条 event ≤50 字且只描述事件本身（背景/伏笔/时间入对应字段），前端完整显示不硬截断。
 - 场景+章节合并为单个浮窗：场景标题点击展开/收起该场景章节（就地展开），方向保持先右后下/先下后右。
 - 时间线画布化：滚轮缩放（0.5-2.5）、左键拖拽平移、放大/缩小/重置工具栏，平移缩放状态切标签保持。
@@ -1237,6 +1234,7 @@ npm start
 ### 2026-08-12 v0.7.10 进度显示与章节数兜底、时间线细节、context 大背景统一
 
 更新内容：
+
 - 进度显示修复：输入框统一显示“当前进度 X/Y，请等待生成”（改写 0/1），上方动画进度条保留。
 - 章节数兜底：用户指定 N 章严格 N 章（maxNewChapters 拦截），真实验证 3→3、1→1。
 - 时间线：场景按钮悬浮恢复；删放大/缩小/重置工具栏（关系网同删）；画布内容默认居中；浮窗改画布内绝对定位。
@@ -1247,6 +1245,7 @@ npm start
 ### 2026-08-12 v0.7.11 主动修改事件背景工具
 
 更新内容：
+
 - 新增 `update_events_context` 工具：按章节范围直接改 events 的 context（不调维护 AI、不做模糊匹配），AI 负责自然语言转数字范围/背景数组；描述含简版+详细说明。
 - 前端时间线拉取依赖 refreshSignal，修改后自动派生刷新。
 - 时间线分组按章节序（其他组参与排序）、浮窗移入画布内部对齐、内容水平居中。
@@ -1255,6 +1254,7 @@ npm start
 ### 2026-08-13 v0.7.12 Agent 回复与进度重构
 
 更新内容：
+
 - 进度与等待文案：同页发送即开始轮询（不再等 book 里出现 processing 消息），响应返回后停止；输入框统一显示“请等待回复完成或中断”，顶部动画进度条仅对进度操作（progress.total>0：生成/续写/改写/删除等）显示；新书首条消息改两阶段（`POST /chat/sessions` → `POST /chat/message`），新草稿处理期间也能轮询进度；“构思：xxx”命名兼容两阶段空草稿。
 - 卡片协议化（撤 0.7.10 硬补丁）：`runToolDecision` 支持工具 outcome 声明 `card`，循环结束时把卡片合并进模型最终回复（`kind=book` + extra），工具只发展示信号、最终文案永远由模型自己产出；`open_book_widget` 改为 followUp 纯信号并删除“请在下方书籍中打开并列查看…”硬文案；全部 ready 工具（edit_book 三种模式、批量工具、update_*、refresh_chapter_meta、read_book 越界提示）改为 followUp，参数/越界错误由模型转述，不再把工具内部引导语直接展示给用户；提示词改为“章节变更后调用 open_book_widget，并用自己话总结，不要复述工具文案”。
 - 数字解析强规则：`detectReadyToolIntent` 识别“再写/继续写/写 + N章”（无“第X章”也可解析）；每章字数支持“约/大概/左右/写”限定词（实测“续写3章，每章约5000字”解析出 chapters=3、chapterWords=5000）；chatService 按“纯追加批量续写（后端循环，次数不交给 AI）/ 带锚点新建插入（ReAct 传 chapter/position + maxNewChapters 兜底）/ 改写删除（不消费章数）”分类，修复“再写一章”被按默认规模批量生成、“改写三章”被当新建、“插入丢失锚点”问题；scaleHint 删除“必须逐章调用 edit_book”的补丁表述。
@@ -1270,6 +1270,7 @@ npm start
 ### 2026-08-13 v0.7.13 小补丁：时间线浮窗滚动与画布缩放冲突
 
 更新内容：
+
 - `TimelineView` 的 `handleWheel` 增加 `.timeline-float` 目标守卫：鼠标在二级浮窗内滚动时直接放行，不做 `preventDefault`、不触发画布缩放，交还原生滚动浏览浮窗内容。
 - `startDrag` 同步跳过浮窗区域：在浮窗内部按下/拖动不再平移画布，避免与浮窗自身滚动条和按钮交互冲突。
 - 版本号升级到 0.7.13（根/server/client 同步）；前端构建通过、后端测试 52/52；服务冒烟验证（沙箱外）通过；本地提交未推送（按协作规矩）。
@@ -1279,7 +1280,8 @@ npm start
 ### 2026-08-13 v0.7.14 时间线同背景按连续章节分段
 
 更新内容：
-- `buildTimeline`（[storyMetaService.js](/D:/Programing%20Workspace/Project/Novel%20Agent/server/src/services/storyMetaService.js)）按“最大连续章节区间”把同一 `context[0]` 切成多个组：新增 `splitRuns`（有序索引切连续段）与 `buildGroupFromRun`（按区间构组，组 id 为 `label#start-end`，场景/章节只保留本区间数据）；无背景“其他”组同样按连续区间分段；所有组按起始章排序。
+
+- `buildTimeline`（[storyMetaService.js](</D:/Programing%20Workspace/Project/Novel%20Agent/server/src/services/storyMetaService.js>)）按“最大连续章节区间”把同一 `context[0]` 切成多个组：新增 `splitRuns`（有序索引切连续段）与 `buildGroupFromRun`（按区间构组，组 id 为 `label#start-end`，场景/章节只保留本区间数据）；无背景“其他”组同样按连续区间分段；所有组按起始章排序。
 - `TimelineView` 组 key 与展开状态改用 `group.id`，支持多个同标签组（如 家族1-3 / 家族8-11）独立展开/收起；删除组级悬浮提示（区间已显示在按钮文字上），场景/章节子级悬浮保留。
 - 《仙路逆鳞》实测时间线组序：家族(1-4) → 北境矿脉之行(4-9) → 家族(8-12) → 北境矿脉之行(12-14)，不再出现家族(1-14) 的全书合并。
 - 版本号升级到 0.7.14（根/server/client 同步）；单元测试新增“同背景跨连续区间拆组”用例，前端构建通过；服务冒烟验证（沙箱外）通过；本地提交未推送（按协作规矩）。
@@ -1289,6 +1291,7 @@ npm start
 ### 2026-08-13 v0.7.15 卡片请求识别与回复、工具循环守卫、输入框等待文案
 
 更新内容：
+
 - 输入框等待文案：等待（发送中/处理中）时 textarea 的 placeholder 直接切换为“请等待回复完成或中断”，删除原先 textarea 外的 `.chat-progress-inline` 提示条及其 CSS；
 - 卡片请求识别：`detectReadyToolIntent` 增加“卡片/书卡/打开这本书”意图，无其他操作时只返回 `navigate` 组（工具仅剩 open_book_widget），预筛提示词补充“发个卡片→tool+navigate”示例；
 - 工具循环守卫：`runToolDecision` 检测到连续重复调用同一携带 card 的展示工具时，直接以该工具结果作为最终回复并携带卡片（kind=book + extra），不再“工具调用步数已达上限”；open_book_widget 的 followUp 文案提示模型直接回复用户。
@@ -1299,6 +1302,7 @@ npm start
 ### 2026-08-13 v0.8.0 Agent 工作流重构
 
 更新内容：
+
 - 模型层抽象：新增 `lib/modelConfig.js`（provider 选择，`DEEPSEEK_*` 兼容保留）、`services/modelClient.js`（统一门面：chatCompletion JSON / chatTools 原生 function calling / parseJson）、`services/providers/deepseek.js`（第一个适配器）；删除 `services/deepseek.js`，业务代码统一走 modelClient。
 - 结构化路由：`runRouter` 一次调用输出 `{ mode, intent, output, target }`（intent 枚举 + schema 校验 + 重试回退）；删除 `detectReadyToolIntent` 正则层。
 - 任务单：新增 `services/intentPlans.js`，intent → 工具白名单 + 步骤 + 完成条件（counted/single/signal/none），注入执行器，执行器不再重新解读用户消息。
@@ -1312,6 +1316,7 @@ npm start
 ### 2026-08-13 v0.8.1 参数归一化与防绕圈、进度条钉底
 
 更新内容：
+
 - 参数归一化：`lib/chapterUtils.js` 新增 `parseChapterNumber`（“第一章/第1章/1/二十万”确定性转数字）与 `normalizeChapterTarget`（“第一章”→“1”、“第3到8章”→“3-8”）；`toolkit.js` 新增 `normalizeToolArguments`，在 `validateArgs` 前对整数型参数与标记 `xChapterRef` 的字符串参数做确定性转换，转换不了才拒绝——章节指代不再依赖模型自律转换（修复“打开第1章”在标题混排时超步数）；`read_book.target` schema 标记 `xChapterRef`。
 - 防绕圈：`runTask` 增加连续工具调用上限（none 终止 6 次、其余 12 次仍无内容回复即用最后一次工具结果收尾），read 类意图不再裸靠 maxSteps。
 - 进度条钉底：`ChatPanel` 滚动 effect 增加 `progressBarVisible` 依赖，顶部进度条出现/消失时重新滚动到底，最新消息不再被挤出可视区。
@@ -1322,6 +1327,7 @@ npm start
 ### 2026-08-13 v0.8.2 写正文上下文与 token 预算、时间线事件约束
 
 更新内容：
+
 - 聊天上下文注入：`createChapter` / `rewriteChapter` / `ensureChapterLength` / `generateBookContent` 全部注入“当天+本条”上下文（`buildTodayHistory` + 当前用户消息，按 2000/1500 字截断），经 `runTask` → 工具 handler 的 `history/user` 透传，写正文不再只依赖 instruction 转述；
 - token 预算：`maxTokensForWords` 上限 32768 → 65536；路由（runRouter/prefilterDraftIntent）、执行器（runTask）、维护内核、关系网提取默认 4096 → 16384；
 - 事件约束（时间线数据层）：`maintenanceService.normalizeChapterEvents` 确定性归一化——每章最多 3 个事件、一章统一为一个主要 context[0]（取多数背景）；维护/初始化 prompt 明确“context[0] 是大背景/阶段（非确切地名）、context[1] 是场景（可为地名并体现剧情推进）、大背景下场景最多 3 个”；
@@ -1333,6 +1339,7 @@ npm start
 ### 2026-08-13 v0.8.3 写正文提示词公共化与长度约束统一
 
 更新内容：
+
 - 新增 `lib/writingPrompts.js`：`writingSystem` / `PARAGRAPH_RULE` / `chatContextRef` / `storySummaryRef`，create/rewrite/ensure 三处写正文 prompt 统一走公共构造，消除重复拼装漂移；
 - `chapterUtils.trimChapterToLimit` 纯函数（目标 105% 完整句截断，找不到完整句硬切），create/rewrite 首轮输出与 ensure 补写后统一应用“上限截断”；
 - `ensureChapterLength` 补写上下文有界节选：只注入开头 300 字 + 结尾 1500 字，不再把整章全文塞进 prompt；
@@ -1343,6 +1350,7 @@ npm start
 ### 2026-08-13 v0.8.4 时间线场景-阶段一致性修复、前端浮窗变量修复
 
 更新内容：
+
 - 维护内核新增 `repairPhaseConsistency`（模型化场景-阶段一致性修复，不硬编码地点表）：整体属其他阶段的事件移除；确属本阶段但场景用了其他阶段地名（如家族阶段回矿洞采药）改写为本阶段表述（“采药”“采药炼药”）；接入 maintainChapterMeta 与 initializeBookMeta；
 - 维护/初始化 prompt 改为“定阶段 → 只选该阶段事件 → 配阶段内场景”三步，并对称化“禁止阶段与场景矛盾”（北境阶段配家里/议事堂、家族阶段配矿洞深处均禁止）；
 - 前端 `TimelineView` 场景悬浮标题修复未定义变量 `group`，改用 `expandedGroupData` 兜底；
@@ -1354,6 +1362,7 @@ npm start
 ### 2026-08-13 v0.8.5 简化维护链路：移除阶段一致性修复、context 收敛两层
 
 更新内容：
+
 - 移除 `repairPhaseConsistency`（模型化一致性修复）与二次归一化：维护/初始化回归“一次模型产出 → 一次 `normalizeChapterEvents`”，一次维护只调一次模型；
 - context 收敛为两层（大背景 + 场景）：`cleanEvents` / `normalizeChapterEvents` / `update_events_context` 由 `slice(0,3)` 改 `slice(0,2)`，维护/初始化/工具提示词统一“只允许两层，不要第三层”；
 - 场景-阶段一致性保留在 prompt 层（三步：定阶段 → 只选该阶段事件 → 配阶段内场景），不再有额外清洗调用；
@@ -1365,6 +1374,7 @@ npm start
 ### 2026-08-13 v0.8.6 发展线改名（时间线 → 发展线）
 
 更新内容：
+
 - 后端改名：`buildTimeline` → `buildDevelopmentLine`；路由 `/books/:id/timeline` → `/books/:id/development-line`（旧名 `/timeline` 兼容保留）；响应键 `timeline` → `developmentLine`；`read_book` 的 field `timeline` → `development_line`（旧值 `timeline` 兼容）；设置字段 `timelineOrientation` → `developmentLineOrientation`（读取兼容旧设置，写入新字段）。
 - 前端改名：所有用户可见“时间线”文案改为“发展线”（详情/并列窗口标签、设置项、刷新按钮、提示语），API 与响应键同步；`TimelineView` 组件名与 `timeline-*` CSS 类名保留（纯内部实现，不改）。
 - 决策落地：取消时间线分支 fork、真时间轴/事件真实时间字段、事件↔章节联动、关系网自动维护/交互升级/人物↔关系网联动/大图优化、书架页；TARGET/SUMMARY 待办与规划同步更新（保留：幂等键、golden eval、interrupt、多 provider、版本号乐观锁）。
@@ -1375,6 +1385,7 @@ npm start
 ### 2026-08-13 v0.8.7 写工具幂等键与部分完成提示
 
 更新内容：
+
 - `runTask` 幂等缓存：按 `call.id` 缓存已成功执行的工具结果，同一响应重放（同 id）直接回放首次结果，不重复执行 handler（成功才缓存，失败照常重试）；
 - `handleMessage` 错误分支：写入已发生但后续中断/失败时提示“处理中断，但已有部分操作完成（章节可能已更新）”，不再一律报“处理失败”，降低误重试导致的重复写入；
 - 版本号升级到 0.8.7（根/server/client 同步）；单元测试 60/60（新增同 id 去重用例）；前端构建通过；本地提交未推送（按协作规矩）。
@@ -1384,6 +1395,7 @@ npm start
 ### 2026-08-13 v0.8.8 golden 对话 eval
 
 更新内容：
+
 - 新增 `server/scripts/eval/`：`goldenScenarios.js`（场景定义）+ `runEval.js`（运行器：登录、副本准备/清理、逐条消息断言），根/server 增加 `npm run eval`；需运行中的后端 + 真实模型；
 - 首批 3 个 golden 场景：再写一章（恰好 1 章 + 卡片 + 无错）、发一个卡片（kind=book）、打开第一章（混排标题副本 → 卡片定位第 1 章）；
 - eval 首跑抓到回归并修复：混排标题副本“打开第一章”被路由成文本回复 → 路由提示词增加“打开第X章”→ navigate + target.chapter，navigate 任务单按目标章引导 open_book_widget；重跑 3/3 全过；
@@ -1394,6 +1406,7 @@ npm start
 ### 2026-08-13 v0.8.9 系统级 interrupt（写前确认）
 
 更新内容：
+
 - 设置新增 `confirmBeforeWrite`（默认关，前端“常规”开关）；开启后，章节写意图（新建/改写/删除/批量/背景修改）先落 `book.pendingAction` 并回复“确认执行：…”，用户回复“确认”才执行，完成后清除；非确认消息清除 pending 按新消息处理；
 - `normalizeBook` / `mergeBookState` 同步 pendingAction；
 - 真实验证（dev 服务）：开启→“再写一章”返回 question + pendingAction→“确认”→恰好 +1 章、kind=book、pending 清除；
@@ -1404,6 +1417,7 @@ npm start
 ### 2026-08-13 v0.8.10 多 provider 查表分发
 
 更新内容：
+
 - 新增 `services/providers/index.js` 注册表（`PROVIDERS` + `getProvider`，deepseek 为首项）；`modelClient` 改为按 `MODEL_PROVIDER` 环境变量查表选择 provider，不再直接 import deepseek；
 - 新增 provider = 实现统一 chat 接口 + 注册一行 + `lib/modelConfig.js` 登记配置；`DEEPSEEK_*` 兼容保留；
 - 版本号升级到 0.8.10（根/server/client 同步）；单元测试全过；本地提交未推送（按协作规矩）。
@@ -1413,6 +1427,7 @@ npm start
 ### 2026-08-13 v0.8.11 版本号乐观锁（快写并发）
 
 更新内容：
+
 - 书籍新增 `version`（`normalizeBook` 默认 0）；仅快写路径递增（手动保存 PUT、手动新建章），AI 慢写不递增——保持“手动保存覆盖 AI 修改”的既有语义，只防护“手动 vs 手动”并发覆盖；
 - `PUT /books/:id/chapters/:chapterId` 支持携带 `version`：与服务端不一致返回 409“内容已更新，请刷新后重试”；
 - 前端保存章节携带 `book.version`，409 时提示并刷新最新内容（编辑草稿保留，可重新保存）；
@@ -1424,6 +1439,7 @@ npm start
 ### 2026-08-13 v0.8.12 自查修复：输出规模信任守卫 + eval 设置自控
 
 更新内容：
+
 - 输出规模信任守卫：ready/draft 路径仅在用户消息提到 章/字数/每章 时采用路由解析的 output，防止模型虚构 chapterWords/chapters 覆盖用户设置（自查发现“再写一章”被虚构 1000 字）；
 - golden eval 设置自控：开始强制关闭写前确认、结束恢复原设置，场景不再受用户级设置影响；
 - golden eval 三场景重跑全过；版本号升级到 0.8.12（根/server/client 同步）；单元测试全过、前端构建通过；本地提交未推送（按协作规矩）。
@@ -1433,6 +1449,7 @@ npm start
 ### 2026-08-13 v0.8.13 背景/场景语义修正
 
 更新内容：
+
 - 修正“背景/场景”语义：`context[0]` 是本章**主线背景/阶段**（一章一个，参考前后章保持一致）；`context[1]` 是**事件实际发生的地点/推进节点，不必在地理上属于背景**（北境主线章可含“家族/家里”场景，家族主线章可含“矿洞”场景）；
 - 维护/初始化 prompt 删除 0.8.4/0.8.5 误加的“场景必须属于背景阶段、禁止阶段与场景矛盾”表述；
 - 《仙路逆鳞》全书 14 章重维护：每章 ≤3 事件、单主背景；场景恢复真实地点（第 8 章“家族/藏书阁”、第 9/11 章“矿洞”等）；
@@ -1443,6 +1460,7 @@ npm start
 ### 2026-08-13 v0.8.14 P1 结构拆分（toolkit 上帝模块）
 
 更新内容：
+
 - `toolkit.js`（407 行）拆分为：`lib/toolArgs.js`（参数校验 + 章节归一化）、`lib/toolOutcome.js`（标准结果校验）、`services/toolRegistry.js`（工具注册表/直接调用/API 格式）、`services/router.js`（构思与 ready 路由）、`services/executor.js`（任务执行器 + 状态机）；删除 toolkit.js，引用全部更新；
 - 测试文件改名 `agentFlow.test.js`，覆盖拆后各模块；
 - 行为零变化：单元测试 61/61、前端构建通过、golden eval 3/3 全过；
@@ -1453,6 +1471,7 @@ npm start
 ### 2026-08-13 v0.8.15 P2 效果统一记账 + P3 抽公共
 
 更新内容：
+
 - P2：工具 handler 只返回 `effect`（删除场景以 `renamedIds` 标记重排章），编排层 `syncChangeLogFromEffect` 从 effect 统一同步 changeLog（chapterIds/deletedChapterIds/lastEditedIndex），消除双轨记账；
 - P3：`writingPrompts` 新增 `creationContextRef` / `rewriteContextRef` 统一章节上下文拼装；新增 `lib/settingsDefaults.js` 单一默认值来源（routes/settings 与 settingsService 共用）；`validateOutcome` 校验 effect.ids/renamedIds；
 - 单元测试 62/62（新增 syncChangeLogFromEffect 用例）、前端构建通过、golden eval 3/3 全过；
@@ -1463,6 +1482,7 @@ npm start
 ### 2026-08-13 v0.8.16 跨消息幂等（方案 A：消息 id 重试令牌）
 
 更新内容：
+
 - 后端：书籍新增 `lastAppliedMessageId`；`/chat/message` 接收 `messageId`，在书级队列任务内先查“同 id 已成功应用”则直接返回该书（不重复执行、不追加消息）；成功完成才记录，失败不记录；
 - 前端：发送携带乐观消息 id；失败后聊天输入区出现“重试”按钮，沿用同一 messageId（保留原用户消息、移除错误、重新发送），后端自动去重；
 - golden eval 新增“重复消息幂等”场景（同 messageId 重发 → chat 数不变）；
@@ -1473,6 +1493,7 @@ npm start
 ### 2026-08-13 v0.8.17 场景拼合模板写进提示词
 
 更新内容：
+
 - 维护/初始化 prompt 明确场景拼合模板：当事件地点**离开大背景地理范围**时，优先采用「大背景/地点」写法（如北境主线章回到家族 → 场景写“家族/藏书阁”）；地点在大背景内时直接写地点（如“矿洞西侧”）；
 - 教学文档同步；现有数据已是该风格，无需重迁移，后续维护按新模板执行；
 - 版本号升级到 0.8.17（根/server/client 同步）；单元测试全过、前端构建通过；本地提交未推送（按协作规矩）。
@@ -1482,6 +1503,7 @@ npm start
 ### 2026-08-13 v0.8.18 修复：发送按钮点击白屏
 
 更新内容：
+
 - 根因：0.8.16 的 `sendMessage(contentOverride, ...)` 被发送按钮直接当作 onClick 传入，点击事件对象被当成 content 存进聊天消息，React 渲染对象崩溃白屏；
 - 修复：按钮改箭头调用；`sendMessage` 对非字符串首个参数做防御，回退到输入框内容；
 - 前端构建通过、单元测试全过；版本号升级到 0.8.18（根/server/client 同步）；本地提交未推送（按协作规矩）。
@@ -1491,6 +1513,7 @@ npm start
 ### 2026-08-13 v0.8.19 意图级工具白名单 + 卡片语义/展示修正
 
 更新内容：
+
 - `intentPlans.buildPlan` 每意图返回显式 `tools` 白名单（改写仅 edit_book/read_book/open_book_widget 等），`chatService` 按工具名过滤——修复“改14结尾”被误调 `update_events_context` 的问题（改写意图不再暴露背景/批量工具）；
 - 卡片“并列查看”改普通打开（始终打开/定位），右上角按钮保持切换语义；
 - 卡片按钮去掉随并列状态的激活色（普通打开按钮，不再误导为切换）；卡片章数显示该卡会打开的“第 N 章”（非总章数）；
@@ -1504,6 +1527,7 @@ npm start
 ### 2026-08-13 v0.8.20 read_book 读取语义修正：单章默认全文、范围只读摘要；改写指令携带衔接建议
 
 更新内容：
+
 - `read_book` 删除 `scope` / `maxChars` 参数：`target` 单个数字返回该章标题/摘要/事件/**正文全文**（不截断，章节长度由 105% 上限兜底）；`target` 范围（如 "5-15"）只返回各章标题/摘要/事件、不含正文、最多 10 章，超出返回可重试错误并提示缩小范围或分次单章读取全文；
 - 范围分支事件格式与单章统一（含 context/伏笔/时间），摘要与事件默认都给；
 - 描述明确“需要多章正文细节时不要传范围，分次调用 read_book 每次读一章”——修复“改14结尾”时 ReAct 层模型只看到摘要、误判“主角没走出去”而拒绝改写的问题（模型现在读单章即可见正文结尾）；
@@ -1516,6 +1540,7 @@ npm start
 ### 2026-08-13 v0.8.21 彻底禁止范围读取 + 工具调用日志 + 移除前端重试按钮
 
 更新内容：
+
 - `read_book` 彻底禁止范围读取：`target` 改 integer（只能单个章节号，范围在参数校验层被拒绝），新增 `scope`（content 默认=标题/摘要/事件/正文全文；summary=仅标题/摘要/事件），描述明确“禁止范围读取、细节强烈建议默认 content 读正文”——实测“改14结尾”模型把范围摘要当正文复述，根因是范围分支不含正文；
 - rewrite 任务单同步“read_book 只支持单章、禁止用范围代替正文读取”；执行器系统提示补“章节事实以 read_book 最新返回为准，不沿用对话历史旧结论/旧摘要（含此前模型分析）”；
 - executor 新增工具调用日志：每次调用打印工具名/参数（超长截断）/结果长度，缓存回放与失败也打印，排查“模型到底读了什么”不再靠猜；
@@ -1529,6 +1554,7 @@ npm start
 ### 2026-08-13 v0.8.22 字数收敛泛化 + 新书走新建章流程
 
 更新内容：
+
 - 字数收敛泛化（createChapter/rewriteChapter 共用 `convergeChapterLength`）：首轮产出后字数不在目标 80%-120% 先做一次“收敛重写”（不足扩写、超出压缩，保留用户要求与完整结尾）；收敛后仍超 150% 才走 `trimChapterToLimit` 兜底（上限 105%→150%，`capRatio` 参数化）；仍不足由 `ensureChapterLength` 补写；
 - 新书走新建章流程：`finalizeDraftBook` 先一次调用产出书名/简介，再逐章 `createChapter`——字数收敛/补写/审校与 `maintainChapterMeta` 自动维护 summary/events/全书概况统一生效，删除 `generateBookContent`/`buildStorySummary`；`targetWords` 在逐章生成前设置，新书也按全书目标比例推进；
 - 版本号升级到 0.8.22（根/server/client 同步）；单元测试 69/69（trimChapterToLimit cap 用例更新为 150%）；本地提交未推送（按协作规矩）。
@@ -1538,6 +1564,7 @@ npm start
 ### 2026-08-13 v0.8.23 路由只判意图：禁止用摘要判断剧情
 
 更新内容：
+
 - 路由提示词收紧：用户对章节内容的质疑/修改要求（如“14章结尾说走出去了，15章怎么还在里面，改一下14结尾”）一律 `rewrite`，不得用 chat 直接判断剧情是否连贯——剧情对错必须由执行阶段 read_book 实证；
 - 路由提示词进一步收紧：用户询问/质疑/要求修改剧情或章节内容时，必须基于 read_book 最新真实数据，**禁止用历史对话、旧摘要或模型自身判断直接下结论**；剧情相关问题一律 mode=tool；
 - chatService 路由 system 明确“只判断意图，不得用概况/摘要判断章节内容正确性或直接回复”；
@@ -1549,6 +1576,7 @@ npm start
 ### 2026-08-14 v0.8.24 行为约束单一来源（agentRules）
 
 更新内容：
+
 - 新增 `lib/agentRules.js`：`PLOT_FACT_RULE`（剧情/章节事实必须以 read_book 最新返回为准，禁止用历史对话、旧摘要或模型自身判断下结论）、`WRITE_EXECUTION_RULE`（写操作直接执行、不反问）、`CHAPTER_NUM_RULE`（编辑参数传阿拉伯数字）——单一真相，改一处全局生效；
 - router 判断总规则、chatService 路由/执行器 system、tools `read_book` 描述统一引用公共规则；补回执行器 system 丢失的“写操作直接执行”约束；read 任务单去重；
 - `read_book` 描述清理过时表述；维护 prompt 事件规则保守精简（背景/场景语义、拼合模板、≤3 事件等要点全部保留）；
@@ -1559,6 +1587,7 @@ npm start
 ### 2026-08-14 v0.8.25 watch 稳定性 + 启动自愈清理残留 processing
 
 更新内容：
+
 - dev 脚本改 `node --watch-path=src`：只监控源码目录，`data/` 写入不再触发重启——修复 Windows 上 watch 在用户请求处理中重启、掐断请求导致 processing 残留卡死的反复问题；
 - 后端启动时 `recoverStaleProcessing`：扫描所有书把残留 processing 标记为 error（“处理中断（服务重启），请重新发送”），服务重启后自动自愈，无需手动清理；
 - 实测：data 写入不触发重启、src 修改正常重启；残留 processing 自动清理；版本号升级到 0.8.25（根/server/client 同步）；本地提交未推送（按协作规矩）。
@@ -1568,6 +1597,7 @@ npm start
 ### 2026-08-14 v0.8.26 修复：目录切换误报“已保存”
 
 更新内容：
+
 - ChapterEditor 自动保存成功后清除 `dirty`（`dirtyRef` 同步），不再残留未保存标记；
 - 卸载逻辑拆分：有未保存改动才保存（避免重复 PUT），曾编辑过才触发摘要维护，未编辑的章节切换不再弹“已保存”；
 - 前端构建通过；版本号升级到 0.8.26（根/server/client 同步）；本地提交未推送（按协作规矩）。
@@ -1577,6 +1607,7 @@ npm start
 ### 2026-08-14 v0.8.27 路由层规模信任守卫 + 失焦保存静默
 
 更新内容：
+
 - 路由层信任守卫：`runRouter`/`prefilterDraftIntent` 在用户消息未提及 章/字数/每章 时忽略模型虚构/越界的 output，不再误报“超过限定”（0.8.12 守卫扩展到路由层）；
 - ChapterEditor 失焦/切换保存改静默（不弹“已保存”），仅编辑后 1 秒自动保存保留提示，切换目录不再“跳”已保存；
 - 前端构建通过；版本号升级到 0.8.27（根/server/client 同步）；本地提交未推送（按协作规矩）。
@@ -1586,6 +1617,7 @@ npm start
 ### 2026-08-14 v0.8.28 章节保存静默，设置页保留“已保存”提示
 
 更新内容：
+
 - ChapterEditor 移除 savedToast/showSavedToast 及相关渲染，章节保存全程静默；
 - SettingsPage 保存成功保留“已保存”提示，同时保留“保存失败”错误提示；
 - 前端构建通过；版本号升级到 0.8.28（根/server/client 同步）；本地提交未推送（按协作规矩）。
@@ -1595,6 +1627,7 @@ npm start
 ### 2026-08-14 v0.8.29 路由误判修复：剧情衔接质疑不再判成 context_edit
 
 更新内容：
+
 - `context_edit` 触发条件收紧：仅当出现“把背景改成/归入 XX 背景”这类明确背景字段修改指令才调用；剧情衔接、正文内容、章节描写的质疑或修改一律不是 context_edit（即使消息里出现“衔接”“场景”字样）；
 - 修复“凝神即被怎么还突然又去触摸啊”被误判为修改事件背景、模型回“无法越权”的问题；
 - 单元测试 69/69；版本号升级到 0.8.29（根/server/client 同步）；本地提交未推送（按协作规矩）。
@@ -1604,6 +1637,7 @@ npm start
 ### 2026-08-14 v0.8.30 删除 context_edit 意图与 update_events_context 工具（所有痕迹）
 
 更新内容：
+
 - 删除 `update_events_context` 工具（tools.js 定义 + edit 组引用）与 `context_edit` 意图（intentPlans INTENTS/buildPlan、router 描述/target.range、chatService 写意图与确认文案、测试断言），注释同步清理；
 - 事件 context 字段本身保留（发展线数据模型不变），只是不再有“直接改背景”的 AI 工具；数据无 pendingAction 残留；
 - 单元测试 69/69；版本号升级到 0.8.30（根/server/client 同步）；本地提交未推送（按协作规矩）。
@@ -1613,6 +1647,7 @@ npm start
 ### 2026-08-14 v0.8.31 防旧工具名幻觉 + 写操作完成确定性补卡
 
 更新内容：
+
 - agentRules 新增 `TOOL_AVAILABILITY_RULE`（只能使用任务单提供的工具，不得提及不存在的工具名或声称受其限制），注入执行器 system——模型不再复述历史里已删除的 `update_events_context`；
 - chatService 写意图（WRITE_INTENTS）完成后若结果不是卡片，编排层强制 `kind=book` 并按最后一个变更章定位补发卡片，不再依赖模型自觉调用 open_book_widget；
 - 单元测试 69/69；版本号升级到 0.8.31（根/server/client 同步）；本地提交未推送（按协作规矩）。
@@ -1622,6 +1657,7 @@ npm start
 ### 2026-08-14 v0.8.32 标题修复路由 + 改写标题前缀规范化
 
 更新内容：
+
 - 路由：用户指出章节标题缺失前缀/编号格式不对并要求修复 → `batch_edit`（batch_fix_chapter_prefixes），不再判成 read/meta；
 - `rewriteChapter` 标题按当前位置 `ensureChapterTitle` 规范化——修复第15章标题缺“第15章”前缀的数据根因（改写时模型返回无前缀标题覆盖所致），并防止再发生；
 - 单元测试 69/69；版本号升级到 0.8.32（根/server/client 同步）；本地提交未推送（按协作规矩）。
@@ -1631,6 +1667,7 @@ npm start
 ### 2026-08-14 v0.8.33 路由注入工具清单（单一来源）
 
 更新内容：
+
 - tools.js 新增 `toolBrief`：从 `defineReadyTools` 单一来源生成“工具名 + 职责首句”清单；
 - `runRouter` 接收 `tools` 参数并注入提示词，路由按“用户请求匹配哪个工具”判断意图；chatService 调用时传入；
 - 单元测试 69/69；版本号升级到 0.8.33（根/server/client 同步）；本地提交未推送（按协作规矩）。
@@ -1640,6 +1677,7 @@ npm start
 ### 2026-08-14 v0.8.34 并列查看聊天钉底 + 仅改内容才触发维护
 
 更新内容：
+
 - ChatPanel 消息区新增 ResizeObserver：打开并列窗口等布局/尺寸变化时，若用户原本在底部附近则自动重新钉底，最新消息不再被挤走；翻历史时保持不动；
 - ChapterEditor 拆出 `contentEditedRef`：仅正文内容被编辑过才触发卸载时的摘要/事件维护；只改标题只保存、不触发 AI 维护；
 - 前端构建通过；版本号升级到 0.8.34（根/server/client 同步）；本地提交未推送（按协作规矩）。
@@ -1649,6 +1687,7 @@ npm start
 ### 2026-08-14 v0.8.35 并列查看保持滚动相对进度
 
 更新内容：
+
 - 消息区 ResizeObserver 改为“保持滚动相对进度”：记录变化前 scrollTop/可滚动高度比例，布局/尺寸变化后按新高度恢复，内容位置不跳；在底部（比例≈1）自然保持钉底；新消息钉底仍由原 effect 负责；
 - 前端构建通过；版本号升级到 0.8.35（根/server/client 同步）；本地提交未推送（按协作规矩）。
 
@@ -1657,6 +1696,7 @@ npm start
 ### 2026-08-14 v0.8.36 并列窗口改 flex 布局（修复聊天区塌陷/上移）
 
 更新内容：
+
 - `workspace-split` 由 grid 改为 flex：BookSidePanel `flex: 0 0 var(--side-width)`、分隔条 `flex: 0 0 6px`、ChatPanel `flex: 1 min-width:0`；JSX 内联 grid 列改为 CSS 变量 `--side-width`；窄屏（≤900px）改纵向堆叠；
 - 前端构建通过；版本号升级到 0.8.36（根/server/client 同步）；本地提交未推送（按协作规矩）。
 
@@ -1665,6 +1705,7 @@ npm start
 ### 2026-08-14 v0.8.37 撤销 flex 并列布局、移除诊断日志
 
 更新内容：
+
 - 恢复 `workspace-split` grid 布局与 JSX 内联 `gridTemplateColumns`（0.8.36 flex 实测无效，按用户要求回退）；
 - 移除 ChatPanel `[scroll]` 诊断日志（保留相对进度逻辑）；并列查看上移问题暂搁置，留待前端实测/截图定位；
 - 前端构建通过；版本号升级到 0.8.37（根/server/client 同步）；本地提交未推送（按协作规矩）。
@@ -1674,6 +1715,7 @@ npm start
 ### 2026-08-14 v0.8.38 清理并列实验残留
 
 更新内容：
+
 - 删除 ChatPanel 残留的 ResizeObserver/lastRatio 相对进度 effect，滚动逻辑回到并列实验前的原始状态（仅保留新消息钉底）；
 - 前端构建通过；版本号升级到 0.8.38（根/server/client 同步）；本地提交未推送（按协作规矩）。
 
@@ -1682,6 +1724,7 @@ npm start
 ### 2026-08-14 v0.8.39 删除全书概况：只维护章节摘要与事件
 
 更新内容：
+
 - 删除 `book.storySummary` 全部消费点与旧字段（`normalizeBook` delete 清理旧数据残留）：`maintainChapterMeta`/`initializeBookMeta` 去 prose 输出、`writingPrompts` 删 `storySummaryRef`、`bookService` 五处写正文去概况、`chatService` 路由/执行器 system 去概况与“最近章节摘要”、`read_book` 删 `overview` 分支与描述、`refresh_chapter_meta` 措辞更新、`draftService` 注释同步；
 - 删除 `pendingDeletes`（字段 + `deleteChapters` 记录 + 维护消费 + `mergeBookState`/routes 合并行 + 测试断言）；
 - 写正文上下文统一：`creationContextRef`/`rewriteContextRef` 行序统一（上章摘要→上章结尾→下章摘要→下章开头）、关系网 JSON 注入删除、全书进度行移入 `creationContextRef`（新章专属，确定性零 AI 成本）；
@@ -1692,6 +1735,7 @@ npm start
 ### 2026-08-14 v0.8.40 写正文规则：章节收尾 + 脉络扩写
 
 更新内容：
+
 - `writingPrompts` 新增 `CHAPTER_ENDING_RULE`：全书未到收尾阶段时，章节结尾必须是情节进行中的自然节点（停在悬念、转折或未决冲突上），禁止“他知道明天会更好”这类总结式升华收尾；仅全书达目标字数走收束分支时允许完结式收尾；
 - `writingPrompts` 新增 `OUTLINE_EXPANSION_RULE`：当指令或原章节是分条纲要/脉络时，逐条扩展为连贯正文，覆盖所有要点、保持原有顺序、不增删主干情节；
 - 两条规则注入 `writingSystem`（单一来源），create/rewrite/converge/ensure 全部写正文调用生效；
@@ -1702,6 +1746,7 @@ npm start
 ### 2026-08-14 v0.8.41 字数打回重写：不达标走改写语义重写一次（+备注），删除补写
 
 更新内容：
+
 - 写链路重构：新增 `isWithinTarget` / `buildRedoRemark` 纯函数与 `writeBodyWithLengthControl`——首轮（新建/改写）→ 字数不在 80%-120% 打回重写一次（走“改写”语义、保留首轮主要内容）→ 仍不达标接受现状；150% 截断兜底保留；
 - 新增 `remark` 参数（`createChapter` / `rewriteChapter` / `edit_book` schema）：默认空，打回时系统自动填充“上次生成约 X 字，未达目标范围（需 Y-Z 字），严格按该范围重写、保留情节骨架、不要补写/删主线/提前收尾”，与 instruction 一起拼进写正文 prompt；
 - 删除 `convergeChapterLength`（收敛重写）与 `ensureChapterLength`（补写）——补写会“衔接结尾继续书写”导致加戏，按用户决策退役；
@@ -1712,6 +1757,7 @@ npm start
 ### 2026-08-14 v0.8.42 衔接评审任务单 + 前端文案与发展线美化
 
 更新内容：
+
 - `reviewChapter` 重构为“衔接评审”（后端函数，等效连读三章）：输入上章结尾节选 + 本章全文 + 下章开头节选，一次模型调用检查①上章结尾→此章开头衔接②此章结尾→下章开头衔接③上/此/下三章“总结升华鸡汤式”收尾；输出 pass/issues/instruction（instruction 含问题原文摘录 + “仅修复衔接，不得改变情节主线、人物与本章已有内容”），不再直接改正文；
 - 反馈环：`reviewAfterWrite` 开启时 create/rewrite 完成后评审；不通过 → `rewriteChapter` 带 instruction 重写此章一次（`skipReview` 防再次评审循环）；评审失败跳过重写不阻断流程；
 - 前端文案更新：删除章节弹窗去“概况与事件残留”改“删除中间章造成章节内容断层，如非必要请改写而非删除中间章；删除尾章不影响已有章节”；写前确认 tooltip 去“事件背景修改”（context_edit 已删）；
@@ -1723,6 +1769,7 @@ npm start
 ### 2026-08-14 v0.8.43 修复：并列查看聊天上移（阅读锚点修复滚动）
 
 更新内容：
+
 - 浏览器实测复现并列查看聊天上移：并列后聊天区宽度 1100→624px、消息重排 scrollHeight 4429→5419，scrollTop 停在 3827 不动（离底部约 990px），最新消息被挤出视口；
 - 根因：布局变化时无任何代码调整 scrollTop；0.8.34/0.8.35 的 ResizeObserver 方案因并列切换触发 ChatPanel 重挂载（条件分支）、新实例 observe 时已是最终宽度而错过变化事件；
 - 修复：ChatPanel 新增“阅读锚点”（滚动时记录变化前 atBottom/ratio），sideOpen 变化时按锚点修复（在底部钉底、翻历史保持相对进度），ResizeObserver 兜底拖分隔条/内容加载等尺寸变化；
@@ -1733,6 +1780,7 @@ npm start
 ### 2026-08-14 v0.8.44 前端大文件拆子组件（仅结构不动样式）
 
 更新内容：
+
 - `ChatPanel` 拆出 `ChatMessageList`（消息列表渲染：气泡/书籍卡片/日期分隔线，纯展示）+ `ChatDatePicker`（日期下拉选择器，自包含）；修复拆分残留的 `getDateRanges` 引用（白屏）；
 - `BookSidePanel` 拆出 `ChapterDirectory`（章节目录：搜索/章节列表/新建章输入/删除，内部状态自包含，回调上报）；
 - `SettingsPage` 拆出 `TrashPanel`（回收站图书/构思两组）+ `AccountPanel`（修改密码表单，校验逻辑内部化）；
@@ -1743,6 +1791,7 @@ npm start
 ### 2026-08-14 v0.8.45 乐观锁覆盖手动新建章与回收站
 
 更新内容：
+
 - 后端 `routes/books.js`：`summary`（列表/回收站）返回 `version`；`POST /chapters`（手动新建章）、`DELETE /:id`（软删）、`POST /restore`（恢复）、`DELETE /permanent`（彻底删除）统一校验 `version`——不一致返回 409“内容已更新，请刷新后重试”，成功路径递增 version；
 - 前端调用点携带 version：WorkspacePage/MyPage 删除整书、SettingsPage 恢复/彻底删除（新增失败 toast）、BookSidePanel 新建章；
 - API 实测：错误 version 新建章 409、软删 409、恢复未删书 404；单元测试 75/75、`npm run build` 通过；版本号统一 0.8.45；本地提交未推送（按协作规矩）。
@@ -1752,6 +1801,7 @@ npm start
 ### 2026-08-14 v0.8.46 golden eval 扩展（删除/插入/维护场景）
 
 更新内容：
+
 - `goldenScenarios.js` 追加 3 个真实链路场景：删除中间章（"删除第 5 章"→ 章数 -1 + 卡片 + 无错）、中间插入一章（"在第 5 章后插入一章"→ 章数 +1 + 卡片）、主动维护章节元数据（"重新维护第 3 章的摘要和事件"→ refresh_chapter_meta + 摘要存在 + 卡片）；
 - 场景 5→8；真实模型跑通 `GOLDEN EVAL ALL PASS`；版本号统一 0.8.46；本地提交未推送（按协作规矩）。
 
@@ -1760,6 +1810,7 @@ npm start
 ### 2026-08-14 v0.8.47 兼容别名清理（/timeline、field=timeline、timelineOrientation）
 
 更新内容：
+
 - 删除 `routes/books.js` 的 `/books/:id/timeline` 旧路由；`read_book` 只认 `field=development_line`（去掉 `timeline` 兼容分支与描述）；
 - 设置只认 `developmentLineOrientation`：后端路由/服务去掉 `timelineOrientation` 解构与读取兼容；前端 SettingsPage 状态名统一为 `developmentLineOrientation`、BookSidePanel 读取只认新字段；
 - `GET /settings` 改用 `getUserSettings`（不再把存量 `timelineOrientation` 旧字段返回给前端）；
@@ -1770,6 +1821,7 @@ npm start
 ### 2026-08-14 v0.8.48 刷新即中断：processing 残留不重启自愈 + 回复自然化
 
 更新内容：
+
 - 后端 `interruptProcessing` 增强：指定 `bookId` 时即使无进行中任务（任务已结束/泄漏/崩溃残留），也把该书残留 processing 标记为“输出已中断”；
 - 前端 `ChatPanel` 模块级标记：页面刷新（模块重载）后首次加载时若该书存在 processing 自动调 `/chat/abort`——刷新 F5 即中断卡住的思考；切换书不重复中断、不误伤其他标签页正在跑的任务；
 - 轻量去预制味：执行器收尾提示词补“总结自然、像真人对话，避免‘好的/已为你/没问题’等模板化开头”；
@@ -1780,6 +1832,7 @@ npm start
 ### 2026-08-14 v0.8.49 长书大图渲染优化（拖动/缩放 rAF 节流 + 节点 memo）
 
 更新内容：
+
 - `RelationGraph`：节点/边抽成 `memo` 组件（布局为 useMemo、坐标稳定，拖动/缩放只改外层 `<g transform>` → React 跳过子元素重渲染）；拖动 onMove 与滚轮缩放改 rAF 节流（每帧最多一次 setView），unmount 清理；
 - `TimelineView`：拖动 onMove 与滚轮缩放改 rAF 节流（每帧最多一次 onViewChange），unmount 清理；
 - Edge 实测关系网渲染正常（节点/边显示）；单元测试 75/75、build 通过；版本号统一 0.8.49；本地提交未推送（按协作规矩）。
@@ -1789,6 +1842,7 @@ npm start
 ### 2026-08-14 v0.8.50 修复：点发展线白屏（useEffect 未 import）+ 恢复默认纸纹主题
 
 更新内容：
+
 - 0.8.49 在 `TimelineView` 新增 rAF 清理的 `useEffect`，但 import 漏加 `useEffect` → 点击发展线渲染时 `ReferenceError`、React 卸载整树白屏；补上 import 修复；
 - 0.8.47 验证 API 时误将用户设置改为 light/每章 1000 字等，已恢复默认（paper / 每章 2000 字 / 每次 3 章 / 纵向）；
 - headless 实测：发展线正常渲染（《仙路逆鳞》5 组、无 console/pageerror）；版本号统一 0.8.50；本地提交未推送（按协作规矩）。
@@ -1798,6 +1852,7 @@ npm start
 ### 2026-08-15 v0.8.51 内部命名彻底统一：TimelineView → DevelopmentLineView
 
 更新内容：
+
 - 组件文件 `TimelineView.jsx` → `DevelopmentLineView.jsx`，组件名同步；
 - JSX 类名与 `styles.css` 选择器 `timeline-*` → `development-line-*`（39 处）；
 - `BookSidePanel` import/使用与内部 state（`timelineView` → `developmentLineView`）统一；
@@ -1808,6 +1863,7 @@ npm start
 ### 2026-08-15 v0.8.52 内部命名补全（BookSidePanel state/tab/props）
 
 更新内容：
+
 - `BookSidePanel`：state 全部改名（`timeline`→`developmentLine`、`timelineLoading/Error/Tick`→`developmentLine*`）、tab 值 `'timeline'`→`'developmentLine'`、传给 `DevelopmentLineView` 的 props 同步；
 - `DevelopmentLineView`：props `timeline` → `developmentLine`；
 - `client/src` 已无 `timeline` 残留（`server` `normalizeBook` 的旧数据迁移保留）；build 通过；版本号统一 0.8.52；本地提交未推送（按协作规矩）。
@@ -1817,16 +1873,31 @@ npm start
 ### 2026-08-15 v0.8.53 清理：删除旧数据迁移 + TARGET 规划整理
 
 更新内容：
+
 - `normalizeBook` 删除 `timeline → chapter.events` 旧数据迁移逻辑（实测 12 本存量书均无 `timeline` 旧字段，迁移使命完成）；删除对应单元测试；
 - TARGET 后续建议方向整理：移除全部已完成/已取消项，仅保留 provider 正式方案与可选 skill 风格模板；CONTEXT 第 8 节同步。
 
 完成结果：单元测试 74/74；版本号统一 0.8.53；本地提交未推送（按协作规矩）。
 
-### 2026-08-15 v0.8.54 发展线视图布局完善（竖排连线 / 画布对齐；0.8.54-0.8.57 合并为同一个小版本）
+### 2026-08-15 v0.8.54 发展线视图布局完善
 
 更新内容：
+
 - 竖排连线：`.development-line-vertical` 加 `align-items: center`，背景按钮中线对齐、连接线连接中线（首次写入因行尾不匹配未生效，已可靠修复）；
 - 画布对齐（按用户方案分方向）：竖排水平居中+垂直靠上（第一章顶部可见）；横排水平靠左+垂直居中（第一章左侧可见）；
-- 记账（用户 2026-08-15）：provider 正式方案、写作风格模板走 skill 系统 → **v1.0 再做**（TARGET/CONTEXT 同步）。
 
-完成结果：发展线视图竖排连线与横竖排画布对齐符合用户预期；`npm run build` 通过；版本号 0.8.54-0.8.57（本地提交未推送，用户自验收）。
+完成结果：发展线视图竖排连线与横竖排画布对齐符合用户预期；`npm run build` 通过；本地提交未推送，用户自验收）。
+
+
+### 2026-08-15 v0.9.0 重构：删除关系网 + 统一思考开关 + 人物一致性体系
+
+更新内容：
+- **删除关系网（全量）**：后端 `extractRelations`/`sanitizeRelations`/分块增量/`POST /books/:id/relations`/`relations` 数据字段全清（旧数据加载即清除）；前端 `RelationGraph.jsx`/关系网 tab/样式删除；测试同步；
+- **统一思考开关 `thinkingEnabled`**：写正文/执行器回复/评审跟随开关，路由/维护/构思等元数据小调用强制关；评审与构思定稿 maxTokens 4096→16384；兼容旧 `thinkingForWriting`；
+- **方案 A 人物索引 `buildCharacterIndex`**（派生零 AI）：人物 → 出现章节数组 + 各章事件；写正文/评审按位置（新建取最新、插入按位置、改写取该章前）注入相关人物近期动向；
+- **方案 B 人物设定卡 `book.characters`**（按章历史快照）：`maintainChapterMeta` 增量产出（重要角色建档、状态重大变化才追加快照；快照内容按故事类型泛化、含与主角关系——局部关系网）；写正文注入最新快照；前端"人物设定"页（最新快照 + 按章历史，只读派生，用户不直接改卡）；
+- **方案 C 评审扩展**：衔接为主 + 人物合理性辅助（重大矛盾才提示，修为上涨等合理变化不误报）；
+- **方案 D 记账**：主线/伏笔索引（events.foreshadow）暂缓；
+- 单元测试 71/71、前端 build 通过、GOLDEN EVAL ALL PASS（8 真实场景）；版本号统一 0.9.0（根/server/client）；本地提交未推送（按协作规矩）。
+
+完成结果：删除全量关系网，推出局部/确定性/增量的人物一致性体系；统一思考开关一键控制写作/回复/评审质量。

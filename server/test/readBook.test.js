@@ -8,7 +8,6 @@ function sampleBook() {
     title: '测试书',
     outline: '简介',
     targetWords: 0,
-    relations: { nodes: [], edges: [] },
     chapters: [
       {
         id: 'c1',

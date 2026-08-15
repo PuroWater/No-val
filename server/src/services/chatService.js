@@ -160,7 +160,6 @@ function buildDraft(userId) {
     title: '未命名新书',
     outline: '',
     chapters: [],
-    relations: { nodes: [], edges: [] },
     chat: [],
     draft: { concept: '', summary: '' },
     createdAt: now,
@@ -325,7 +324,7 @@ export async function handleMessage(userId, bookId, content, settings = {}, mess
 async function handleDraftMessage(book, content, settings, signal) {
   const conversation = book.chat.map((message) => `${message.role}: ${message.content}`).join('\n');
   // 构思统一走“意愿初筛”：chat = 纯文本回复不调工具（信息不足/无关闲聊/规模越界），confirm = 进入构思整合。
-  const filter = await prefilterDraftIntent({ user: content, history: conversation, signal });
+  const filter = await prefilterDraftIntent({ user: content, history: conversation, signal, thinkingEnabled: settings.thinkingEnabled });
   if (filter.mode === 'chat') {
     replaceProcessing(book, filter.reply || '请继续补充你的小说构思。', 'text');
     return;
@@ -377,6 +376,7 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
       user: content,
       history: buildTodayHistory(book),
       signal,
+      thinkingEnabled: settings.thinkingEnabled,
       tools: toolBrief(book, settings, signal),
       system: [
         '你是小说创作平台的意图路由 Agent。',
@@ -423,6 +423,7 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
     user: content,
     context: buildTodayHistory(book),
     signal,
+    thinkingEnabled: settings.thinkingEnabled,
     plan,
     onStep: (toolName, outcome, args, state) => {
       syncChangeLogFromEffect(changeLog, book, outcome);

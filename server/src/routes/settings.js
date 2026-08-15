@@ -16,7 +16,9 @@ router.get('/', (req, res) => {
 });
 
 router.put('/', (req, res) => {
-  const { theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, thinkingForWriting, developmentLineOrientation, reviewAfterWrite, confirmBeforeWrite } = req.body || {};
+  const { theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, thinkingEnabled, thinkingForWriting, developmentLineOrientation, reviewAfterWrite, confirmBeforeWrite } = req.body || {};
+  // 0.9.0 统一思考开关：新字段 thinkingEnabled，兼容旧 thinkingForWriting
+  const thinking = thinkingEnabled ?? thinkingForWriting;
   const orientation = developmentLineOrientation;
   if (!THEMES.includes(theme) || !FONT_SIZES.includes(fontSize)) {
     return res.status(400).json({ error: '设置值不合法' });
@@ -38,8 +40,8 @@ router.put('/', (req, res) => {
   if (confirmBeforeWrite !== undefined && typeof confirmBeforeWrite !== 'boolean') {
     return res.status(400).json({ error: '写前确认设置不合法' });
   }
-  if (thinkingForWriting !== undefined && typeof thinkingForWriting !== 'boolean') {
-    return res.status(400).json({ error: '正文思考设置不合法' });
+  if (thinking !== undefined && typeof thinking !== 'boolean') {
+    return res.status(400).json({ error: '模型思考设置不合法' });
   }
   if (orientation !== undefined && orientation !== 'vertical' && orientation !== 'horizontal') {
     return res.status(400).json({ error: '发展线方向设置不合法' });
@@ -55,7 +57,7 @@ router.put('/', (req, res) => {
   current.chaptersPerOutput = chapterCount;
   current.chapterWords = wordCount;
   if (enterToSend !== undefined) current.enterToSend = enterToSend;
-  if (thinkingForWriting !== undefined) current.thinkingForWriting = thinkingForWriting;
+  if (thinking !== undefined) current.thinkingEnabled = thinking;
   if (orientation !== undefined) current.developmentLineOrientation = orientation;
   if (reviewAfterWrite !== undefined) current.reviewAfterWrite = reviewAfterWrite;
   if (confirmBeforeWrite !== undefined) current.confirmBeforeWrite = confirmBeforeWrite;

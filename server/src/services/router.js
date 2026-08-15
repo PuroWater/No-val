@@ -6,7 +6,7 @@ import { PLOT_FACT_RULE } from '../lib/agentRules.js';
 
 // ---------- 构思阶段路由（独立于已生成图书） ----------
 
-export async function prefilterDraftIntent({ user, history = '', signal, ask = chatCompletion, maxAttempts = 2, maxTokens = 16384 }) {
+export async function prefilterDraftIntent({ user, history = '', signal, ask = chatCompletion, maxAttempts = 2, maxTokens = 16384, thinkingEnabled = false }) {
   if (/由你|你决定|你发挥|你安排|你定|自由发挥|随便你/.test(String(user || ''))) {
     return { mode: 'confirm', reply: '', output: null };
   }
@@ -24,7 +24,7 @@ export async function prefilterDraftIntent({ user, history = '', signal, ask = c
   let lastError = '';
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     try {
-      const result = await ask({ system: '你是小说构思阶段的意图筛选 Agent。', user: prompt, maxTokens, signal, thinkingType: 'disabled' });
+      const result = await ask({ system: '你是小说构思阶段的意图筛选 Agent。', user: prompt, maxTokens, signal, thinkingType: thinkingEnabled ? 'enabled' : 'disabled' });
       const { output, over } = normalizeOutputScale(result?.output);
       // 信任守卫（与 ready 路径一致）：用户消息未提及 章/字数/每章 时，忽略模型虚构/越界的 output，不报超限
       if (over && /章|字数|每章/.test(String(user || ''))) {
@@ -68,7 +68,8 @@ export async function runRouter({
   system = '你是意图路由 Agent。',
   tools = '',
   maxAttempts = 2,
-  maxTokens = 16384
+  maxTokens = 16384,
+  thinkingEnabled = false
 }) {
   const intentNames = INTENTS.join(' / ');
   const prompt = [
@@ -96,7 +97,7 @@ export async function runRouter({
   let lastError = '';
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     try {
-      const result = await ask({ system, user: prompt, maxTokens, signal, thinkingType: 'disabled' });
+      const result = await ask({ system, user: prompt, maxTokens, signal, thinkingType: thinkingEnabled ? 'enabled' : 'disabled' });
       const mode = String(result?.mode || '');
       if (mode === 'chat') {
         const reply = String(result?.reply || '').trim();

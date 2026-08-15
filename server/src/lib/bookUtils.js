@@ -63,18 +63,13 @@ export function normalizeBook(book) {
   if (!book.status) book.status = book.chapters.length > 0 ? 'ready' : 'draft';
   if (!book.draft) book.draft = { concept: '', summary: '', targetWords: 0 };
   book.draft.targetWords = Number(book.draft.targetWords) || 0;
-  if (!book.relations) book.relations = { nodes: [], edges: [] };
-  if (!Array.isArray(book.relations.nodes)) book.relations.nodes = [];
-  if (!Array.isArray(book.relations.edges)) book.relations.edges = [];
-  // 关系网生成标记：generatedAt 最近生成时间、coveredUpTo 已覆盖章节数、mode 最近一次生成模式。
-  book.relations.generatedAt = book.relations.generatedAt || null;
-  book.relations.coveredUpTo = Number.isFinite(Number(book.relations.coveredUpTo)) && Number(book.relations.coveredUpTo) >= 0
-    ? Math.floor(Number(book.relations.coveredUpTo))
-    : 0;
-  book.relations.mode = book.relations.mode || '';
+  // 关系网已删除（0.9.0）：旧数据残留加载即清除
+  delete book.relations;
   if (!book.deletedAt) book.deletedAt = null;
   // 全书概况已删除（0.8.39）：旧数据残留加载即清除
   delete book.storySummary;
+  // 人物设定卡（0.9.0 方案 B）：按章历史快照 [{ name, history: [{ chapter, snapshot }] }]
+  if (!Array.isArray(book.characters)) book.characters = [];
   if (!book.targetWords) book.targetWords = 0;
   // 乐观锁版本号：仅快写路径递增；AI 慢写不递增，保持“手动保存覆盖 AI 修改”的语义
   if (!Number.isInteger(book.version) || book.version < 0) book.version = 0;

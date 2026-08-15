@@ -19,7 +19,7 @@ router.post('/message', async (req, res) => {
   }
   try {
     const settings = getUserSettings(req.user.id);
-    // 慢写：同一本书的聊天消息进书级队列串行，避免与维护/关系网等写回互相覆盖
+    // 慢写：同一本书的聊天消息进书级队列串行，避免与维护等写回互相覆盖
     const book = await enqueueBookWrite(bookId || `new:${req.user.id}`, () =>
       handleMessage(req.user.id, bookId || '', String(content).trim(), settings, String(messageId || '').trim())
     );
