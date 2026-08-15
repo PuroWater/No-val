@@ -171,7 +171,7 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
       <div className="tabs">
         <button className={tab === 'content' ? 'active' : ''} onClick={() => setTab('content')}>内容</button>
         <button className={tab === 'developmentLine' ? 'active' : ''} onClick={() => setTab('developmentLine')}>发展线</button>
-        <button className={tab === 'characters' ? 'active' : ''} onClick={() => setTab('characters')}>人物设定</button>
+        <button className={tab === 'characters' ? 'active' : ''} onClick={() => setTab('characters')}>人物信息</button>
       </div>
       {tab === 'content' ? (
         <div className="book-content">
@@ -200,7 +200,7 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
       ) : tab === 'characters' ? (
         <div className="relation-tab">
           {(book.characters || []).length === 0 && <p className="muted">暂无角色档案：新建/改写章节时，正文中出现的重要角色会自动建档并记录各章状态变化。</p>}
-          <div className="character-list">{(book.characters || []).map((card) => <CharacterCard key={card.name} card={card} />)}</div>
+          <div className="character-list">{(book.characters || []).map((card) => <CharacterCard key={card.name} card={card} onOpenChapter={(index) => { setTab('content'); setChapterIndex(index); }} />)}</div>
         </div>
       ) : (
         <div className="relation-tab">
