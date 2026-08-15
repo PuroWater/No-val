@@ -5,19 +5,17 @@ import { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 
 
-// tooltip 定位：与设置页/发展线一致（x+14, y+16 右下角跟随），
-// 但聊天菜单位于视口右下角，硬钳制会把 tooltip 钉住——改为边缘放不下时翻到另一侧。
-const TOOLTIP_W = 270;
-const TOOLTIP_H = 48;
-function tooltipPos(x, y) {
+// tooltip 定位：右上角钉在鼠标上（右边缘 = x、顶边缘 = y），内容自动向左/向下生长，
+// 天然适配不同长度；鼠标贴近左边缘时才改为左边缘锚定，避免超出左侧屏幕。
+function tooltipStyle(x, y) {
   const margin = 8;
-  let left = x + 14;
-  let top = y + 16;
-  if (left + TOOLTIP_W > window.innerWidth - margin) left = x - TOOLTIP_W - margin;
-  if (top + TOOLTIP_H > window.innerHeight - margin) top = y - TOOLTIP_H - margin;
-  left = Math.max(margin, left);
-  top = Math.max(margin, top);
-  return { left, top };
+  if (x < 200) {
+    return { left: x + 8, top: Math.max(margin, Math.min(y, window.innerHeight - 48)) };
+  }
+  return {
+    right: Math.max(margin, window.innerWidth - x),
+    top: Math.max(margin, Math.min(y, window.innerHeight - 48))
+  };
 }
 
 export default function ChatModelPicker({ disabled }) {
@@ -100,7 +98,7 @@ export default function ChatModelPicker({ disabled }) {
       {itemTip && (
         <div
           className="chat-date-tooltip"
-          style={tooltipPos(itemTip.x, itemTip.y)}
+          style={tooltipStyle(itemTip.x, itemTip.y)}
         >
           {itemTip.text}
         </div>
