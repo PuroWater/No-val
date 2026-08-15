@@ -198,7 +198,7 @@ export function defineReadyTools(book, settings, signal) {
           return { ok: false, retryable: true, data: '请先调用 read_book(field=chapters) 获取章节目录，chapter 传数字序号（从 1 开始）。' };
         }
         const index = chapter - 1;
-        await maintainChapterMeta(book, { chapterIndex: index, mode: 'modify', signal });
+        await maintainChapterMeta(book, { chapterIndex: index, mode: 'modify', signal, settings });
         return {
           ok: true,
           data: `已重新维护第 ${index + 1} 章《${book.chapters[index].title}》的摘要与事件。`,

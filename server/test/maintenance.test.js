@@ -41,3 +41,41 @@ test('normalizeChapterEvents trims context to two levels', () => {
   ]);
   assert.deepEqual(events[0].context, ['北境矿脉之行', '矿洞深处']);
 });
+
+test('maintainChapterMeta respects maintenance thinking stage and survives missing settings', async () => {
+  // 0.9.3 回归：签名缺少 settings 导致 ReferenceError（0.9.1 遗留），且维护档开关应生效。
+  // 用 stub fetch 走真实 callModel 链，避免真实网络。
+  if (!process.env.DEEPSEEK_API_KEY) process.env.DEEPSEEK_API_KEY = 'test-key';
+  const originalFetch = globalThis.fetch;
+  let capturedThinkingType = null;
+  globalThis.fetch = async (_url, opts) => {
+    const body = JSON.parse(opts.body);
+    if (body.thinking) capturedThinkingType = body.thinking.type;
+    return {
+      ok: true,
+      json: async () => ({
+        choices: [{ message: { content: JSON.stringify({ summary: '本章摘要测试', events: [], characters: [] }) } }]
+      })
+    };
+  };
+  try {
+    const book = {
+      chapters: [
+        { id: 'c1', title: '第1章', content: '正文内容……正文内容……', summary: '', events: [], updatedAt: 'old' },
+        { id: 'c2', title: '第2章', content: '正文内容……正文内容……', summary: '', events: [], updatedAt: 'old' }
+      ],
+      updatedAt: 'old'
+    };
+    // 自定义模式：维护档开思考
+    await maintainChapterMeta(book, { chapterIndex: 0, mode: 'modify', settings: { thinkingMode: 'custom', thinkingStages: { maintenance: true } } });
+    assert.equal(book.chapters[0].summary, '本章摘要测试');
+    assert.equal(capturedThinkingType, 'enabled');
+    // 缺省 settings：维护默认关思考，且不再抛 ReferenceError
+    capturedThinkingType = null;
+    await maintainChapterMeta(book, { chapterIndex: 1, mode: 'modify' });
+    assert.equal(book.chapters[1].summary, '本章摘要测试');
+    assert.equal(capturedThinkingType, 'disabled');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

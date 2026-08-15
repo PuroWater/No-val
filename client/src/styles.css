@@ -1800,3 +1800,33 @@ ne-tooltip-detail {
 .modal-message {
   white-space: pre-line;
 }
+
+/* 0.9.3 模型思考细分（自定义模式展开的子级选项） */
+.thinking-stages {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 2px;
+}
+
+.thinking-stages .stage-row {
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.stage-label {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.stage-buttons {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.thinking-stages .stage-buttons button {
+  padding: 5px 12px;
+}
+
+

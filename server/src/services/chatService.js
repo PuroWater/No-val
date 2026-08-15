@@ -7,6 +7,7 @@ import { buildPlan } from './intentPlans.js';
 import { defineReadyTools, toolBrief } from './tools.js';
 import { defineDraftTools } from './draftTools.js';
 import { PLOT_FACT_RULE, WRITE_EXECUTION_RULE, CHAPTER_NUM_RULE, TOOL_AVAILABILITY_RULE } from '../lib/agentRules.js';
+import { resolveThinking } from '../lib/thinking.js';
 
 const activeJobs = new Map();
 
@@ -324,7 +325,7 @@ export async function handleMessage(userId, bookId, content, settings = {}, mess
 async function handleDraftMessage(book, content, settings, signal) {
   const conversation = book.chat.map((message) => `${message.role}: ${message.content}`).join('\n');
   // 构思统一走“意愿初筛”：chat = 纯文本回复不调工具（信息不足/无关闲聊/规模越界），confirm = 进入构思整合。
-  const filter = await prefilterDraftIntent({ user: content, history: conversation, signal, thinkingEnabled: settings.thinkingEnabled, defaults: { chaptersPerOutput: settings.chaptersPerOutput, chapterWords: settings.chapterWords } });
+  const filter = await prefilterDraftIntent({ user: content, history: conversation, signal, thinkingEnabled: resolveThinking(settings, 'routing'), defaults: { chaptersPerOutput: settings.chaptersPerOutput, chapterWords: settings.chapterWords } });
   if (filter.mode === 'chat') {
     replaceProcessing(book, filter.reply || '请继续补充你的小说构思。', 'text');
     return;
@@ -350,6 +351,7 @@ async function handleDraftMessage(book, content, settings, signal) {
     tools: defineDraftTools(book),
     user: conversation,
     signal,
+    thinkingEnabled: resolveThinking(settings, 'execution'),
     plan: { termination: { kind: 'single' } }
   });
   if (decision.tool === 'confirm_draft' && decision.outcome?.data) {
@@ -376,7 +378,7 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
       user: content,
       history: buildTodayHistory(book),
       signal,
-      thinkingEnabled: settings.thinkingEnabled,
+      thinkingEnabled: resolveThinking(settings, 'routing'),
       defaults: { chaptersPerOutput: settings.chaptersPerOutput, chapterWords: settings.chapterWords },
       tools: toolBrief(book, settings, signal),
       system: [
@@ -429,7 +431,7 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
     user: content,
     context: buildTodayHistory(book),
     signal,
-    thinkingEnabled: settings.thinkingEnabled,
+    thinkingEnabled: resolveThinking(settings, 'execution'),
     plan,
     onStep: (toolName, outcome, args, state) => {
       syncChangeLogFromEffect(changeLog, book, outcome);

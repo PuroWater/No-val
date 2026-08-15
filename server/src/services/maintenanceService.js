@@ -2,6 +2,7 @@
 // 输入始终与“变更量”成正比（变更章 + 前后章摘要 + 现有事件），不携带全书 events 列表，长书安全。
 // 维护调用关闭思考模式（thinking=disabled）以换取速度。
 import { callModel } from '../lib/modelCall.js';
+import { resolveThinking } from '../lib/thinking.js';
 
 function eventId() {
   return `t_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
@@ -75,7 +76,7 @@ function chapterEventsText(chapter) {
 
 // 单章维护：一次关思考调用产出 新 summary + events，原子写入（0.8.39 起不再维护全书概况）。
 // mode: 'new'（新建章）| 'modify'（改写章）。
-export async function maintainChapterMeta(book, { chapterIndex, mode = 'modify', signal } = {}) {
+export async function maintainChapterMeta(book, { chapterIndex, mode = 'modify', signal, settings = {} } = {}) {
   const index = Number(chapterIndex);
   const chapter = book.chapters[index];
   if (!chapter) throw new Error('章节不存在');
@@ -111,7 +112,7 @@ export async function maintainChapterMeta(book, { chapterIndex, mode = 'modify',
       user,
       temperature: 0.4,
       maxTokens: 16384,
-      thinkingType: settings.thinkingEnabled ? 'enabled' : 'disabled'
+      thinkingType: resolveThinking(settings, 'maintenance') ? 'enabled' : 'disabled'
     }),
     (r) => r && typeof r.summary === 'string' && r.summary.trim()
   );
@@ -138,7 +139,7 @@ export async function maintainChapterMeta(book, { chapterIndex, mode = 'modify',
 
 // 新书一次性初始化：输入各章标题+摘要（O(章数)，≤5 章），输出每章 events（0.8.39 起不再生成全书概况）。
 // 构思生成独立通道专用，与已生成图书的单章维护内核分离。
-export async function initializeBookMeta(book, signal) {
+export async function initializeBookMeta(book, signal, settings = {}) {
   const chapters = (book.chapters || [])
     .map((chapter, index) => `第 ${index + 1} 章《${chapter.title}》：${chapter.summary || '（无摘要）'}`)
     .join('\n');
@@ -149,7 +150,7 @@ export async function initializeBookMeta(book, signal) {
       user: `根据各章摘要生成每章结构化事件。\n章节：\n${chapters}\n返回 JSON：{"chapters":[{"chapterIndex":0,"events":[{"event":"事件","characters":["人物"],"time":"文中时间点（可选）","context":["大背景","场景"]}]}]}。事件规则：事件必须能在对应章节摘要中找到依据；每章只输出最重要的 3 个事件（最多 3 个，按重要性排序）；每条 event 正文不超过 50 字（简洁概括事件本身）。背景规则：context[0] 是本章主线背景/阶段（如"家族""北境矿脉之行"），一章只允许一个，参考前后章保持一致；context[1] 是场景：事件实际发生的地点/推进节点，**不必在地理上属于 context[0]**，并体现剧情推进；当事件地点离开大背景地理范围时，**优先用「大背景/地点」拼合模板**（如北境主线章回到家族 → "家族/藏书阁"），地点在大背景内时直接写地点；大背景下场景最多 3 个；context 只允许两层（大背景 + 场景），不要第三层；每条事件都必须给出 context（至少 1 层），不得返回空数组。`,
       temperature: 0.4,
       maxTokens: 16384,
-      thinkingType: settings.thinkingEnabled ? 'enabled' : 'disabled'
+      thinkingType: resolveThinking(settings, 'maintenance') ? 'enabled' : 'disabled'
     }),
     (r) => Array.isArray(r?.chapters)
   );

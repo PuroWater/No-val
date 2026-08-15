@@ -74,7 +74,11 @@ export async function chat({
   }
   if (!response.ok) {
     const detail = await response.text().catch(() => '');
-    throw new Error(`模型调用失败 (${response.status}) ${detail}`.trim());
+    // 0.9.3：模型不支持思考/关思考的能力类错误，在聊天报错里给出可操作提示（不做自动重试，用户自行调整开关）
+    const raw = String(detail).toLowerCase();
+    const capabilityIssue = (response.status === 400 || response.status === 422) && /thinking|reasoning/.test(raw);
+    const hint = capabilityIssue ? '。当前模型可能不支持思考或关思考，请到设置页调整“模型思考”开关' : '';
+    throw new Error(`模型调用失败 (${response.status}) ${detail}${hint}`.trim());
   }
   const data = await response.json();
   const message = data.choices?.[0]?.message || {};

@@ -19,6 +19,14 @@ const SIZES = [
   { value: 'large', label: '大' }
 ];
 
+const THINKING_STAGE_ITEMS = [
+  { key: 'routing', label: '路由/构思', desc: '开启后决策更精细，且个别情况可能偶发误判，需重发一次。默认建议关。' },
+  { key: 'execution', label: '执行', desc: '开启后工具决策先思考，更严谨，但更慢。' },
+  { key: 'writing', label: '正文', desc: '开启后正文生成质量更高，但更慢。' },
+  { key: 'review', label: '审校', desc: '开启后评审更准，但更慢。' },
+  { key: 'maintenance', label: '维护', desc: '开启后章节维护更精细，但更慢。默认建议关。' }
+];
+
 export default function SettingsPage() {
   const [activeSetting, setActiveSetting] = useState('general');
   const [theme, setTheme] = useState('paper');
@@ -26,8 +34,10 @@ export default function SettingsPage() {
   const [chaptersPerOutput, setChaptersPerOutput] = useState(3);
   const [chapterWords, setChapterWords] = useState(2000);
   const [enterToSend, setEnterToSend] = useState(true);
-  const [thinkingEnabled, setThinkingEnabled] = useState(false);
-  const [thinkingTip, setThinkingTip] = useState(null);
+  const [thinkingMode, setThinkingMode] = useState('off');
+  const [thinkingStages, setThinkingStages] = useState({ routing: false, execution: false, writing: false, review: false, maintenance: false });
+  const [stageTip, setStageTip] = useState(null);
+  const [customTip, setCustomTip] = useState(null);
   const [developmentLineOrientation, setDevelopmentLineOrientation] = useState('vertical');
   const [reviewAfterWrite, setReviewAfterWrite] = useState(false);
   const [confirmBeforeWrite, setConfirmBeforeWrite] = useState(false);
@@ -58,7 +68,14 @@ export default function SettingsPage() {
       setChaptersPerOutput(Number(data.settings.chaptersPerOutput) || 3);
       setChapterWords(Number(data.settings.chapterWords) || 2000);
       setEnterToSend(data.settings.enterToSend !== false);
-      setThinkingEnabled(data.settings.thinkingEnabled === true);
+      setThinkingMode(['off', 'on', 'custom'].includes(data.settings.thinkingMode) ? data.settings.thinkingMode : (data.settings.thinkingEnabled === true ? 'on' : 'off'));
+      setThinkingStages({
+        routing: data.settings.thinkingStages?.routing === true,
+        execution: data.settings.thinkingStages?.execution === true,
+        writing: data.settings.thinkingStages?.writing === true,
+        review: data.settings.thinkingStages?.review === true,
+        maintenance: data.settings.thinkingStages?.maintenance === true
+      });
       setDevelopmentLineOrientation(data.settings.developmentLineOrientation === 'horizontal' ? 'horizontal' : 'vertical');
       setReviewAfterWrite(data.settings.reviewAfterWrite === true);
       setConfirmBeforeWrite(data.settings.confirmBeforeWrite === true);
@@ -67,7 +84,7 @@ export default function SettingsPage() {
     loadTrash();
   }, []);
 
-  async function save(nextTheme, nextSize, nextChapters, nextWords, nextEnter, nextOrientation, nextThinking, nextReview, nextConfirm) {
+  async function save(nextTheme, nextSize, nextChapters, nextWords, nextEnter, nextOrientation, nextThinkingMode, nextThinkingStages, nextReview, nextConfirm) {
     const confirm = nextConfirm === undefined ? confirmBeforeWrite : nextConfirm;
     try {
       const data = await api('/settings', {
@@ -79,7 +96,8 @@ export default function SettingsPage() {
           chapterWords: nextWords,
           enterToSend: nextEnter,
           developmentLineOrientation: nextOrientation,
-          thinkingEnabled: nextThinking,
+          thinkingMode: nextThinkingMode,
+          thinkingStages: nextThinkingStages || thinkingStages,
           reviewAfterWrite: nextReview,
           confirmBeforeWrite: confirm
         })
@@ -89,6 +107,12 @@ export default function SettingsPage() {
     } catch (err) {
       pushToast(`保存失败：${err.message}`, true);
     }
+  }
+
+  function setStageThinking(key, value) {
+    const next = { ...thinkingStages, [key]: value };
+    setThinkingStages(next);
+    save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, 'custom', next, reviewAfterWrite);
   }
 
   async function restore(book) {
@@ -151,7 +175,7 @@ export default function SettingsPage() {
                 <span>背景风格</span>
                 <div className="option-row">
                   {THEMES.map((item) => (
-                    <button key={item.value} className={theme === item.value ? 'active' : ''} onClick={() => { setTheme(item.value); save(item.value, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, thinkingEnabled, reviewAfterWrite); }}>
+                    <button key={item.value} className={theme === item.value ? 'active' : ''} onClick={() => { setTheme(item.value); save(item.value, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, thinkingMode, thinkingStages, reviewAfterWrite); }}>
                       {item.label}
                     </button>
                   ))}
@@ -161,7 +185,7 @@ export default function SettingsPage() {
                 <span>字号</span>
                 <div className="option-row">
                   {SIZES.map((item) => (
-                    <button key={item.value} className={fontSize === item.value ? 'active' : ''} onClick={() => { setFontSize(item.value); save(theme, item.value, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, thinkingEnabled, reviewAfterWrite); }}>
+                    <button key={item.value} className={fontSize === item.value ? 'active' : ''} onClick={() => { setFontSize(item.value); save(theme, item.value, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, thinkingMode, thinkingStages, reviewAfterWrite); }}>
                       {item.label}
                     </button>
                   ))}
@@ -172,13 +196,13 @@ export default function SettingsPage() {
                 <div className="option-row">
                   <button
                     className={developmentLineOrientation === 'vertical' ? 'active' : ''}
-                    onClick={() => { setDevelopmentLineOrientation('vertical'); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, 'vertical', thinkingEnabled, reviewAfterWrite); }}
+                    onClick={() => { setDevelopmentLineOrientation('vertical'); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, 'vertical', thinkingMode, thinkingStages, reviewAfterWrite); }}
                   >
                     纵向
                   </button>
                   <button
                     className={developmentLineOrientation === 'horizontal' ? 'active' : ''}
-                    onClick={() => { setDevelopmentLineOrientation('horizontal'); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, 'horizontal', thinkingEnabled, reviewAfterWrite); }}
+                    onClick={() => { setDevelopmentLineOrientation('horizontal'); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, 'horizontal', thinkingMode, thinkingStages, reviewAfterWrite); }}
                   >
                     横向
                   </button>
@@ -200,7 +224,7 @@ export default function SettingsPage() {
                   onBlur={() => {
                     const value = Math.min(5, Math.max(1, Math.round(Number(chaptersPerOutput) || 1)));
                     setChaptersPerOutput(value);
-                    save(theme, fontSize, value, chapterWords, enterToSend, developmentLineOrientation, thinkingEnabled, reviewAfterWrite);
+                    save(theme, fontSize, value, chapterWords, enterToSend, developmentLineOrientation, thinkingMode, thinkingStages, reviewAfterWrite);
                   }}
                 />
               </div>
@@ -217,7 +241,7 @@ export default function SettingsPage() {
                   onBlur={() => {
                     const value = Math.min(10000, Math.max(1000, Math.round(Number(chapterWords) || 1000)));
                     setChapterWords(value);
-                    save(theme, fontSize, chaptersPerOutput, value, enterToSend, developmentLineOrientation, thinkingEnabled, reviewAfterWrite);
+                    save(theme, fontSize, chaptersPerOutput, value, enterToSend, developmentLineOrientation, thinkingMode, thinkingStages, reviewAfterWrite);
                   }}
                 />
               </div>
@@ -226,13 +250,13 @@ export default function SettingsPage() {
                 <div className="option-row">
                   <button
                     className={enterToSend ? 'active' : ''}
-                    onClick={() => { setEnterToSend(true); save(theme, fontSize, chaptersPerOutput, chapterWords, true, developmentLineOrientation, thinkingEnabled, reviewAfterWrite); }}
+                    onClick={() => { setEnterToSend(true); save(theme, fontSize, chaptersPerOutput, chapterWords, true, developmentLineOrientation, thinkingMode, thinkingStages, reviewAfterWrite); }}
                   >
                     Enter
                   </button>
                   <button
                     className={!enterToSend ? 'active' : ''}
-                    onClick={() => { setEnterToSend(false); save(theme, fontSize, chaptersPerOutput, chapterWords, false, developmentLineOrientation, thinkingEnabled, reviewAfterWrite); }}
+                    onClick={() => { setEnterToSend(false); save(theme, fontSize, chaptersPerOutput, chapterWords, false, developmentLineOrientation, thinkingMode, thinkingStages, reviewAfterWrite); }}
                   >
                     Ctrl+Enter
                   </button>
@@ -243,13 +267,13 @@ export default function SettingsPage() {
                 <div className="option-row">
                   <button
                     className={!confirmBeforeWrite ? 'active' : ''}
-                    onClick={() => { setConfirmBeforeWrite(false); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, thinkingEnabled, reviewAfterWrite, false); }}
+                    onClick={() => { setConfirmBeforeWrite(false); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, thinkingMode, thinkingStages, reviewAfterWrite, false); }}
                   >
                     关闭
                   </button>
                   <button
                     className={confirmBeforeWrite ? 'active' : ''}
-                    onClick={() => { setConfirmBeforeWrite(true); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, thinkingEnabled, reviewAfterWrite, true); }}
+                    onClick={() => { setConfirmBeforeWrite(true); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, thinkingMode, thinkingStages, reviewAfterWrite, true); }}
                     onMouseEnter={(event) => setConfirmTip({ x: event.clientX, y: event.clientY })}
                     onMouseMove={(event) => setConfirmTip({ x: event.clientX, y: event.clientY })}
                     onMouseLeave={() => setConfirmTip(null)}
@@ -273,45 +297,94 @@ export default function SettingsPage() {
                 <span>模型思考</span>
                 <div className="option-row">
                   <button
-                    className={!thinkingEnabled ? 'active' : ''}
-                    onClick={() => { setThinkingEnabled(false); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, false, reviewAfterWrite); }}
+                    className={thinkingMode === 'off' ? 'active' : ''}
+                    onClick={() => { setThinkingMode('off'); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, 'off', thinkingStages, reviewAfterWrite); }}
                   >
                     关闭
                   </button>
                   <button
-                    className={thinkingEnabled ? 'active' : ''}
-                    onClick={() => { setThinkingEnabled(true); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, true, reviewAfterWrite); }}
-                    onMouseEnter={(event) => setThinkingTip({ x: event.clientX, y: event.clientY })}
-                    onMouseMove={(event) => setThinkingTip({ x: event.clientX, y: event.clientY })}
-                    onMouseLeave={() => setThinkingTip(null)}
+                    className={thinkingMode === 'on' ? 'active' : ''}
+                    onClick={() => { setThinkingMode('on'); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, 'on', thinkingStages, reviewAfterWrite); }}
                   >
                     开启
                   </button>
-                  {thinkingTip && (
+                  <button
+                    className={thinkingMode === 'custom' ? 'active' : ''}
+                    onClick={() => { setThinkingMode('custom'); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, 'custom', thinkingStages, reviewAfterWrite); }}
+                    onMouseEnter={(event) => setCustomTip({ x: event.clientX, y: event.clientY })}
+                    onMouseMove={(event) => setCustomTip({ x: event.clientX, y: event.clientY })}
+                    onMouseLeave={() => setCustomTip(null)}
+                  >
+                    自定义
+                  </button>
+                  {customTip && (
                     <div
                       className="chat-date-tooltip"
                       style={{
-                        left: Math.min(thinkingTip.x + 14, window.innerWidth - 270),
-                        top: Math.min(thinkingTip.y + 16, window.innerHeight - 90)
+                        left: Math.min(customTip.x + 14, window.innerWidth - 270),
+                        top: Math.min(customTip.y + 16, window.innerHeight - 90)
                       }}
                     >
-                      一键开关模型思考：开启后写正文、回复、评审等调用都会先深度思考再输出，质量更高但明显更慢；个别情况下可能需重新发送一次。关闭则全部直接输出更快。默认关闭。
+                      鼠标悬停可查看各项影响
                     </div>
                   )}
+
                 </div>
+                {thinkingMode === 'custom' && (
+                  <div className="thinking-stages">
+                    {THINKING_STAGE_ITEMS.map((item) => (
+                      <div className="option-row stage-row" key={item.key}>
+                        <span
+                          className="stage-label"
+                          onMouseEnter={(event) => setStageTip({ x: event.clientX, y: event.clientY, text: item.desc })}
+                          onMouseMove={(event) => setStageTip({ x: event.clientX, y: event.clientY, text: item.desc })}
+                          onMouseLeave={() => setStageTip(null)}
+                        >
+                          {item.label}
+                        </span>
+                        <span className="stage-buttons">
+                          <button
+                            className={!thinkingStages[item.key] ? 'active' : ''}
+                            onClick={() => setStageThinking(item.key, false)}
+                          >
+                            关
+                          </button>
+                          <button
+                            className={thinkingStages[item.key] ? 'active' : ''}
+                            onClick={() => setStageThinking(item.key, true)}
+                          >
+                            开
+                          </button>
+                        </span>
+                      </div>
+                    ))}
+                    {stageTip && (
+                      <div
+                        className="chat-date-tooltip"
+                        style={{
+                          left: Math.min(stageTip.x + 14, window.innerWidth - 270),
+                          top: Math.min(stageTip.y + 16, window.innerHeight - 90)
+                        }}
+                      >
+                        {stageTip.text}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
+
               <div className="settings-group">
                 <span>生成后审校</span>
                 <div className="option-row">
                   <button
                     className={!reviewAfterWrite ? 'active' : ''}
-                    onClick={() => { setReviewAfterWrite(false); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, thinkingEnabled, false); }}
+                    onClick={() => { setReviewAfterWrite(false); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, thinkingMode, thinkingStages, false); }}
                   >
                     关闭
                   </button>
                   <button
                     className={reviewAfterWrite ? 'active' : ''}
-                    onClick={() => { setReviewAfterWrite(true); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, thinkingEnabled, true); }}
+                    onClick={() => { setReviewAfterWrite(true); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, thinkingMode, thinkingStages, true); }}
                     onMouseEnter={(event) => setReviewTip({ x: event.clientX, y: event.clientY })}
                     onMouseMove={(event) => setReviewTip({ x: event.clientX, y: event.clientY })}
                     onMouseLeave={() => setReviewTip(null)}

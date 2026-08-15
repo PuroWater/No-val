@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { getUserSettings } from '../services/settingsService.js';
 import { readBookById, listBooks, saveBook, deleteBookFile } from '../lib/store.js';
 import { ensureChapterTitle } from '../lib/chapterUtils.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -64,7 +65,7 @@ router.post('/:id/chapters/:chapterId/summary', (req, res) => {
     try {
       const index = book.chapters.findIndex((item) => item.id === req.params.chapterId);
       if (index === -1) return res.status(404).json({ error: '章节不存在' });
-      await maintainChapterMeta(book, { chapterIndex: index, mode: 'modify' });
+      await maintainChapterMeta(book, { chapterIndex: index, mode: 'modify', settings: getUserSettings(req.user.id) });
       const saved = updateBook(req.user.id, book.id, (latest) => {
         const chapter = latest.chapters.find((item) => item.id === req.params.chapterId);
         const stale = book.chapters.find((item) => item.id === req.params.chapterId);
