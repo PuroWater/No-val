@@ -303,7 +303,7 @@ const SETTING_TITLES = { general: '常规设置', appearance: '外观设置', pr
                 </div>
               </div>
               <div className="settings-group">
-                <span>生成后审校</span>
+                <span>写后审校</span>
                 <div className="option-row">
                   <button
                     className={!reviewAfterWrite ? 'active' : ''}
