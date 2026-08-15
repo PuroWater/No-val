@@ -1866,4 +1866,80 @@ ne-tooltip-detail {
   padding: 5px 12px;
 }
 
+/* 0.9.6 模型服务管理 */
+.provider-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 8px 12px;
+}
 
+.provider-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.provider-name-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.provider-active {
+  font-size: 11px;
+  color: #ffffff;
+  background: var(--accent);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
+.provider-meta {
+  font-size: 12px;
+  color: var(--muted);
+  word-break: break-all;
+}
+
+.provider-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.provider-form {
+  margin-top: 16px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.form-grid input,
+.form-grid select {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+}
+
+.option-row button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

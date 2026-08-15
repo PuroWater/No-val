@@ -9,6 +9,7 @@ import authRouter from './routes/auth.js';
 import booksRouter from './routes/books.js';
 import chatRouter from './routes/chat.js';
 import settingsRouter from './routes/settings.js';
+import providersRouter from './routes/providers.js';
 import { recoverStaleProcessing } from './services/chatService.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -22,6 +23,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/books', booksRouter);
 app.use('/api/chat', chatRouter);
 app.use('/api/settings', settingsRouter);
+app.use('/api/providers', providersRouter);
 
 const CLIENT_DIST = path.join(ROOT_DIR, 'client', 'dist');
 app.use(express.static(CLIENT_DIST));

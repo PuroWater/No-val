@@ -2772,6 +2772,21 @@ Novel Agent/
 完成内容：
 - 事件瘦身全链路落地；单元测试 82/82、前端 build 通过；版本号统一 0.9.5（根/server/client）；本地提交未推送。
 
+### 2026-08-15 v0.9.6 模型服务自定义（provider 正式方案）
+
+待更新说明：
+- provider 只有环境变量+deepseek 单实现，无法在设置页接入 OpenAI/Ollama/中转/本地模型；MODEL_PROVIDER 为开发期缓兵之计。
+
+待更新功能：
+- provider 配置迁入用户数据 data/providers.json（设置页"模型服务"可增删改/设当前/测试连接），无文件时用环境变量推导默认 deepseek（兼容现有部署，不自动落盘）；
+- 统一 openai-compatible 适配器（覆盖 DeepSeek/OpenAI/Ollama/各类中转与本地模型）：thinkingStyle（deepseek 的 thinking 字段 / openai 的 reasoning_effort / none 不支持思考）自适应；返回 content/reasoningContent/toolCalls/usage/finishReason；能力错误（400/422 + thinking/reasoning）结构化提示；
+- 能力声明 capabilities（supportsThinking 等）：设置页据此禁用/提示思考开关，请求层按能力自动适配；
+- 路由 /api/providers：GET（apiKey 脱敏）/ POST / PUT / DELETE / activate / test（测试连接）；
+- 删除旧 deepseek.js 与 modelConfig.js（被 openai-compatible + providersStore 取代）；apiKey 明文存 data/providers.json（本地单机，文档注明）。
+
+完成内容：
+- 后端数据层+适配器+路由+modelClient 重构、前端"模型服务"管理 UI + 思考开关能力联动；单元测试 95/95、前端 build 通过；golden eval 8/8（deepseek 经新适配器全链回归）+ provider 路由真机冒烟（GET/测试连接/POST/PUT/激活/删除）通过；版本号统一 0.9.6（根/server/client）；功能分支 codex/0.9.6-provider-custom，本地提交未推送。
+
 ### 后续建议方向（2026-08-15 更新）
 
 - **v1.0 再做（记账，用户 2026-08-15 定）**：

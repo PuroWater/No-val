@@ -5,6 +5,7 @@ import { normalizeBook } from './bookUtils.js';
 
 export const USERS_FILE = path.join(DATA_DIR, 'users.json');
 export const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
+export const PROVIDERS_FILE = path.join(DATA_DIR, 'providers.json');
 // 书级单文件存储：已生成图书与构思分目录，每本一个 <bookId>.json；软删归档为 <bookId>.archived.json
 export const BOOKS_DIR = path.join(DATA_DIR, 'books');
 export const DRAFTS_DIR = path.join(DATA_DIR, 'drafts');

@@ -4,6 +4,7 @@ import ConfirmModal from '../components/ConfirmModal.jsx';
 import { applySettings } from '../components/SettingsApplier.jsx';
 import TrashPanel from '../components/TrashPanel.jsx';
 import AccountPanel from '../components/AccountPanel.jsx';
+import ProvidersPanel from '../components/ProvidersPanel.jsx';
 
 const THEMES = [
   { value: 'system', label: '跟随系统' },
@@ -47,6 +48,8 @@ export default function SettingsPage() {
   const [toasts, setToasts] = useState([]);
   const toastIdRef = useRef(0);
   const [permanentTarget, setPermanentTarget] = useState(null);
+  const [providerThinkingSupported, setProviderThinkingSupported] = useState(true);
+  const [providerThinkingMandatory, setProviderThinkingMandatory] = useState(false);
 
   async function loadTrash() {
     const data = await api('/books/trash');
@@ -82,6 +85,12 @@ export default function SettingsPage() {
       applySettings(data.settings);
     });
     loadTrash();
+    api('/providers')
+      .then((data) => {
+        setProviderThinkingSupported(data.activeProvider?.capabilities?.supportsThinking !== false);
+        setProviderThinkingMandatory(data.activeProvider?.capabilities?.thinkingMandatory === true);
+      })
+      .catch(() => {});
   }, []);
 
   async function save(nextTheme, nextSize, nextChapters, nextWords, nextEnter, nextOrientation, nextThinkingMode, nextThinkingStages, nextReview, nextConfirm) {
@@ -154,6 +163,12 @@ export default function SettingsPage() {
             onClick={() => setActiveSetting('appearance')}
           >
             外观
+          </button>
+          <button
+            className={`directory-item ${activeSetting === 'providers' ? 'active' : ''}`}
+            onClick={() => setActiveSetting('providers')}
+          >
+            模型服务
           </button>
           <button
             className={`directory-item ${activeSetting === 'trash' ? 'active' : ''}`}
@@ -296,20 +311,25 @@ export default function SettingsPage() {
               <div className="settings-group">
                 <span>模型思考</span>
                 <div className="option-row">
+                  {!providerThinkingSupported && <p className="muted">当前模型不支持思考，思考开关已禁用（可在“模型服务”中切换）。</p>}
+                  {providerThinkingSupported && providerThinkingMandatory && <p className="muted">当前模型强制思考，思考开关不可关闭（可在“模型服务”中切换）。</p>}
                   <button
                     className={thinkingMode === 'off' ? 'active' : ''}
+                    disabled={!providerThinkingSupported || providerThinkingMandatory}
                     onClick={() => { setThinkingMode('off'); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, 'off', thinkingStages, reviewAfterWrite); }}
                   >
                     关闭
                   </button>
                   <button
                     className={thinkingMode === 'on' ? 'active' : ''}
+                    disabled={!providerThinkingSupported || providerThinkingMandatory}
                     onClick={() => { setThinkingMode('on'); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, 'on', thinkingStages, reviewAfterWrite); }}
                   >
                     开启
                   </button>
                   <button
                     className={thinkingMode === 'custom' ? 'active' : ''}
+                    disabled={!providerThinkingSupported || providerThinkingMandatory}
                     onClick={() => { setThinkingMode('custom'); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, 'custom', thinkingStages, reviewAfterWrite); }}
                     onMouseEnter={(event) => setCustomTip({ x: event.clientX, y: event.clientY })}
                     onMouseMove={(event) => setCustomTip({ x: event.clientX, y: event.clientY })}
@@ -405,6 +425,9 @@ export default function SettingsPage() {
                 </div>
               </div>
             </>
+          )}
+          {activeSetting === 'providers' && (
+            <ProvidersPanel onThinkingSupportChange={setProviderThinkingSupported} onThinkingMandatoryChange={setProviderThinkingMandatory} />
           )}
           {activeSetting === 'trash' && (
             <TrashPanel
