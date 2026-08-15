@@ -1,7 +1,7 @@
 // 模型服务管理（0.9.6 v2）：模型条目列表 + 整页弹窗新增/编辑。
 // 前端只做：选厂家 → 自动填默认 URL/模型列表 → 填 Key → 获取模型列表 → 选模型 → 保存。
 // 思考参数/能力由后端按厂家预设 + 所选模型自动推导，前端不提供思考开关。
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 
 const REMOTE_FETCH_VENDORS = ['anthropic'];
@@ -19,8 +19,10 @@ export default function ProvidersPanel() {
   const [models, setModels] = useState([]); // 当前可选项：预设 + 远端
   const [fetching, setFetching] = useState(false);
   const [formError, setFormError] = useState('');
-  const [testState, setTestState] = useState({ id: '', text: '' });
+  const [testingId, setTestingId] = useState('');
+  const [testTip, setTestTip] = useState(null); // 测试结果悬浮提示 { x, y, text }
   const [error, setError] = useState('');
+  const tipTimerRef = useRef(null);
 
   async function load() {
     const data = await api('/providers');
@@ -31,7 +33,18 @@ export default function ProvidersPanel() {
 
   useEffect(() => {
     load().catch((err) => setError(err.message));
+    return () => clearTimeout(tipTimerRef.current);
   }, []);
+
+  function showTestTip(text, x, y) {
+    setTestTip({
+      left: Math.max(8, Math.min(x + 14, window.innerWidth - 270)),
+      top: Math.max(8, Math.min(y + 16, window.innerHeight - 90)),
+      text
+    });
+    clearTimeout(tipTimerRef.current);
+    tipTimerRef.current = setTimeout(() => setTestTip(null), 4000);
+  }
 
   function applyVendor(vendorKey) {
     const preset = presets[vendorKey] || {};
@@ -133,13 +146,19 @@ export default function ProvidersPanel() {
     }
   }
 
-  async function test(entry) {
-    setTestState({ id: entry.id, text: '' });
+  async function test(entry, event) {
+    setTestingId(entry.id);
+    setTestTip(null);
+    const rect = event?.currentTarget?.getBoundingClientRect?.();
+    const x = rect ? rect.left : window.innerWidth / 2;
+    const y = rect ? rect.top : window.innerHeight / 2;
     try {
       const data = await api('/providers/' + entry.id + '/test', { method: 'POST' });
-      setTestState({ id: entry.id, text: '连接成功：' + data.model + ' 回复「' + (data.reply || '') + '」' });
+      showTestTip('连接成功：' + data.model + ' 回复「' + (data.reply || '') + '」', x, y);
     } catch (err) {
-      setTestState({ id: entry.id, text: '连接失败：' + err.message });
+      showTestTip(err.message, x, y);
+    } finally {
+      setTestingId('');
     }
   }
 
@@ -175,15 +194,12 @@ export default function ProvidersPanel() {
               {entry.id !== active && (
                 <button className="secondary" onClick={() => activate(entry.id)}>设为当前</button>
               )}
-              <button className="secondary" onClick={() => test(entry)} disabled={testState.id === entry.id}>
-                {testState.id === entry.id ? '测试中…' : '测试连接'}
+              <button className="secondary" onClick={(e) => test(entry, e)} disabled={testingId === entry.id}>
+                {testingId === entry.id ? '测试中…' : '测试连接'}
               </button>
               <button className="secondary" onClick={() => startEdit(entry)}>编辑</button>
               <button className="danger" onClick={() => remove(entry)}>删除</button>
             </div>
-            {testState.id === entry.id && testState.text && (
-              <div className="provider-test-result">{testState.text}</div>
-            )}
           </div>
         ))}
       </div>
@@ -220,10 +236,36 @@ export default function ProvidersPanel() {
               </label>
             </div>
 
+            {hasAnyModels ? (
+              <select
+                className="model-modal-select"
+                value={form.model}
+                onChange={(e) => setForm({ ...form, model: e.target.value })}
+              >
+                {presetModels.length > 0 && (
+                  <optgroup label="推荐">
+                    {presetModels.map((m) => <option key={m.id} value={m.id}>{m.label || m.id}</option>)}
+                  </optgroup>
+                )}
+                {remoteModels.length > 0 && (
+                  <optgroup label="远端模型">
+                    {remoteModels.map((m) => <option key={m.id} value={m.id}>{m.label || m.id}</option>)}
+                  </optgroup>
+                )}
+              </select>
+            ) : (
+              <input
+                className="model-modal-select"
+                value={form.model}
+                onChange={(e) => setForm({ ...form, model: e.target.value })}
+                placeholder="模型名称（如 qwen2.5）"
+              />
+            )}
+
             <div className="model-fetch-row">
-              <label className="model-fetch-label">模型列表</label>
+              <span className="model-fetch-label">模型列表</span>
               {noRemoteList ? (
-                <span className="muted">该厂家无公开模型列表接口，请从下方推荐模型中选择。</span>
+                <span className="muted">该厂家无公开模型列表接口，请从上方推荐模型中选择。</span>
               ) : (
                 <button className="secondary" onClick={fetchModels} disabled={fetching || !form.baseUrl.trim()}>
                   {fetching ? '获取中…' : '获取模型列表'}
@@ -231,41 +273,20 @@ export default function ProvidersPanel() {
               )}
             </div>
 
-            {hasAnyModels ? (
-              <label className="form-grid">
-                选择模型
-                <select value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })}>
-                  {presetModels.length > 0 && (
-                    <optgroup label="推荐">
-                      {presetModels.map((m) => <option key={m.id} value={m.id}>{m.label || m.id}</option>)}
-                    </optgroup>
-                  )}
-                  {remoteModels.length > 0 && (
-                    <optgroup label="远端模型">
-                      {remoteModels.map((m) => <option key={m.id} value={m.id}>{m.label || m.id}</option>)}
-                    </optgroup>
-                  )}
-                </select>
-              </label>
-            ) : (
-              <label className="form-grid">
-                模型名称
-                <input
-                  value={form.model}
-                  onChange={(e) => setForm({ ...form, model: e.target.value })}
-                  placeholder="模型名称（如 qwen2.5）"
-                />
-              </label>
-            )}
-
             {formError && <p className="form-error">{formError}</p>}
             <div className="modal-actions">
               <button className="primary" onClick={submit} disabled={!form.model.trim()}>
                 {modal.mode === 'edit' ? '保存修改' : '新增并设为当前'}
               </button>
-              <button onClick={closeModal}>取消</button>
+              <button className="secondary" onClick={closeModal}>取消</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {testTip && (
+        <div className="chat-date-tooltip" style={{ left: testTip.left, top: testTip.top }}>
+          {testTip.text}
         </div>
       )}
     </div>

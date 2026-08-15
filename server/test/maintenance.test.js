@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { maintainChapterMeta, normalizeChapterEvents } from '../src/services/maintenanceService.js';
 
 test('maintainChapterMeta skips AI and marks empty chapter as 暂无内容', async () => {
@@ -44,8 +45,17 @@ test('normalizeChapterEvents trims context to two levels', () => {
 
 test('maintainChapterMeta respects maintenance thinking stage and survives missing settings', async () => {
   // 0.9.3 回归：签名缺少 settings 导致 ReferenceError（0.9.1 遗留），且维护档开关应生效。
-  // 用 stub fetch 走真实 callModel 链，避免真实网络。
-  if (!process.env.DEEPSEEK_API_KEY) process.env.DEEPSEEK_API_KEY = 'test-key';
+  // 用 stub fetch 走真实 callModel 链，避免真实网络；环境变量已移除（0.9.6 v2），临时写入 providers.json 提供测试 Key，用后恢复。
+  const { writeModelEntries } = await import('../src/lib/providersStore.js');
+  const { PROVIDERS_FILE } = await import('../src/lib/store.js');
+  const hadFile = fs.existsSync(PROVIDERS_FILE);
+  const backup = hadFile ? fs.readFileSync(PROVIDERS_FILE, 'utf8') : null;
+  writeModelEntries([{
+    id: 'test', vendor: 'deepseek', name: '测试', protocol: 'openai',
+    baseUrl: 'https://api.deepseek.com', apiKey: 'test-key', model: 'deepseek-v4-flash',
+    thinkingStyle: 'deepseek', thinkingDefault: 'on', thinkingMandatory: false,
+    capabilities: { supportsThinking: true, supportsReasoningEffort: true, supportsTools: true, supportsJsonMode: true, maxOutputTokens: 65536, thinkingMandatory: false, thinkingDefault: 'on' }
+  }], 'test');
   const originalFetch = globalThis.fetch;
   let capturedThinkingType = null;
   globalThis.fetch = async (_url, opts) => {
@@ -77,5 +87,6 @@ test('maintainChapterMeta respects maintenance thinking stage and survives missi
     assert.equal(capturedThinkingType, 'disabled');
   } finally {
     globalThis.fetch = originalFetch;
+    if (hadFile) fs.writeFileSync(PROVIDERS_FILE, backup, 'utf8'); else fs.rmSync(PROVIDERS_FILE, { force: true });
   }
 });

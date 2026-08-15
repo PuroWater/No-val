@@ -4,20 +4,21 @@ import {
   VENDOR_PRESETS,
   THINKING_STYLES,
   VENDOR_PROTOCOLS,
-  envDefaultModelEntry,
+  defaultModelEntry,
   buildCapabilities,
   normalizeModelInput,
   maskEntry,
   newEntryId
 } from '../src/lib/providersStore.js';
 
-test('envDefaultModelEntry builds deepseek entry from env with defaults', () => {
-  const record = envDefaultModelEntry();
+test('defaultModelEntry builds deepseek entry from preset with empty key', () => {
+  const record = defaultModelEntry();
   assert.equal(record.id, 'deepseek');
   assert.equal(record.vendor, 'deepseek');
   assert.equal(record.protocol, 'openai');
   assert.equal(record.thinkingStyle, 'deepseek');
   assert.equal(record.capabilities.supportsThinking, true);
+  assert.equal(record.apiKey, '');
   assert.ok(record.baseUrl.includes('deepseek'));
 });
 

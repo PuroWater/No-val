@@ -1,6 +1,6 @@
 // 模型服务数据层（0.9.6 v2）：data/providers.json 存"模型条目"（每条 = 供应商 + Key + 具体模型）。
 // 每家供应商在后端有完整预设（协议/默认URL/思考参数/常见模型/能力），前端只负责：选厂家 → 填 Key → 拉模型列表 → 选模型。
-// 无文件时用环境变量推导默认 deepseek（兼容现有 .env 部署，不自动落盘）。
+// 无文件时用预设默认 deepseek（不自动落盘；Key 留空，由用户在设置页填写）。
 import { readJson, writeJson, PROVIDERS_FILE } from './store.js';
 
 export const VENDOR_PROTOCOLS = ['openai', 'anthropic'];
@@ -18,8 +18,8 @@ export const VENDOR_PRESETS = {
     thinkingDefault: 'on',
     maxOutputTokens: 65536,
     models: [
-      { id: 'deepseek-v4-flash', label: 'deepseek-v4-flash（默认，支持思考）' },
-      { id: 'deepseek-v4-pro', label: 'deepseek-v4-pro（推理更强）' }
+      { id: 'deepseek-v4-flash', label: 'deepseek-v4-flash' },
+      { id: 'deepseek-v4-pro', label: 'deepseek-v4-pro' }
     ]
   },
   openai: {
@@ -31,12 +31,12 @@ export const VENDOR_PRESETS = {
     thinkingDefault: 'on',
     maxOutputTokens: 32768,
     models: [
-      { id: 'gpt-5.6-sol', label: 'gpt-5.6-sol（旗舰）', thinkingMandatory: true },
+      { id: 'gpt-5.6-sol', label: 'gpt-5.6-sol', thinkingMandatory: true },
       { id: 'gpt-5.6-terra', label: 'gpt-5.6-terra', thinkingMandatory: true },
       { id: 'gpt-5.6-luna', label: 'gpt-5.6-luna', thinkingMandatory: true },
       { id: 'gpt-5.4', label: 'gpt-5.4', thinkingMandatory: true },
       { id: 'gpt-5.4-mini', label: 'gpt-5.4-mini', thinkingMandatory: true },
-      { id: 'gpt-5.4-nano', label: 'gpt-5.4-nano（最快）', thinkingMandatory: true }
+      { id: 'gpt-5.4-nano', label: 'gpt-5.4-nano', thinkingMandatory: true }
     ]
   },
   anthropic: {
@@ -48,9 +48,9 @@ export const VENDOR_PRESETS = {
     thinkingDefault: 'on',
     maxOutputTokens: 32768,
     models: [
-      { id: 'claude-opus-4-7', label: 'Claude Opus 4.7（旗舰）', thinkingMandatory: true },
+      { id: 'claude-opus-4-7', label: 'Claude Opus 4.7', thinkingMandatory: true },
       { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6', thinkingMandatory: true },
-      { id: 'claude-haiku-4-5', label: 'Claude Haiku 4.5（最快）', thinkingDefault: 'off' }
+      { id: 'claude-haiku-4-5', label: 'Claude Haiku 4.5', thinkingDefault: 'off' }
     ]
   },
   openrouter: {
@@ -73,8 +73,8 @@ export const VENDOR_PRESETS = {
     maxOutputTokens: 32768,
     models: [
       { id: 'grok-4', label: 'grok-4' },
-      { id: 'grok-4-fast-reasoning', label: 'grok-4-fast-reasoning（思考）', thinkingMandatory: true },
-      { id: 'grok-4-fast-non-reasoning', label: 'grok-4-fast-non-reasoning（不思考）', thinkingDefault: 'off' },
+      { id: 'grok-4-fast-reasoning', label: 'grok-4-fast-reasoning', thinkingMandatory: true },
+      { id: 'grok-4-fast-non-reasoning', label: 'grok-4-fast-non-reasoning', thinkingDefault: 'off' },
       { id: 'grok-4.5', label: 'grok-4.5' }
     ]
   },
@@ -87,9 +87,9 @@ export const VENDOR_PRESETS = {
     thinkingDefault: 'on',
     maxOutputTokens: 32768,
     models: [
-      { id: 'kimi-k3', label: 'kimi-k3（旗舰，强制思考）', thinkingMandatory: true },
-      { id: 'kimi-k3-256k', label: 'kimi-k3-256k（256K 上下文）', thinkingMandatory: true },
-      { id: 'kimi-k2.7-code', label: 'kimi-k2.7-code（编程，原生思考）', thinkingMandatory: true },
+      { id: 'kimi-k3', label: 'kimi-k3', thinkingMandatory: true },
+      { id: 'kimi-k3-256k', label: 'kimi-k3-256k', thinkingMandatory: true },
+      { id: 'kimi-k2.7-code', label: 'kimi-k2.7-code', thinkingMandatory: true },
       { id: 'kimi-k2.6', label: 'kimi-k2.6' }
     ]
   },
@@ -107,7 +107,7 @@ export const VENDOR_PRESETS = {
       { id: 'glm-5', label: 'glm-5' },
       { id: 'glm-4.7', label: 'glm-4.7' },
       { id: 'glm-4-plus', label: 'glm-4-plus' },
-      { id: 'glm-4-flash', label: 'glm-4-flash（轻量）' }
+      { id: 'glm-4-flash', label: 'glm-4-flash' }
     ]
   },
   minimax: {
@@ -119,7 +119,7 @@ export const VENDOR_PRESETS = {
     thinkingDefault: 'on',
     maxOutputTokens: 32768,
     models: [
-      { id: 'MiniMax-M3', label: 'MiniMax-M3（旗舰）', thinkingMandatory: true },
+      { id: 'MiniMax-M3', label: 'MiniMax-M3', thinkingMandatory: true },
       { id: 'MiniMax-M2.7', label: 'MiniMax-M2.7', thinkingMandatory: true },
       { id: 'MiniMax-M2.5', label: 'MiniMax-M2.5', thinkingMandatory: true },
       { id: 'MiniMax-M2.1', label: 'MiniMax-M2.1', thinkingMandatory: true },
@@ -149,21 +149,20 @@ export const VENDOR_PRESETS = {
 };
 
 // 环境变量推导默认 deepseek（兼容现有 .env / 环境变量部署）。
-export function envDefaultModelEntry() {
+export function defaultModelEntry() {
   const preset = VENDOR_PRESETS.deepseek;
-  const model = process.env.DEEPSEEK_MODEL || process.env.MODEL_NAME || preset.defaultModel;
   return {
     id: 'deepseek',
     vendor: 'deepseek',
     name: preset.name,
     protocol: preset.protocol,
-    baseUrl: process.env.DEEPSEEK_BASE_URL || process.env.MODEL_BASE_URL || preset.baseUrl,
-    apiKey: process.env.DEEPSEEK_API_KEY || process.env.MODEL_API_KEY || '',
-    model,
+    baseUrl: preset.baseUrl,
+    apiKey: '',
+    model: preset.defaultModel,
     thinkingStyle: preset.thinkingStyle,
     thinkingDefault: preset.thinkingDefault,
     thinkingMandatory: false,
-    capabilities: buildCapabilities(preset, model)
+    capabilities: buildCapabilities(preset, preset.defaultModel)
   };
 }
 
@@ -186,7 +185,7 @@ export function buildCapabilities(preset, model, overrides = {}) {
 export function readModelEntries() {
   const data = readJson(PROVIDERS_FILE, null);
   if (!data || !Array.isArray(data.entries) || data.entries.length === 0) {
-    return { entries: [envDefaultModelEntry()], active: 'deepseek', fromEnv: true };
+    return { entries: [defaultModelEntry()], active: 'deepseek', fromEnv: false };
   }
   return { entries: data.entries, active: data.active || data.entries[0].id, fromEnv: false };
 }
