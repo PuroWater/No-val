@@ -4,6 +4,12 @@ import { INTENTS } from './intentPlans.js';
 import { OVER_LIMIT_REPLY, OUTPUT_LIMITS, normalizeOutputScale } from '../lib/outputScale.js';
 import { PLOT_FACT_RULE } from '../lib/agentRules.js';
 
+// 模型调用基础设施错误（Key/网络/HTTP 状态码/未返回内容）直接上抛，
+// 避免被吞成"还没完全理解"兜底文案（错误 Key 时应展示错误而非假装没听懂）。
+function isModelCallError(err) {
+  return /未配置模型 API Key|模型调用失败 \(|模型网络请求失败|模型未返回内容/.test(String(err?.message || ''));
+}
+
 // ---------- 构思阶段路由（独立于已生成图书） ----------
 
 export async function prefilterDraftIntent({ user, history = '', signal, ask = chatCompletion, maxAttempts = 2, maxTokens = 16384, thinkingEnabled = false, defaults = {} }) {
@@ -43,6 +49,7 @@ export async function prefilterDraftIntent({ user, history = '', signal, ask = c
       lastError = '未返回有效模式';
     } catch (err) {
       if (/中断|超时/.test(err.message)) throw err;
+      if (isModelCallError(err)) throw err;
       lastError = err.message;
     }
   }
@@ -136,6 +143,7 @@ export async function runRouter({
       lastError = '未返回有效 mode';
     } catch (err) {
       if (/中断|超时/.test(err.message)) throw err;
+      if (isModelCallError(err)) throw err;
       lastError = err.message;
     }
   }

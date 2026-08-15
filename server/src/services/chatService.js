@@ -8,6 +8,7 @@ import { defineReadyTools, toolBrief } from './tools.js';
 import { defineDraftTools } from './draftTools.js';
 import { PLOT_FACT_RULE, WRITE_EXECUTION_RULE, CHAPTER_NUM_RULE, TOOL_AVAILABILITY_RULE } from '../lib/agentRules.js';
 import { resolveThinking } from '../lib/thinking.js';
+import { friendlyProviderError } from '../lib/providerErrors.js';
 
 const activeJobs = new Map();
 
@@ -299,7 +300,7 @@ export async function handleMessage(userId, bookId, content, settings = {}, mess
     }
     succeeded = true;
   } catch (err) {
-    const message = String(err.message || '');
+    const message = friendlyProviderError(err);
     const stillProcessing = book.chat.some((item) => item.kind === 'processing');
     if (stillProcessing) {
       if (/中断/.test(message)) {

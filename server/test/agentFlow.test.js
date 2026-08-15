@@ -178,6 +178,20 @@ test('runRouter falls back to chat on invalid or over-limit output', async () =>
   assert.ok(String(invalid.reply).length > 0);
 });
 
+test('runRouter propagates model call errors instead of swallowing to fallback', async () => {
+  await assert.rejects(
+    () => runRouter({ user: '再写一章', maxAttempts: 2, ask: async () => { throw new Error('模型调用失败 (401) bad key'); } }),
+    /模型调用失败 \(401\)/
+  );
+});
+
+test('prefilterDraftIntent propagates model call errors instead of fallback', async () => {
+  await assert.rejects(
+    () => prefilterDraftIntent({ user: '主角叫小明', maxAttempts: 2, ask: async () => { throw new Error('未配置模型 API Key，请在设置页“模型配置”中填写。'); } }),
+    /未配置模型 API Key/
+  );
+});
+
 test('runTask ends with model reply when no tool calls', async () => {
   const decision = await runTask({
     system: 's',
