@@ -5,7 +5,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 
 
-// tooltip 定位：右上角 = 鼠标 (x-12, y+16)——右边缘贴 x-12、顶边缘贴 y+16，内容向左/下展开。
+// tooltip 定位：右上角 = 鼠标 (x-10, y+16)——右边缘贴 x-10、顶边缘贴 y+16，内容向左/下展开。
 // 先按基准定位渲染，再按实际宽高钳制（仅真正出屏才收），不同长度都跟手不钉死。
 const TOOLTIP_MARGIN = 8;
 
@@ -28,12 +28,12 @@ export default function ChatModelPicker({ disabled }) {
 
 /  \/\/ 点击外部关闭菜单\r?\n  useEffect\(\(\) => \{\r?\n    if \(!open\) return undefined;\r?\n    const onDocClick = \(event\) => \{\r?\n      if \(wrapRef\.current && !wrapRef\.current\.contains\(event\.target\)\) setOpen\(false\);\r?\n    \};\r?\n    document\.addEventListener\('mousedown', onDocClick\);\r?\n    return \(\) => document\.removeEventListener\('mousedown', onDocClick\);\r?\n  \}, \[open\]\);/
 
-  // 右上角锚定在 (x-12, y+16)：右边缘 = x-12、顶边缘 = y+16，内容向左/下展开；
+  // 右上角锚定在 (x-10, y+16)：右边缘 = x-10、顶边缘 = y+16，内容向左/下展开；
   // 按实际渲染宽高钳制，仅当内容会超出视口才收拢。
   useLayoutEffect(() => {
     const el = tipRef.current;
     if (!el || !itemTip) return;
-    let left = itemTip.x - 12 - el.offsetWidth;
+    let left = itemTip.x - 10 - el.offsetWidth;
     let top = itemTip.y + 16;
     if (left < TOOLTIP_MARGIN) left = TOOLTIP_MARGIN;
     if (top + el.offsetHeight > window.innerHeight - TOOLTIP_MARGIN) {
