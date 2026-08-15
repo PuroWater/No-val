@@ -219,10 +219,10 @@ export default function ProvidersPanel() {
                 </select>
               </label>
               <label>名称
-                <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="模型显示名称" />
+                <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="模型显示名称" autoComplete="off" />
               </label>
               <label>接口地址（baseUrl）
-                <input value={form.baseUrl} onChange={(e) => setForm({ ...form, baseUrl: e.target.value })} placeholder="https://api.deepseek.com" />
+                <input value={form.baseUrl} onChange={(e) => setForm({ ...form, baseUrl: e.target.value })} placeholder="https://api.deepseek.com" autoComplete="off" />
               </label>
               <label>API Key
                 <input
@@ -230,6 +230,7 @@ export default function ProvidersPanel() {
                   onChange={(e) => setForm({ ...form, apiKey: e.target.value })}
                   placeholder={modal.mode === 'edit' ? '已设置，留空不修改' : 'sk-…'}
                   type="password"
+                  autoComplete="new-password"
                 />
               </label>
             </div>
