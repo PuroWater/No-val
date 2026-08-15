@@ -105,10 +105,10 @@ export async function chat({
   const apiKey = String(entry.apiKey || '').trim();
   const model = String(entry.model || '').trim();
   if (!apiKey) {
-    throw new Error('未配置模型 API Key，请在设置页“模型服务”中填写。');
+    throw new Error('未配置模型 API Key，请在设置页“模型配置”中填写。');
   }
   if (!model) {
-    throw new Error('未配置模型名称，请在设置页“模型服务”中填写。');
+    throw new Error('未配置模型名称，请在设置页“模型配置”中填写。');
   }
   const thinkingOn = thinkingType !== 'disabled' || entry.capabilities?.thinkingMandatory === true;
   const { system: anthropicSystem, messages: anthropicMessages } = toAnthropicMessages(messages, system, user);
@@ -162,7 +162,7 @@ export async function chat({
     const detail = await response.text().catch(() => '');
     const raw = String(detail).toLowerCase();
     const capabilityIssue = (response.status === 400 || response.status === 422) && /thinking|reasoning/.test(raw);
-    const hint = capabilityIssue ? '。当前模型可能不支持思考或关思考，请到设置页“模型服务”调整' : '';
+    const hint = capabilityIssue ? '。当前模型可能不支持思考或关思考，请到设置页“模型配置”调整' : '';
     throw new Error('模型调用失败 (' + response.status + ') ' + detail + hint);
   }
   const data = await response.json();

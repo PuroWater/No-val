@@ -8,7 +8,7 @@ export default function ChatModelPicker({ disabled }) {
   const [entries, setEntries] = useState([]);
   const [activeId, setActiveId] = useState('');
   const [open, setOpen] = useState(false);
-  const [itemTip, setItemTip] = useState(null); // { left, top, text }
+  const [itemTip, setItemTip] = useState(null); // { x, y, text }（跟随鼠标，同设置页写前确认）
   const wrapRef = useRef(null);
 
   useEffect(() => {
@@ -34,15 +34,7 @@ export default function ChatModelPicker({ disabled }) {
   if (!activeEntry) return null;
 
   function showItemTip(event, entry) {
-    const rect = event.currentTarget.getBoundingClientRect();
-    const tipWidth = 260;
-    let left = rect.left - tipWidth - 8;
-    if (left < 8) left = rect.right + 8;
-    setItemTip({
-      left: Math.min(left, window.innerWidth - tipWidth - 8),
-      top: Math.max(8, rect.top + 4),
-      text: `${entry.name}：${entry.model}`
-    });
+    setItemTip({ x: event.clientX, y: event.clientY, text: entry.name + '：' + entry.model });
   }
 
   async function switchModel(id) {
@@ -57,11 +49,7 @@ export default function ChatModelPicker({ disabled }) {
       // 切换失败：悬浮提示错误信息
       const btnRect = wrapRef.current?.querySelector('.chat-model-btn')?.getBoundingClientRect();
       if (btnRect) {
-        setItemTip({
-          left: Math.max(8, Math.min(btnRect.right - 260, window.innerWidth - 270)),
-          top: Math.max(8, btnRect.top - 34),
-          text: err.message
-        });
+        setItemTip({ x: btnRect.left, y: btnRect.top, text: err.message });
       }
     }
   }
@@ -85,6 +73,7 @@ export default function ChatModelPicker({ disabled }) {
               className={entry.id === activeId ? 'active' : ''}
               onClick={() => switchModel(entry.id)}
               onMouseEnter={(e) => showItemTip(e, entry)}
+              onMouseMove={(e) => showItemTip(e, entry)}
               onMouseLeave={() => setItemTip(null)}
             >
               {entry.name}
@@ -93,7 +82,13 @@ export default function ChatModelPicker({ disabled }) {
         </div>
       )}
       {itemTip && (
-        <div className="chat-date-tooltip" style={{ left: itemTip.left, top: itemTip.top }}>
+        <div
+          className="chat-date-tooltip"
+          style={{
+            left: Math.min(itemTip.x + 14, window.innerWidth - 270),
+            top: Math.min(itemTip.y + 16, window.innerHeight - 90)
+          }}
+        >
           {itemTip.text}
         </div>
       )}

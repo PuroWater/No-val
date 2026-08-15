@@ -31,7 +31,7 @@ export async function chat({
   const model = String(entry.model || '').trim() || 'deepseek-v4-flash';
   const style = entry.thinkingStyle || 'deepseek';
   if (!apiKey && style !== 'none') {
-    throw new Error('未配置模型 API Key，请在设置页“模型服务”中填写。');
+    throw new Error('未配置模型 API Key，请在设置页“模型配置”中填写。');
   }
   const body = {
     model,
@@ -88,7 +88,7 @@ export async function chat({
     const detail = await response.text().catch(() => '');
     const raw = String(detail).toLowerCase();
     const capabilityIssue = (response.status === 400 || response.status === 422) && /thinking|reasoning/.test(raw);
-    const hint = capabilityIssue ? '。当前模型可能不支持思考或关思考，请到设置页“模型服务”调整' : '';
+    const hint = capabilityIssue ? '。当前模型可能不支持思考或关思考，请到设置页“模型配置”调整' : '';
     throw new Error('模型调用失败 (' + response.status + ') ' + detail + hint);
   }
   const data = await response.json();

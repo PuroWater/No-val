@@ -32,7 +32,7 @@ export default function ProvidersPanel() {
     setToasts((list) => [...list, { id, text, error }]);
     setTimeout(() => {
       setToasts((list) => list.filter((item) => item.id !== id));
-    }, 2000);
+    }, 1000);
   }
 
   async function load() {
@@ -169,7 +169,7 @@ export default function ProvidersPanel() {
     <div>
       <div className="settings-group">
         <div className="model-manage-head">
-          <span>模型服务</span>
+          <span>模型配置</span>
           <button className="primary" onClick={startAdd}>＋ 新增模型</button>
         </div>
         <p className="muted">在此设置使用的模型，支持 OpenAI 兼容协议与 Anthropic Messages 协议。思考参数已由后端按厂家预设自动配置，前端无需管理。</p>
@@ -294,7 +294,7 @@ export default function ProvidersPanel() {
       {toasts.length > 0 && (
         <div className="toast-layer">
           {toasts.map((toast) => (
-            <div key={toast.id} className={`saved-toast${toast.error ? ' error' : ''} long`}>{toast.text}</div>
+            <div key={toast.id} className={`saved-toast${toast.error ? ' error' : ''}`}>{toast.text}</div>
           ))}
         </div>
       )}

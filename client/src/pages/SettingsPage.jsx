@@ -29,6 +29,7 @@ const THINKING_STAGE_ITEMS = [
 ];
 
 export default function SettingsPage() {
+const SETTING_TITLES = { general: '常规设置', appearance: '外观设置', providers: '模型配置', account: '账户设置', trash: '回收站' };
   const [activeSetting, setActiveSetting] = useState('general');
   const [theme, setTheme] = useState('paper');
   const [fontSize, setFontSize] = useState('medium');
@@ -148,25 +149,19 @@ export default function SettingsPage() {
             className={`directory-item ${activeSetting === 'general' ? 'active' : ''}`}
             onClick={() => setActiveSetting('general')}
           >
-            常规
+            常规设置
           </button>
           <button
             className={`directory-item ${activeSetting === 'appearance' ? 'active' : ''}`}
             onClick={() => setActiveSetting('appearance')}
           >
-            外观
+            外观设置
           </button>
           <button
             className={`directory-item ${activeSetting === 'providers' ? 'active' : ''}`}
             onClick={() => setActiveSetting('providers')}
           >
-            模型服务
-          </button>
-          <button
-            className={`directory-item ${activeSetting === 'trash' ? 'active' : ''}`}
-            onClick={() => setActiveSetting('trash')}
-          >
-            回收站
+            模型配置
           </button>
           <button
             className={`directory-item ${activeSetting === 'account' ? 'active' : ''}`}
@@ -174,8 +169,15 @@ export default function SettingsPage() {
           >
             账户设置
           </button>
+          <button
+            className={`directory-item ${activeSetting === 'trash' ? 'active' : ''}`}
+            onClick={() => setActiveSetting('trash')}
+          >
+            回收站
+          </button>
         </aside>
         <div className="settings-content">
+          <h2 className="settings-title">{SETTING_TITLES[activeSetting]}</h2>
           {activeSetting === 'appearance' && (
             <>
               <div className="settings-group">

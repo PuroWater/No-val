@@ -2100,3 +2100,10 @@ ne-tooltip-detail {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+.settings-title {
+  margin: 0 0 16px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+}
