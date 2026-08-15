@@ -226,8 +226,7 @@ export function defineReadyTools(book, settings, signal) {
         const formatEvents = (item) => (Array.isArray(item.events) && item.events.length > 0
           ? item.events.map((event, eventIndex) => {
               const ctx = Array.isArray(event.context) && event.context.length > 0 ? `（${event.context.join('/')}）` : '';
-              const fw = event.foreshadow ? `[伏笔：${event.foreshadow === 'setup' ? '铺设' : '回收'}]` : '';
-              return `${eventIndex + 1}. ${event.event}${ctx}${fw}${event.time ? `（${event.time}）` : ''}`;
+              return `${eventIndex + 1}. ${event.event}${ctx}`;
             }).join('\n')
           : '');
         // 单章章节块统一格式化：标题 → 摘要 → 事件 →（可选）正文全文

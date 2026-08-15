@@ -1,14 +1,6 @@
 // 故事元数据服务：章节事迹轴派生视图（发展线）。
 // 发展线 = 按 context[0] 背景 → context[1] 场景 → 章节 → 事件 的分层视图，零 AI 成本。
 // 0.9.0 起删除关系网（extractRelations / sanitizeRelations / 分块增量等），仅保留发展线派生。
-function sortEventsByTime(events) {
-  return [...events].sort((a, b) => {
-    const na = Number(String(a.time || '').match(/(\d+)/)?.[1] || 0);
-    const nb = Number(String(b.time || '').match(/(\d+)/)?.[1] || 0);
-    return na - nb;
-  });
-}
-
 // 把有序章节索引切成“最大连续区间”列表（如 [1,2,3,8,9,10] → [[1,2,3],[8,9,10]]）
 function splitRuns(indexes) {
   const runs = [];
@@ -34,7 +26,7 @@ function buildGroupFromRun(label, run, sceneMap) {
   const rootChapters = rootScene
     ? [...rootScene.chapterMap.values()]
         .filter((item) => runSet.has(item.chapterIndex))
-        .map((item) => ({ ...item, events: sortEventsByTime(item.events) }))
+        .map((item) => ({ ...item }))
     : [];
   const sceneList = hasScenes
     ? [...sceneMap.entries()]
@@ -48,7 +40,7 @@ function buildGroupFromRun(label, run, sceneMap) {
             chapterEnd: Math.max(...indexes),
             chapters: indexes.map((index) => ({
               ...scene.chapterMap.get(index),
-              events: sortEventsByTime(scene.chapterMap.get(index).events)
+              events: scene.chapterMap.get(index).events
             }))
           };
         })
@@ -133,7 +125,7 @@ export function buildDevelopmentLine(book) {
         chapterStart: run[0],
         chapterEnd: run[run.length - 1],
         scenes: [],
-        chapters: run.map((index) => ({ ...byIndex.get(index), events: sortEventsByTime(byIndex.get(index).events) }))
+        chapters: run.map((index) => ({ ...byIndex.get(index) }))
       });
     }
   }

@@ -2758,6 +2758,20 @@ Novel Agent/
 完成内容：
 - 客户端令牌落地；前端 build 通过、单测 82/82；golden eval"重复消息幂等"场景继续 PASS（服务端去重未变）；版本号统一 0.9.4（根/server/client）；本地提交未推送。
 
+### 2026-08-15 v0.9.5 事件结构瘦身：删除伏笔字段与 time（AI 伏笔管理正式取消）
+
+待更新说明：
+- 事件里带 foreshadow/foreshadowFor/time 字段，但现有 AI 做不了百万字小说的伏笔管理（大伏笔/小伏笔按算法或 AI 都难可靠实现）；真正的伏笔应由用户自己主观对章节提建议（现有改写/续写流程即可承载），无需系统自动管理。
+
+待更新功能：
+- 事件结构收敛为 { event(约50字), characters, context }，删除 time/foreshadow/foreshadowFor；
+- maintainChapterMeta/initializeBookMeta 提示词 JSON spec 同步去掉 time/foreshadow/foreshadowFor；cleanEvents 不再保留这些字段；
+- normalizeBook 加载即清理旧数据残留（delete time/foreshadow/foreshadowFor）；read_book 事件展示去掉 [伏笔：铺设/回收] 与 （time）；
+- storyMetaService 删除 sortEventsByTime（time 已无意义，事件保持章内顺序）。
+
+完成内容：
+- 事件瘦身全链路落地；单元测试 82/82、前端 build 通过；版本号统一 0.9.5（根/server/client）；本地提交未推送。
+
 ### 后续建议方向（2026-08-15 更新）
 
 - **v1.0 再做（记账，用户 2026-08-15 定）**：

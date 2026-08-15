@@ -18,8 +18,7 @@ function sampleBook() {
           {
             id: 'e1',
             event: '第一章事件',
-            context: ['家族', '藏书阁'],
-            foreshadow: 'setup'
+            context: ['家族', '藏书阁']
           }
         ]
       },
@@ -52,7 +51,7 @@ test('read_book single chapter returns full content without truncation', async (
   assert.ok(out.data.includes('第 1 章《第1章 起始》'));
   assert.ok(out.data.includes('摘要：第一章摘要'));
   assert.ok(out.data.includes('事件：'));
-  assert.ok(out.data.includes('1. 第一章事件（家族/藏书阁）[伏笔：铺设]'));
+  assert.ok(out.data.includes('1. 第一章事件（家族/藏书阁）'));
   assert.ok(out.data.includes('正文：'));
   assert.ok(out.data.includes('第一章正文开头。'));
   // 正文全量返回，不做节选截断（章节长度由 105% 上限兜底）

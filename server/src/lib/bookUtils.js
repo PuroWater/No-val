@@ -48,14 +48,18 @@ export function normalizeBook(book) {
     events: [],
     ...chapter,
     events: Array.isArray(chapter.events)
-      ? chapter.events.map((item) => ({
-          time: '',
-          context: [],
-          foreshadow: null,
-          foreshadowFor: '',
-          ...item,
-          context: Array.isArray(item?.context) ? item.context.map(String).slice(0, 3) : []
-        }))
+      ? chapter.events.map((item) => {
+          // 0.9.5 事件瘦身：剔除 time/foreshadow/foreshadowFor（旧数据残留加载即清除）
+          const clean = { ...item };
+          delete clean.time;
+          delete clean.foreshadow;
+          delete clean.foreshadowFor;
+          return {
+            context: [],
+            ...clean,
+            context: Array.isArray(clean?.context) ? clean.context.map(String).slice(0, 3) : []
+          };
+        })
       : []
   }));
   if (!Array.isArray(book.chat)) book.chat = [];
