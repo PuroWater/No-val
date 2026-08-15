@@ -130,6 +130,31 @@ test('runRouter routes tool intent with schema output', async () => {
   assert.equal(navigate.intent, 'navigate');
 });
 
+test('runRouter injects default output scale into prompt', async () => {
+  let captured = '';
+  const route = await runRouter({
+    user: '再写一章',
+    defaults: { chaptersPerOutput: 3, chapterWords: 2500 },
+    ask: async (opts) => { captured = opts.user; return { mode: 'tool', intent: 'create_append', output: null, target: null }; }
+  });
+  assert.equal(route.mode, 'tool');
+  assert.ok(captured.includes('默认输出规模'), '提示词应包含默认输出规模');
+  assert.ok(captured.includes('3 章'), '提示词应包含默认章节数');
+  assert.ok(captured.includes('2500 字'), '提示词应包含默认每章字数');
+  assert.ok(captured.includes('不要臆想'), '提示词应明确禁止臆想输出规模');
+});
+
+test('runRouter clamps out-of-range defaults', async () => {
+  let captured = '';
+  await runRouter({
+    user: '再写一章',
+    defaults: { chaptersPerOutput: 99, chapterWords: 5 },
+    ask: async (opts) => { captured = opts.user; return { mode: 'tool', intent: 'create_append', output: null, target: null }; }
+  });
+  assert.ok(captured.includes('5 章'), '越界章节数应收敛到上限');
+  assert.ok(captured.includes('1000 字'), '越界字数应收敛到下限');
+});
+
 test('runRouter falls back to chat on invalid or over-limit output', async () => {
   const chat = await runRouter({
     user: '你好',
@@ -439,4 +464,16 @@ test('prefilterDraftIntent classifies chat, confirm and chat-mode over-limit', a
   });
   assert.equal(over.mode, 'chat');
   assert.equal(over.reply, OVER_LIMIT_REPLY);
+});
+
+test('prefilterDraftIntent injects default output scale into prompt', async () => {
+  let captured = '';
+  await prefilterDraftIntent({
+    user: '主角叫林默，背景现代都市',
+    defaults: { chaptersPerOutput: 2, chapterWords: 3000 },
+    ask: async (opts) => { captured = opts.user; return { mode: 'chat', reply: '请补充小说总字数。' }; }
+  });
+  assert.ok(captured.includes('默认输出规模'), '提示词应包含默认输出规模');
+  assert.ok(captured.includes('2 章'), '提示词应包含默认章节数');
+  assert.ok(captured.includes('3000 字'), '提示词应包含默认每章字数');
 });

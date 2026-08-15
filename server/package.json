@@ -1,10 +1,10 @@
 {
   "name": "novel-agent-server",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "private": true,
   "type": "module",
   "scripts": {
-      "dev": "node --watch-path=src src/index.js",
+    "dev": "node --watch-path=src src/index.js",
     "start": "node src/index.js",
     "test": "node --test",
     "eval": "node scripts/eval/runEval.js"
