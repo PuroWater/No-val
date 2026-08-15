@@ -303,6 +303,38 @@ const SETTING_TITLES = { general: '常规设置', appearance: '外观设置', pr
                 </div>
               </div>
               <div className="settings-group">
+                <span>生成后审校</span>
+                <div className="option-row">
+                  <button
+                    className={!reviewAfterWrite ? 'active' : ''}
+                    onClick={() => { setReviewAfterWrite(false); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, thinkingMode, thinkingStages, false); }}
+                  >
+                    关闭
+                  </button>
+                  <button
+                    className={reviewAfterWrite ? 'active' : ''}
+                    onClick={() => { setReviewAfterWrite(true); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, thinkingMode, thinkingStages, true); }}
+                    onMouseEnter={(event) => setReviewTip({ x: event.clientX, y: event.clientY })}
+                    onMouseMove={(event) => setReviewTip({ x: event.clientX, y: event.clientY })}
+                    onMouseLeave={() => setReviewTip(null)}
+                  >
+                    开启
+                  </button>
+                  {reviewTip && (
+                    <div
+                      className="chat-date-tooltip"
+                      style={{
+                        left: Math.min(reviewTip.x + 14, window.innerWidth - 270),
+                        top: Math.min(reviewTip.y + 16, window.innerHeight - 90)
+                      }}
+                    >
+                      生成或改写章节后 AI 会通读一遍，不通过时自动修订；会额外耗时与消耗 token，默认关闭。
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="settings-group">
                 <span>模型思考</span>
                 <div className="option-row">
                   <button
@@ -380,38 +412,6 @@ const SETTING_TITLES = { general: '常规设置', appearance: '外观设置', pr
                     )}
                   </div>
                 )}
-              </div>
-
-              <div className="settings-group">
-                <span>生成后审校</span>
-                <div className="option-row">
-                  <button
-                    className={!reviewAfterWrite ? 'active' : ''}
-                    onClick={() => { setReviewAfterWrite(false); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, thinkingMode, thinkingStages, false); }}
-                  >
-                    关闭
-                  </button>
-                  <button
-                    className={reviewAfterWrite ? 'active' : ''}
-                    onClick={() => { setReviewAfterWrite(true); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, thinkingMode, thinkingStages, true); }}
-                    onMouseEnter={(event) => setReviewTip({ x: event.clientX, y: event.clientY })}
-                    onMouseMove={(event) => setReviewTip({ x: event.clientX, y: event.clientY })}
-                    onMouseLeave={() => setReviewTip(null)}
-                  >
-                    开启
-                  </button>
-                  {reviewTip && (
-                    <div
-                      className="chat-date-tooltip"
-                      style={{
-                        left: Math.min(reviewTip.x + 14, window.innerWidth - 270),
-                        top: Math.min(reviewTip.y + 16, window.innerHeight - 90)
-                      }}
-                    >
-                      生成或改写章节后 AI 会通读一遍，不通过时自动修订；会额外耗时与消耗 token，默认关闭。
-                    </div>
-                  )}
-                </div>
               </div>
             </>
           )}

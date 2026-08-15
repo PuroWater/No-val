@@ -170,7 +170,7 @@ export default function ProvidersPanel() {
     <div>
       <div className="settings-group">
         <div className="model-manage-head">
-          <span>模型配置</span>
+          <span>管理模型</span>
           <button className="primary" onClick={startAdd}>＋ 新增模型</button>
         </div>
         {error && <p className="form-error">{error}</p>}
