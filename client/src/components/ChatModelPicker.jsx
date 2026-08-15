@@ -4,6 +4,22 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 
+
+// tooltip 定位：与设置页/发展线一致（x+14, y+16 右下角跟随），
+// 但聊天菜单位于视口右下角，硬钳制会把 tooltip 钉住——改为边缘放不下时翻到另一侧。
+const TOOLTIP_W = 270;
+const TOOLTIP_H = 48;
+function tooltipPos(x, y) {
+  const margin = 8;
+  let left = x + 14;
+  let top = y + 16;
+  if (left + TOOLTIP_W > window.innerWidth - margin) left = x - TOOLTIP_W - margin;
+  if (top + TOOLTIP_H > window.innerHeight - margin) top = y - TOOLTIP_H - margin;
+  left = Math.max(margin, left);
+  top = Math.max(margin, top);
+  return { left, top };
+}
+
 export default function ChatModelPicker({ disabled }) {
   const [entries, setEntries] = useState([]);
   const [activeId, setActiveId] = useState('');
@@ -84,10 +100,7 @@ export default function ChatModelPicker({ disabled }) {
       {itemTip && (
         <div
           className="chat-date-tooltip"
-          style={{
-            left: Math.min(itemTip.x + 14, window.innerWidth - 270),
-            top: Math.min(itemTip.y + 16, window.innerHeight - 90)
-          }}
+          style={tooltipPos(itemTip.x, itemTip.y)}
         >
           {itemTip.text}
         </div>
