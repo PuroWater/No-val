@@ -172,7 +172,6 @@ export default function ProvidersPanel() {
           <span>模型配置</span>
           <button className="primary" onClick={startAdd}>＋ 新增模型</button>
         </div>
-        <p className="muted">在此设置使用的模型，支持 OpenAI 兼容协议与 Anthropic Messages 协议。思考参数已由后端按厂家预设自动配置，前端无需管理。</p>
         {error && <p className="form-error">{error}</p>}
         {entries.length === 0 && <p className="muted">还没有模型，点击“新增模型”开始配置。</p>}
         {entries.map((entry) => (
