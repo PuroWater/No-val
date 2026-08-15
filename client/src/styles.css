@@ -798,13 +798,24 @@ button, input, textarea, select {
 
 .character-history-toggle {
   margin-left: auto;
-  font-size: 12px;
-  padding: 3px 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  font-size: 13px;
+  line-height: 1;
+  padding: 6px 12px;
   border: 1px solid var(--border);
-  border-radius: 5px;
+  border-radius: 6px;
   background: transparent;
   color: var(--text);
   cursor: pointer;
+}
+
+.character-history-toggle.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
 }
 
 .character-snapshot {

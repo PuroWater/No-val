@@ -11,7 +11,10 @@ export default function CharacterCard({ card }) {
         <strong className="character-name">{card.name}</strong>
         {latest && <span className="character-latest">最新状态·第{Number(latest.chapter) + 1}章</span>}
         {history.length > 1 && (
-          <button className="character-history-toggle" onClick={() => setOpen((value) => !value)}>
+          <button
+            className={`character-history-toggle${open ? ' active' : ''}`}
+            onClick={() => setOpen((value) => !value)}
+          >
             {open ? '收起历史' : `历史（${history.length}）`}
           </button>
         )}
@@ -19,7 +22,7 @@ export default function CharacterCard({ card }) {
       {latest && <p className="character-snapshot">{latest.snapshot}</p>}
       {open && (
         <ul className="character-history">
-          {history.map((item) => (
+          {history.slice().reverse().map((item) => (
             <li key={item.chapter}>
               <strong>第{Number(item.chapter) + 1}章</strong>：{item.snapshot}
             </li>
