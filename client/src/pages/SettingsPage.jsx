@@ -328,7 +328,7 @@ const SETTING_TITLES = { general: '常规设置', appearance: '外观设置', pr
                         top: Math.min(reviewTip.y + 16, window.innerHeight - 90)
                       }}
                     >
-                      生成或改写章节后 AI 会通读一遍，不通过时自动修订；会额外耗时与消耗 token，默认关闭。
+                      生成或改写章节后 AI 会对内容合理性和衔接问题的进行审校，会造成额外耗时与 token消耗，默认关闭。
                     </div>
                   )}
                 </div>
