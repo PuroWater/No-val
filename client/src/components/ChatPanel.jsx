@@ -164,25 +164,11 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
       ? contentOverride.trim()
       : input.trim();
     if (!content || sending || hasProcessing) return;
-    // 幂等键：后端按 book.lastAppliedMessageId 去重，防止网络重放造成重复写入
-    const messageId = `local_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
     setInput('');
     sessionStorage.removeItem(draftKey);
     setProgress(null);
     setSending(true);
     setError('');
-    const typing = {
-      id: `local_typing_${Date.now()}`,
-      role: 'agent',
-      content: '回复中',
-      kind: 'typing',
-      createdAt: new Date().toISOString()
-    };
-    setBook((prev) => {
-      if (!prev) return prev;
-      const optimistic = { id: messageId, role: 'user', content, kind: 'text', createdAt: new Date().toISOString() };
-      return { ...prev, chat: [...(prev.chat || []), optimistic, typing] };
-    });
     try {
       let targetBookId = bookId;
       if (isNew && !activeBookId) {
@@ -190,15 +176,42 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
         setActiveBookId(session.book.id);
         targetBookId = session.book.id;
       }
-      const body = { bookId: targetBookId, content, messageId };
+      // 0.9.4 稳定重试令牌：同一本书、同一内容的“重发”复用同一 messageId，
+      // 服务端按 book.lastAppliedMessageId 去重——响应丢失后用户重发不再重复写入。
+      // 发送成功后清令牌；失败保留（下次同内容重发即复用）。
+      // 边界：全新草稿首条消息失败重发会新建会话（不同 bookId），令牌不跨书，属已知限制。
+      const retryKey = `novel_retry_${targetBookId}`;
+      let messageId = '';
+      try {
+        const saved = JSON.parse(sessionStorage.getItem(retryKey) || 'null');
+        if (saved && saved.content === content && saved.messageId) messageId = saved.messageId;
+      } catch {
+        messageId = '';
+      }
+      if (!messageId) messageId = `local_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+      sessionStorage.setItem(retryKey, JSON.stringify({ messageId, content }));
+      const typing = {
+        id: `local_typing_${Date.now()}`,
+        role: 'agent',
+        content: '回复中',
+        kind: 'typing',
+        createdAt: new Date().toISOString()
+      };
+      setBook((prev) => {
+        if (!prev) return prev;
+        const optimistic = { id: messageId, role: 'user', content, kind: 'text', createdAt: new Date().toISOString() };
+        return { ...prev, chat: [...(prev.chat || []), optimistic, typing] };
+      });
       const data = await api('/chat/message', {
         method: 'POST',
-        body: JSON.stringify(body)
+        body: JSON.stringify({ bookId: targetBookId, content, messageId })
       });
+      sessionStorage.removeItem(retryKey);
       setBook(data.book);
       onBookChanged?.();
       if (isNew && onSessionCreated) onSessionCreated(data.book);
     } catch (err) {
+      // 失败保留 retry 令牌：同内容重发复用 messageId，服务端去重防重复写入
       setError(err.message);
       setBook((prev) => (
         prev

@@ -2746,6 +2746,18 @@ Novel Agent/
 - 修复 0.9.1 遗留 bug：maintainChapterMeta / initializeBookMeta 引用未定义的 settings（签名无此参数）→ 维护必挂 ReferenceError；签名补 settings 默认 {}，routes/books 与 tools 的 refresh_chapter_meta 传入用户设置；golden eval 8/8 回归通过；
 - 新增 7 个单测（五档常量/归一化/旧字段迁移/三态判定/自定义判定/缺省守卫）+ 1 个维护 settings 回归测试；单元测试 82/82、前端 build 通过；版本号统一 0.9.3（根/server/client）；主“开启”按钮不显示全局悬浮说明（自定义五档已有逐项说明，悬浮挂在档位标签上）；本地提交未推送。
 
+### 2026-08-15 v0.9.4 客户端稳定重试令牌（跨消息幂等闭环）
+
+待更新说明：
+- 服务端幂等只在"同一 messageId 重放"时生效；messageId 由客户端每次发送现场生成，响应丢失后用户重发同一句话会产生新 messageId → 服务端当新消息重复执行（如同章写两遍）。
+
+待更新功能：
+- ChatPanel sendMessage：先解析目标书（含新会话），再按书取/存 sessionStorage 重试令牌 { messageId, content }——同一本书、同一内容的重发复用同一 messageId，发送成功清令牌、失败保留；
+- 服务端无需改动（book.lastAppliedMessageId 去重已就绪）；全新草稿首条消息失败重发会新建会话（不同 bookId），令牌不跨书，属已知边界。
+
+完成内容：
+- 客户端令牌落地；前端 build 通过、单测 82/82；golden eval"重复消息幂等"场景继续 PASS（服务端去重未变）；版本号统一 0.9.4（根/server/client）；本地提交未推送。
+
 ### 后续建议方向（2026-08-15 更新）
 
 - **v1.0 再做（记账，用户 2026-08-15 定）**：
