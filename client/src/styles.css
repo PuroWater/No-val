@@ -2595,6 +2595,9 @@ ne-tooltip-detail {
   gap: 24px;
   padding: 16px;
   overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
 }
 .book-info-cover-col {
   display: flex;
