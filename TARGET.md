@@ -2834,6 +2834,25 @@ Novel Agent/
 完成内容：
 - 全链路落地；单元测试 131/131、前端 build 通过；版本号统一 0.9.8（根/server/client）；分支 codex/0.9.8-style-template，本地提交未推送。
 
+### 2026-08-16 v0.9.9 世界观设定（worldSettings）
+
+待更新说明：
+- 已有文笔（writingStyle，管“怎么写”）后，补“写什么”的世界观设定，保持故事一致性；
+- 采用人物卡同款“单实体 + 按章快照历史 + 只注入最新”机制，O(常数) 不爆上下文；
+- 与题材模板解耦：模板管“问什么/提示什么”，worldSettings 承载“这本书具体填了什么”。
+
+待更新功能：
+- 书级 `book.world = { history: [{ chapter, snapshot: { summary, factions[], places[], systems[] } }] }`；
+  - summary = 总述/规则（像人物卡 identity）
+  - factions/places/systems 均为 `{ name, status }` 列表，复用 normalizeBag：去重、重要性排序、截 30、超出标“其他”
+- 维护 AI 读上一张世界观快照 + 当前章正文，输出本章完整快照；同章重维护替换、增量补录新势力/地点/体系
+- 注入 `worldSnapshotRef(book, { untilChapter })`：新建取最新、改写按位置取该章前；写正文 AI 只读，可扩展不封闭
+- 用户可编辑：书籍信息页“世界观”区显示最新、支持按章历史搜索（复用 ContentTip/tooltip3）
+- 手编语义：改中间章影响改写该章，改最新章影响改写最新章+后续新建
+- 评审辅助：重大世界观矛盾才提示（类似人物合理性辅助）
+- **mergeBookState 必须同步 book.world**（0.9.8 踩坑：characters 未合并导致维护结果丢失）
+- 单元测试 + build + 真机维护验证
+
 ### 后续建议方向（2026-08-16 更新）
 
 - **三个待议问题**（用户未拍板）：token 占用精确数据；规模信任守卫结构化（讨论“路由输出带用户明确提及字段的标记”等替代正则方案）；开思考稳定性（接受“质量模式偶发重发”，或后续调优）。
