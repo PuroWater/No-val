@@ -1211,6 +1211,10 @@ button, input, textarea, select {
   color: #ffffff;
 }
 
+.directory-item.active .directory-grip {
+  color: #ffffff;
+}
+
 .directory-item.new {
   border-style: dashed;
   border-color: var(--border);
@@ -2406,9 +2410,9 @@ ne-tooltip-detail {
   border-color: var(--accent);
 }
 
-/* 落点：目标上方插入线提示（box-shadow 跟随圆角，不出现直角方框） */
+/* 落点：整圈环绕提示（box-shadow 跟随圆角，不出现直角方框/单线） */
 .directory-item.drag-over {
-  box-shadow: inset 0 2px 0 0 var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
 }
 
 /* 选中态深色主题色上仍要能看到拖拽反馈（不改主题色本身） */
@@ -2417,5 +2421,5 @@ ne-tooltip-detail {
 }
 
 .directory-item.active.drag-over {
-  box-shadow: inset 0 2px 0 0 rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85);
 }
