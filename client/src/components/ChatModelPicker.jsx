@@ -1,20 +1,19 @@
-// 聊天输入框模型选择器：按钮固定宽度（超长省略号），悬浮 tooltip2 显示"当前模型：（名称），点击切换其他模型"；
-// 点击菜单向上弹出（输入框在底部），菜单内显示各条目名称；点击外部关闭菜单；切换即全局激活。
+// 聊天输入框模型选择器：按钮固定宽度（超长省略号），悬浮 tooltip（右上角 x-6/y+16 锚定，
+// 与菜单条目悬浮一致）显示"当前模型：（名称），点击切换其他模型"；
+// 点击菜单向上弹出，菜单内显示各条目名称；点击外部关闭；切换即全局激活。
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
-import { useHoverTip, HoverTip } from './TooltipKit.jsx';
 
-// 菜单条目悬浮提示：右上角 = 鼠标 (x-6, y+16)，内容向左/下展开（按实际宽高钳制防出屏）
+// 悬浮提示：右上角 = 鼠标 (x-6, y+16)，内容向左/下展开（按实际宽高钳制防出屏）
 const TOOLTIP_MARGIN = 8;
 
 export default function ChatModelPicker({ disabled }) {
   const [entries, setEntries] = useState([]);
   const [activeId, setActiveId] = useState('');
   const [open, setOpen] = useState(false);
-  const [itemTip, setItemTip] = useState(null); // 菜单条目悬浮（右上角锚定）
+  const [itemTip, setItemTip] = useState(null); // { x, y, text }（右上角锚定，按钮/菜单条目共用）
   const wrapRef = useRef(null);
   const tipRef = useRef(null);
-  const { tip, bindHover } = useHoverTip(); // 按钮悬浮 tooltip2
 
   useEffect(() => {
     api('/providers')
@@ -35,7 +34,7 @@ export default function ChatModelPicker({ disabled }) {
     return () => document.removeEventListener('mousedown', onDocClick);
   }, [open]);
 
-  // 菜单条目 tooltip：右上角锚定 (x-6, y+16)，按实际宽高钳制
+  // 悬浮提示：右上角锚定 (x-6, y+16)，按实际宽高钳制
   useLayoutEffect(() => {
     const el = tipRef.current;
     if (!el || !itemTip) return;
@@ -52,8 +51,12 @@ export default function ChatModelPicker({ disabled }) {
   const activeEntry = entries.find((item) => item.id === activeId) || entries[0];
   if (!activeEntry) return null;
 
-  function showItemTip(event, entry) {
-    setItemTip({ x: event.clientX, y: event.clientY, text: entry.name + '：' + entry.model });
+  function showItemTip(event, text) {
+    setItemTip({ x: event.clientX, y: event.clientY, text });
+  }
+
+  function showButtonTip(event) {
+    showItemTip(event, `当前模型：${activeEntry.name}，点击切换其他模型`);
   }
 
   async function switchModel(id) {
@@ -78,7 +81,9 @@ export default function ChatModelPicker({ disabled }) {
         className="chat-model-btn"
         disabled={disabled}
         onClick={() => setOpen((v) => !v)}
-        {...bindHover(`当前模型：${activeEntry.name}，点击切换其他模型`)}
+        onMouseEnter={showButtonTip}
+        onMouseMove={showButtonTip}
+        onMouseLeave={() => setItemTip(null)}
       >
         <span className="chat-model-btn-label">{activeEntry.name}</span>
         <span className="chat-model-arrow" aria-hidden="true" />
@@ -90,8 +95,8 @@ export default function ChatModelPicker({ disabled }) {
               key={entry.id}
               className={entry.id === activeId ? 'active' : ''}
               onClick={() => switchModel(entry.id)}
-              onMouseEnter={(e) => showItemTip(e, entry)}
-              onMouseMove={(e) => showItemTip(e, entry)}
+              onMouseEnter={(e) => showItemTip(e, `${entry.name}：${entry.model}`)}
+              onMouseMove={(e) => showItemTip(e, `${entry.name}：${entry.model}`)}
               onMouseLeave={() => setItemTip(null)}
             >
               {entry.name}
@@ -104,7 +109,6 @@ export default function ChatModelPicker({ disabled }) {
           {itemTip.text}
         </div>
       )}
-      <HoverTip tip={tip} />
     </div>
   );
 }
