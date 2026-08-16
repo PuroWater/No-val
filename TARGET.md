@@ -1,8 +1,8 @@
 【项目目标】
-在当前开发环境下（已安装 VSCode、Node.js），生成一个可直接运行的**小说创作平台 Web 应用**。项目不连接任何数据库，后端数据使用本地 JSON 文件持久化。前端为 React 单页应用（SPA），后端为 Express，调用 DeepSeek 大模型辅助创作。
+在当前开发环境下（已安装 VSCode、Node.js），生成一个可直接运行的**小说创作平台 Web 应用**。项目不连接任何数据库，后端数据使用本地 JSON 文件持久化。前端为 React 单页应用（SPA），后端为 Express，调用大模型（默认 DeepSeek，支持多供应商）辅助创作。
 
-当前版本：0.9.0  
-最近更新：2026-08-15 v0.9.0 重构：删除关系网 + 统一思考开关 + 人物一致性体系
+当前版本：0.9.7  
+最近更新：2026-08-16 v0.9.7 人物快照结构化 + 广义背包 + 创作台拖拽排序 + 一批 UI/交互修复
 
 【文档职责】
 
@@ -14,7 +14,7 @@
 
 - 前端：React + Vite，使用 React Router 管理页面，不依赖外部 CDN。
 - 后端：Node.js + Express，使用本地文件系统读写 JSON。
-- 大模型：DeepSeek，后端统一调用，模型固定为 `deepseek-v4-flash`。
+- 大模型：多供应商（DeepSeek/OpenAI/Anthropic/OpenRouter/Grok/Kimi/GLM/MiniMax/Ollama/自定义），后端统一调用，默认 `deepseek-v4-flash`。
 - Node.js 版本：建议 18 或以上。
 - 端口约定：后端 `3001`，前端开发服务器 `5173`，Vite 将 `/api` 代理到后端。
 
@@ -27,12 +27,14 @@ Novel Agent/
 │  ├─ src/                 # 页面、组件、路由
 │  └─ package.json
 ├─ server/                 # Express 后端
-│  ├─ src/                 # 路由、数据层、DeepSeek 调用
+│  ├─ src/                 # 路由、数据层、模型调用
 │  └─ package.json
 ├─ data/                   # 运行时生成的 JSON 数据
 │  ├─ users.json
-│  ├─ books.json
-│  └─ settings.json
+│  ├─ settings.json
+│  ├─ providers.json
+│  ├─ books/               # 已生成图书（每本一个 JSON）
+│  └─ drafts/              # 构思草稿（每本一个 JSON）
 ├─ .env.example            # 环境变量示例，不含真实密钥
 ├─ .gitignore
 ├─ README.md
@@ -49,27 +51,28 @@ Novel Agent/
    - 提供测试账号 `admin / 123456`，后端首次启动时自动创建。
    - 支持退出登录。
 2. 主界面（Agent 聊天）
-   - 登录后进入主界面，左侧功能栏包含：创作、书架、我的；续写并入创作工作台。
+   - 登录后进入主界面，顶部导航包含：创作、书架、我的；续写并入创作工作台。
    - 聊天框上方空白区域显示“今天有什么想法”“来聊聊吧！”等提示，用户可点击提示快速填入。
-   - 聊天框用于接收用户的小说构思或续写指令，后端处理后调用 DeepSeek。
+   - 聊天框用于接收用户的小说构思或续写指令，后端处理后调用模型。
 3. 创作
    - 采用“一书一页面”的创作工作台，顶部可选择“新创作”或历史图书，创作与续写合并。
-   - 用户发送首轮构思后，Agent 每次只追问一个缺失信息，包括主角、故事背景、分类等。
-   - 信息齐全后 Agent 输出整合后的构思摘要，并询问是否需要修改；用户确认后再调用 DeepSeek 生成。
+   - 用户发送首轮构思后，Agent 每次只追问一个缺失信息，包括主角、故事背景、小说总字数等。
+   - 信息齐全后 Agent 输出整合后的构思摘要，并询问是否需要修改；用户确认后再调用模型生成。
    - 生成结果写入当前书籍，章节按章存储，聊天区出现书本样式组件。
    - 书本组件支持并列打开书籍内容，用户可边看、边改、边继续对话。
    - 每个书籍会话的聊天记录持久化到书籍 JSON，切换板块后回到创作页仍保持原会话。
 4. 我的
    - 展示当前用户创作过的书籍列表，包含书名、章节数、更新时间。
-   - 点击书籍进入详情页，详情页并列提供“内容”和“关系网”两个栏位。
+   - 点击书籍进入详情页，详情页提供“内容 / 发展线 / 人物信息”三个栏位。
    - “内容”栏支持按章查看和编辑，编辑后自动保存（如停止输入 1 秒后保存）。
-5. 关系网
-   - 展示书籍内的人物与势力关系，使用节点和连线表示。
-   - 关系数据在章节生成或更新时由后端整理，存入书籍 JSON。
-   - 前端使用 SVG 绘制关系图，节点区分人物 / 势力类型。
-6. 书架
+5. 发展线
+   - 由章节事件派生（零 AI 成本），按“大背景 → 场景 → 章节 → 事件”分层展示。
+   - 支持纵向 / 横向画布、缩放拖拽、手动刷新。
+6. 人物信息
+   - 展示按章结构化的角色设定卡（身份 / 背包 / 目标 / 近况），只读派生，用户不直接改卡。
+7. 书架
    - 本阶段只实现前端页面与“开发中”占位状态，不实现其他用户上架功能。
-7. 设置
+8. 设置
    - 设置界面支持切换背景风格，如浅色、深色、护眼纸纹。
    - 支持字号等简单偏好设置，并持久化到 `data/settings.json`。
    - 设置入口放在“我的”页面。
@@ -77,35 +80,43 @@ Novel Agent/
 【数据与持久化】
 
 - `data/users.json`：用户账号（id、username、passwordHash、createdAt）。
-- `data/books.json`：书籍（id、userId、title、outline、chapters、relations、createdAt、updatedAt）。
-- `data/settings.json`：用户偏好（userId、theme、fontSize）。
+- `data/providers.json`：模型条目（供应商 + Key + 模型）。
+- `data/books/` 与 `data/drafts/`：书籍与构思，每本一个 `<bookId>.json`（软删归档为 `<bookId>.archived.json`）；字段见 `SUMMARY.md` 数据模型（已无 `relations`）。
+- `data/settings.json`：用户偏好（主题/字号/输出规模/思考开关/写前确认/写后审校/发展线方向）。
 - 数据文件在首次启动时自动创建；读写采用简单 JSON 持久化，本阶段不引入数据库。
 
 【后端 API 约定】
 
 - `POST /api/auth/register`：注册。
 - `POST /api/auth/login`：登录，返回 JWT。
-- `GET /api/me`：获取当前用户信息。
-- `GET /api/books`：获取当前用户书籍列表。
-- `GET /api/books/:id`：获取书籍详情。
+- `GET /api/auth/me`：获取当前用户信息。
+- `PUT /api/auth/password`：修改密码。
+- `GET /api/books`：当前用户书籍列表（按 状态 + sortOrder 排序）。
+- `PUT /api/books/order`：创作台拖拽排序写回。
+- `GET /api/books/trash`：回收站。
+- `GET /api/books/:id`：书籍详情。
+- `GET /api/books/:id/development-line`：发展线派生视图。
+- `POST /api/books/:id/chapters`：手动新建空章。
 - `PUT /api/books/:id/chapters/:chapterId`：保存章节内容。
-- `POST /api/chat/create-book`：根据构思生成新书。
-- `POST /api/chat/continue`：续写章节。
-- `POST /api/chat/sessions`：创建新的草稿会话（未命名新书）。
-- `POST /api/chat/message`：向指定书籍会话发送消息并推进 Agent 状态。
+- `POST /api/books/:id/chapters/:chapterId/summary`：维护章节摘要/事件。
+- `DELETE /api/books/:id/chapters/:chapterId`：删除任意单章（含中间章）。
+- `DELETE /api/books/:id/chapters`：批量删除末尾章节（body `{ count }`，1-50、至少保留 1 章）。
+- `DELETE /api/books/:id`、`POST /api/books/:id/restore`、`DELETE /api/books/:id/permanent`：软删/恢复/彻底删除。
+- `POST /api/chat/sessions`、`POST /api/chat/message`、`POST /api/chat/abort`、`GET /api/chat/progress`：草稿会话、消息推进、中断、进度。
 - `GET /api/settings`、`PUT /api/settings`：读取、保存设置。
+- `GET /api/providers`、`POST /api/providers`、`PUT /api/providers/:id`、`DELETE /api/providers/:id`、`POST /api/providers/:id/activate`、`POST /api/providers/:id/test`、`POST /api/providers/fetch-models`：模型服务管理。
 - 除注册、登录外，其余接口需要携带 JWT。
 
-【DeepSeek 集成】
+【模型服务集成（0.9.6 v2）】
 
-- 后端统一调用 DeepSeek API，前端不直接持有密钥。
-- 密钥从环境变量 `DEEPSEEK_API_KEY` 读取；本地通过根目录 `.env` 提供，`.env` 必须加入 `.gitignore`，不提交仓库。
-- 模型固定为 `deepseek-v4-flash`，可通过 `.env` 中 `DEEPSEEK_MODEL` 覆盖。
+- 后端统一调用模型，前端不直接持有密钥。
+- 配置存 `data/providers.json`（`entries[]`，每条 = 供应商 + Key + 模型）；无文件时用预设默认 DeepSeek（Key 留空由用户在设置页填写），不再读环境变量。
+- 支持 OpenAI 兼容 / Anthropic Messages 双协议适配器；思考参数由后端按供应商预设自动配置。
 - 后端负责处理超时、限流、缺少密钥等错误，并在聊天界面显示可读的错误提示。
 
 【安全与隐私】
 
-- `.gitignore` 必须忽略 `node_modules`、`.env`、`dist`、`data/*.json` 等目录或文件。
+- `.gitignore` 必须忽略 `node_modules`、`.env`、`dist`、`.vite`、`data/`、`docs/`、`*.log` 等目录或文件。
 - 提供 `.env.example` 说明需要配置的环境变量，不写入真实密钥。
 - 密码必须哈希存储，日志中不得输出密钥或密码。
 
@@ -113,9 +124,9 @@ Novel Agent/
 `README.md` 必须包含：
 
 - 项目简介和目录说明。
-- 依赖安装命令：`cd client && npm install`、`cd server && npm install`。
-- 启动命令：后端 `cd server && npm run dev`，前端 `cd client && npm run dev`。
-- 环境变量说明（`DEEPSEEK_API_KEY`、`DEEPSEEK_MODEL`、`JWT_SECRET`）。
+- 依赖安装命令：`npm run install:all`（或分别 `cd server && npm install`、`cd client && npm install`）。
+- 启动命令：开发 `npm run dev:server` + `npm run dev:client`；生产 `npm run build` + `npm start`。
+- 模型配置：默认 DeepSeek；可在设置页“模型配置”接入其他供应商（写入 `data/providers.json`）。
 - 测试账号 `admin / 123456`。
 - 常见问题：缺少密钥、端口被占用等。
 
@@ -138,14 +149,14 @@ Novel Agent/
 - 输入构思可生成新书，书名、章节进入“我的”。
 - 可续写章节，可编辑章节并自动保存。
 - 创作页顶部可选择历史图书或新建创作会话。
-- Agent 会逐个追问主角、背景、分类，并在生成前展示摘要让用户确认。
+- Agent 会逐个追问主角、故事背景、小说总字数，并在生成前展示摘要让用户确认。
 - 聊天记录切换板块后仍然保留。
 - 生成后聊天区出现书本组件，可并列打开并编辑。
-- 书籍详情页有并列的“内容 / 关系网”栏位，关系网能展示人物和势力关系。
+- 书籍详情页有“内容 / 发展线 / 人物信息”栏位，发展线能分层展示章节事件，人物信息能展示角色设定卡。
 - 书架为占位页面。
 - 设置中的背景风格切换后刷新仍生效。
 - 后端数据均写入 `data/` 下 JSON 文件。
-- `.env` 与 `data/*.json` 未被提交。
+- `.env` 与 `data/` 未被提交。
 
 【更新记录】
 
@@ -2800,11 +2811,10 @@ Novel Agent/
 完成内容：
 - 全链路落地（维护端/注入端/UI/迁移/测试）；单元测试 126/126、build 通过、golden eval 8/8 + 真机维护验证；版本号统一 0.9.7（根/server/client）；分支 codex/0.9.6-provider-custom，本地提交未推送。
 
-### 后续建议方向（2026-08-15 更新）
+### 后续建议方向（2026-08-16 更新）
 
-- **v1.0 再做（记账，用户 2026-08-15 定）**：
-  1. 写作风格模板走 skill 系统（去预制味后续）：提供不同风格模板；提示词仅做轻量优化（0.8.48 已做回复自然化）。
+- **三个待议问题**（用户未拍板）：token 占用精确数据；规模信任守卫结构化（讨论“路由输出带用户明确提及字段的标记”等替代正则方案）；开思考稳定性（接受“质量模式偶发重发”，或后续调优）。
+- **写作风格模板走 skill 系统（0.9.7 定稿）**：第 2 步待做——书级 `book.writingStyle` 注入 writingSystem（文笔风格：辞藻/排句/口语书面/成语习惯），详情页可实时改、只影响之后写作；第 3 步先记着——题材模板（末日/玄幻修仙/都市言情/武侠/重生/系统/无限），需先搜集整理模板资料再定。
+- **暂缓**：主线/伏笔索引（events.foreshadow，方案 D）。
 
-已全部完成：并列上移（0.8.43）、前端拆组件（0.8.44）、乐观锁（0.8.45）、golden eval 扩展（0.8.46）、兼容别名清理（0.8.47）、刷新即中断（0.8.48）、长书大图优化（0.8.49）、内部命名统一（0.8.51/0.8.52）、旧数据迁移清理（0.8.53）。
-
-已取消/明确不做：docs/ 入库（不上传）、客户端自动重试（不要重试按钮）、发展线分支、真时间轴/事件真实时间字段、事件↔章节联动、关系网自动维护/交互升级/人物↔关系网联动、大图优化、书架页。
+已取消/明确不做：docs/ 入库（不上传）、客户端自动重试（不要重试按钮）、发展线分支、真时间轴/事件真实时间字段、事件↔章节联动、人物↔关系网联动、大图优化、书架页。

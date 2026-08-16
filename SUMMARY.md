@@ -2,15 +2,15 @@
 
 ## 当前状态
 
-- 当前版本：0.9.6（0.8.19 意图级工具白名单 + 卡片语义/展示修正；0.8.20 read_book 单章默认全文 + 改写指令携带衔接建议 + 严格触发条件；0.8.21 彻底禁止范围读取 + 工具调用日志 + 移除前端重试按钮；0.8.22 字数收敛泛化 + 新书走新建章流程；0.8.23 路由只判意图、禁止用摘要判断剧情；0.8.24 行为约束单一来源 agentRules；0.8.25 watch 稳定性 + 启动自愈清理残留 processing；0.8.26-0.8.28 章节保存静默 + 路由层规模守卫；0.8.29 剧情衔接质疑不再误判；0.8.30 删除 context_edit 工具与意图；0.8.31 防旧工具名幻觉 + 写操作完成确定性补卡；0.8.32 标题修复路由 + 改写标题前缀规范化；0.8.33 路由注入工具清单；0.8.34 仅改内容触发维护；0.8.38 清理并列实验残留；0.8.39 删除全书概况：只维护章节摘要与事件；0.8.40 写正文规则：章节收尾 + 脉络扩写；0.8.41 字数打回重写（+备注）、删除补写；0.8.42 衔接评审任务单 + 前端文案/发展线美化；0.8.43 修复并列查看聊天上移；0.8.44 前端大文件拆子组件；0.8.45 乐观锁覆盖手动新建章与回收站；0.8.46 golden eval 扩展；0.8.47 兼容别名清理；0.8.48 刷新即中断 + 回复自然化；0.8.49 长书大图渲染优化；0.8.50 修复发展线白屏；0.8.51 内部命名统一 DevelopmentLineView；0.8.52 内部命名补全；0.8.53 清理旧数据迁移 + TARGET 规划整理；0.8.54 竖排发展线居中；0.8.55 发展线画布左上对齐 + 记账 v1.0；0.8.56 竖排背景按钮中线对齐；0.8.57 画布分方向对齐；0.9.0 重构：删除关系网 + 统一思考开关 + 人物一致性体系；0.9.1 思考开关实测与加固；0.9.2 路由提示词注入默认输出规模；0.9.3 模型思考细分开关（三态+五档自定义）；0.9.4 客户端稳定重试令牌；0.9.5 事件结构瘦身（删伏笔字段与 time）；0.9.6 模型服务自定义 v2（供应商预设 + 模型管理 + 聊天模型选择器）；0.9.7 人物快照结构化 + 广义背包）
-- 当前分支：Develop
+- 当前版本：0.9.7（人物快照结构化 + 广义背包 + 创作台拖拽排序 + 一批 UI/交互修复；详见底部“版本更新说明”）
+- 当前分支：codex/0.9.6-provider-custom（功能分支，未并 develop；全部提交本地未推送）
 - 技术栈：React 18 + Vite 5，Express 4，Node.js 18+，JSON 本地持久化
-- 大模型：DeepSeek，模型默认 `deepseek-v4-flash`
+- 大模型：多供应商（DeepSeek/OpenAI/Anthropic/OpenRouter/Grok/Kimi/GLM/MiniMax/Ollama/自定义），默认 `deepseek-v4-flash`
 - 数据目录：项目根目录 `data/`
 
 ## 项目介绍
 
-Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前端使用 React SPA，后端使用 Express API，所有业务数据以 JSON 文件保存在 `data/` 下，不依赖数据库。后端统一调用 DeepSeek 完成小说构思采集、摘要整合、章节生成、续写、改写与人物设定维护，前端不直接接触 API Key。
+Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前端使用 React SPA，后端使用 Express API，所有业务数据以 JSON 文件保存在 `data/` 下，不依赖数据库。后端统一调用大模型（默认 DeepSeek，支持多供应商）完成小说构思采集、摘要整合、章节生成、续写、改写与人物设定维护，前端不直接接触 API Key。
 
 项目采用“一书一页面”的创作工作台：顶部选择一本历史图书或新建创作会话，聊天记录随书籍持久化，生成后可在聊天中打开并列窗口，边看、边改、边继续创作。
 
@@ -31,9 +31,9 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 - 历史图书按“构思中”和“已生成图书”分组显示。
 - 点击“＋ 新创作”只进入聊天界面，不预先创建书籍条目。
 - 只有用户真正发送首条消息后才会创建书籍条目；没有书名时草稿标题使用“构思：首段内容”作为概括信息，生成正式书名后再替换。
-- 用户发送首轮构思后，Agent 一次只追问一个缺失信息，包括主角、故事背景、分类、小说总字数（千字 / 万字 / 10 万 / 20 万 / 50 万 / 百万）等。
+- 用户发送首轮构思后，Agent 一次只追问一个缺失信息，包括主角、故事背景、小说总字数（千字 / 万字 / 10 万 / 20 万 / 50 万 / 百万）等。
 - 信息齐全后 Agent 输出整合后的构思摘要，并询问是否需要修改。
-- 用户回复“确认”后才调用 DeepSeek 生成正式书籍。
+- 用户回复“确认”后才调用模型生成正式书籍。
 - 用户也可以继续提出修改意见，Agent 会重新整合摘要后再确认。
 
 ### 持久化聊天
@@ -55,10 +55,10 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 - 并列窗口与聊天界面同屏显示，可实时查看章节、人物设定、发展线和编辑内容。
 - 章节编辑停止输入 1 秒后自动保存。
 - 手动新建章节必须输入实际章节名：去掉“第n章”前缀后为空（如只按回车或失焦）则不创建。
-- 人物设定卡（`book.characters`，0.9.0 起）：重要角色自动建档，按章记录状态快照（身份/实力/处境/与主角关系等，按故事类型灵活）；只有状态重大变化（突破/身份改变/重大事件）才追加快照，避免冗余。
+- 人物设定卡（`book.characters`，0.9.0 起）：重要角色自动建档，按章记录结构化快照 `{ identity（身份/基础）, bag[]（广义背包：功法/道具/资产/系统/消耗品，题材无关）, goal（目标）, recent（近况≤50字） }`；只有状态重大变化（突破/身份改变/重大事件）才追加快照，避免冗余。
 - 人物设定卡是只读派生视图：新建/改写章节时维护 AI 增量产出快照，写正文按操作/位置注入相关人物最新快照与近期动向，保持人物一致性。
 - 编辑章节后失焦只保存、不触发 AI；真正编辑完成（切换标签、关闭面板、返回导航）时自动维护该章摘要/事件与人物设定快照。
-- 章节事件（`chapter.events`）按章节序派生为“章节事迹轴”发展线（0.8.6 前称时间线），零 AI 成本，供详情页发展线标签展示；发展线按 `context[0]` 主线背景（一章一个，参考前后章）→ `context[1]` 场景（实际地点；离开背景地理时用「大背景/地点」拼合模板，如“家族/藏书阁”）分层。
+- 章节事件（`chapter.events`）按章节序派生为“发展线”视图（0.8.6 前称时间线），零 AI 成本，供详情页发展线标签展示；发展线按 `context[0]` 主线背景（一章一个，参考前后章）→ `context[1]` 场景（实际地点；离开背景地理时用「大背景/地点」拼合模板，如“家族/藏书阁”）分层。
 - 续写、改写、提问全部通过自然语言触发；改写会先询问章节，再询问修改部分。
 - 聊天面板高度固定，对话内容不影响页面整体大小，消息在聊天区内滚动。
 - 生成与续写按设置中的“每次输出章节数 × 每章字数”占全书目标总字数的比例安排剧情；续写一次输出设置的章节数。
@@ -70,8 +70,8 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 - 改写章节：输入修改意见，Agent 判断目标章节并重写。
 - 剧情问答：询问设定、角色或剧情，Agent 直接回答。
 - 续写、改写自动维护章节摘要/事件，并增量维护人物设定卡。
-- 章节元数据（摘要 `chapter.summary` + 事件 `chapter.events` 内嵌，含事件/人物/背景/伏笔）由后端统一维护内核（`maintainChapterMeta`）自动更新；0.8.39 起不再维护“全书概况”（`storySummary` 已删除），看全局用 `read_book(field=info)` 的简介/章节数/字数/目标字数；删除任意章不触发维护，`refresh_chapter_meta` 可立即刷新指定章。
-- 聊天意图由 Agent 通过 function calling 决策：模型返回标准工具与参数，后端按 schema 硬校验后执行；工具协议为 ReAct 多步循环（默认 4 步），工具结果回填后模型可继续调用或直接回复，失败自动回传重试。
+- 章节元数据（摘要 `chapter.summary` + 事件 `chapter.events` 内嵌，含事件/人物/背景）由后端统一维护内核（`maintainChapterMeta`）自动更新；0.8.39 起不再维护“全书概况”（`storySummary` 已删除），看全局用 `read_book(field=info)` 的简介/章节数/字数/目标字数；删除任意章不触发维护，`refresh_chapter_meta` 可立即刷新指定章。
+- 聊天意图由 Agent 通过 function calling 决策：模型返回标准工具与参数，后端按 schema 硬校验后执行；工具协议为原生 function calling 循环（步数上限 30），工具结果回填后模型可继续调用或直接回复，失败自动回传重试；完成条件由状态机强制（counted/single/signal/none）。
 - 通用读工具 `read_book` 覆盖书籍信息（书名/简介/章节数/进度/目标字数）、章节目录、指定章节内容与分层发展线（`field=info/meta/chapters/chapter/development_line`）；`field=chapter` **只支持单章读取**（`target` 单个章节号，范围在参数校验层被拒绝），默认返回标题/摘要/事件/正文全文（`scope=summary` 只看标题/摘要/事件）；需要多章时分次单章调用；摘要/事件与人物设定维护保持后端自动。
 
 ### 删除与回收站
@@ -116,18 +116,25 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 - 核心文件：
   - `src/index.js`：服务入口、静态托管、SPA 回退、404 信息。
   - `src/routes/auth.js`：注册、登录、当前用户。
-  - `src/routes/books.js`：书籍列表、详情、章节保存。
-  - `src/routes/chat.js`：草稿会话、消息推进、兼容旧接口。
-  - `src/routes/settings.js`：主题与字号设置。
+  - `src/routes/books.js`：书籍列表/排序、详情、发展线、章节、回收站。
+  - `src/routes/chat.js`：草稿会话、消息推进、中断、进度。
+  - `src/routes/settings.js`：主题/字号/输出规模/思考/审校/写前确认/发展线方向。
+  - `src/routes/providers.js`：模型服务管理（列表/新增/编辑/删除/激活/测试/拉模型列表）。
   - `src/services/chatService.js`：聊天状态机（draft/ready 消息推进与写回合并）。
-  - `src/services/draftService.js`：构思生成独立通道（一次性初始化整本书，≤5 章 + summary）。
+  - `src/services/draftService.js`：构思生成独立通道（定稿后逐章走 createChapter，≤5 章）。
   - `src/services/draftTools.js`：构思阶段工具定义（confirm_draft）。
+  - `src/services/settingsService.js`：用户设置读取（getUserSettings）。
   - `src/services/bookService.js`：已生成图书生命周期与章节编排（`createChapter` / `rewriteChapter` / `deleteChapters` / `updateOutline` / `reviewChapter`）。
   - `src/services/maintenanceService.js`：统一维护内核（`maintainChapterMeta` 单章维护、`initializeBookMeta` 新书一次性初始化）。
-  - `src/services/storyMetaService.js`：故事元数据（人物索引 `buildCharacterIndex` 派生、章节事迹轴派生视图 `buildDevelopmentLine`；0.9.0 起删除关系网）。
+  - `src/services/storyMetaService.js`：故事元数据（人物索引 `buildCharacterIndex` 派生、发展线派生视图 `buildDevelopmentLine`）。
   - `src/services/modelClient.js`：统一模型调用门面（chatCompletion JSON 模式 / chatTools 原生 function calling / parseJson）。
-  - `src/services/providers/deepseek.js`：DeepSeek 模型适配器（第一个 provider，实现统一 client 接口）。
-  - `src/lib/modelConfig.js`：模型提供方配置（provider 选择，`DEEPSEEK_*` 兼容保留）。
+  - `src/services/providers/index.js`：协议适配器注册表（openai 兼容 / anthropic Messages）。
+  - `src/services/providers/openaiCompatible.js`：OpenAI 兼容协议适配器（/chat/completions，覆盖 DeepSeek/OpenAI/OpenRouter/Grok/Kimi/GLM/MiniMax/Ollama/中转/本地）。
+  - `src/services/providers/anthropic.js`：Anthropic Messages 协议适配器（/v1/messages、x-api-key、tool_use/tool_result）。
+  - `src/services/modelList.js`：远端模型列表拉取（/models 归一化 + 预设合并）。
+  - `src/lib/providersStore.js`：供应商预设（VENDOR_PRESETS）+ 模型条目数据层（data/providers.json）。
+  - `src/lib/thinking.js`：思考开关三态 + 五档统一解析（resolveThinking）。
+  - `src/lib/providerErrors.js`：模型错误友好化（friendlyProviderError）。
   - `src/services/intentPlans.js`：意图 → 任务单（工具白名单 + 步骤 + 完成条件）。
   - `src/services/router.js`：意图路由（runRouter / prefilterDraftIntent）。
   - `src/services/executor.js`：任务执行器 runTask + 状态机（原生工具循环、完成条件、幂等去重、防绕圈）。
@@ -171,19 +178,28 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
       "content": "章节正文",
       "summary": "章节摘要",
       "events": [
-        { "id": "e_1", "event": "事件", "characters": ["人物"] }
+        { "id": "e_1", "event": "事件", "characters": ["人物"], "context": ["大背景", "场景"] }
       ],
       "updatedAt": "..."
     }
   ],
   "characters": [
-    { "name": "张三", "history": [{ "chapter": 0, "snapshot": "金丹期修士，与主角为敌" }] }
+    { "name": "张三", "history": [{ "chapter": 0, "snapshot": { "identity": "身份/基础", "bag": [{ "name": "功法", "status": "第X层" }], "goal": "当前目标", "recent": "本章近况" } }] }
   ],
   "chat": [],
-  "draft": { "concept": "", "summary": "" },
+  "draft": { "concept": "", "summary": "", "targetWords": 0, "chaptersPerOutput": 3, "chapterWords": 2000 },
   "deletedAt": null,
   "createdAt": "...",
   "updatedAt": "..."
+}
+```
+
+`data/providers.json`（0.9.6 起）：
+
+```json
+{
+  "entries": [{ "id": "deepseek", "vendor": "deepseek", "name": "DSRIGHT", "model": "deepseek-v4-flash", "apiKey": "..." }],
+  "active": "deepseek"
 }
 ```
 
@@ -192,8 +208,15 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 ```json
 {
   "userId": "u_xxx",
-  "theme": "light",
-  "fontSize": "medium"
+  "theme": "paper",
+  "fontSize": "medium",
+  "chaptersPerOutput": 3,
+  "chapterWords": 2000,
+  "enterToSend": true,
+  "thinkingMode": "off",
+  "developmentLineOrientation": "vertical",
+  "reviewAfterWrite": false,
+  "confirmBeforeWrite": false
 }
 ```
 
@@ -204,30 +227,37 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 - `GET /api/auth/me`
 - `PUT /api/auth/password`
 - `GET /api/books`
+- `PUT /api/books/order`
 - `GET /api/books/trash`
 - `GET /api/books/:id`
-- `GET /api/books/:id/timeline`（章节事迹轴，按章节序返回 `chapter.events`）
+- `GET /api/books/:id/development-line`
+- `POST /api/books/:id/chapters`
+- `PUT /api/books/:id/chapters/:chapterId`
+- `POST /api/books/:id/chapters/:chapterId/summary`
+- `DELETE /api/books/:id/chapters/:chapterId`（删除任意单章，含中间章）
+- `DELETE /api/books/:id/chapters`（批量删除末尾章节，body `{ count }`，1-50、至少保留 1 章）
 - `DELETE /api/books/:id`
 - `POST /api/books/:id/restore`
 - `DELETE /api/books/:id/permanent`
-- `DELETE /api/books/:id/chapters/:chapterId`（仅支持删除末尾章节）
-- `DELETE /api/books/:id/chapters`（批量删除末尾章节，body `{ count }`，1-50、至少保留 1 章）
-- `PUT /api/books/:id/chapters/:chapterId`
 - `POST /api/chat/sessions`
 - `POST /api/chat/message`
-- `POST /api/chat/create-book`（兼容）
-- `POST /api/chat/continue`（兼容）
+- `POST /api/chat/abort`
+- `GET /api/chat/progress`
 - `GET /api/settings`
 - `PUT /api/settings`
+- `GET /api/providers`、`POST /api/providers`
+- `PUT /api/providers/:id`、`DELETE /api/providers/:id`
+- `POST /api/providers/:id/activate`
+- `POST /api/providers/:id/test`
+- `POST /api/providers/fetch-models`
 
 除注册、登录外，其余接口需要 `Authorization: Bearer <token>`。
 
 ## 安全与隐私
 
-- `.env` 被 `.gitignore` 忽略，不提交 `DEEPSEEK_API_KEY`。
-- `data/*.json` 被忽略，不提交用户与书籍数据。
+- `.env` 与 `data/`（含 `providers.json` 中的模型 Key）被 `.gitignore` 忽略，不提交密钥、用户与书籍数据。
 - 密码 bcrypt 哈希，日志不输出密钥和密码。
-- DeepSeek 请求只发生在后端。
+- 模型请求只发生在后端，前端不接触 API Key。
 
 ## 项目注意事项
 
@@ -249,7 +279,7 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 
 ### 配置约定
 
-- 所有环境变量以 `.env.example` 为准：`DEEPSEEK_API_KEY`、`DEEPSEEK_MODEL=deepseek-v4-flash`、`DEEPSEEK_BASE_URL`、`JWT_SECRET`、`PORT`。
+- 模型服务以 `data/providers.json` 为准（0.9.6 起不再读环境变量）；`.env.example` 仅保留 DeepSeek 默认兜底与 `JWT_SECRET`、`PORT`。
 - 本地真实配置写在根目录 `.env`，`.env` 必须被 `.gitignore` 忽略。
 - 后端端口固定为 3001，前端开发端口固定为 5173，Vite 必须保持 `host: '0.0.0.0'`。
 - 生产模式由 Express 托管 `client/dist`，SPA 回退只对非 `/api` 请求生效。
@@ -293,18 +323,18 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 - 数据持久化采用临时文件写入后替换的原子写，写入前自动保留上一版本到 `data/*.json.bak`；书籍数据按 `data/books/` 与 `data/drafts/` 分目录存储，建议定期整体备份 `data/` 目录。
 - 章节并发安全：聊天结果写回前会重新读取并合并最新数据，改写章节按 AI 改写结果覆盖、其余章节保留并发编辑，避免旧快照覆盖用户编辑。
 - AI 调用统一 120 秒超时，处理中可点击发送按钮位置的“■”中断输出；中断后该轮消息标记为“输出已中断”，可继续发送。
-- 生成与续写改为逐章多次调用并自动重试一次，避免单次超长输出被截断；经 API 实测 `deepseek-v4-flash` 可接受远大于 8192 的 `max_tokens`，**仅写书工具**（生成/续写/改写）使用大上限 32768（约覆盖 10000 字/章 + 推理余量），元数据/工具调用保持 4096；设置字数范围为 1000-10000。
+- 生成/续写/改写逐章多次调用并自动重试一次，避免单次超长输出被截断；写正文工具使用 `maxTokensForWords` 按字数放大（上限 65536），决策/维护类小调用默认 16384；设置字数范围为 1000-10000。
 - 后端进程必须能访问外网；在沙箱、受限网络或代理拦截环境下，DeepSeek 调用会报“DeepSeek 网络请求失败：fetch failed”，请用普通终端启动后端。
 - 端口 3001 被占用时后端会给出明确提示并退出，可通过 `PORT` 环境变量换端口。
 - 同一本书存在“处理中”消息时禁止再次发送；双标签页并发发送会被后端拦截。
-- `deepseek-v4-flash` 是推理模型，响应会消耗大量 `reasoning_tokens`；小规模元数据/工具调用（事件、摘要、意图预筛）的 `maxTokens` 统一为 16384，避免推理吃光预算导致“DeepSeek 未返回内容”，否则推理会吃光预算导致“DeepSeek 未返回内容”。
+- 推理模型（如 `deepseek-v4-flash`）响应会消耗大量 `reasoning_tokens`；决策/维护类小调用（路由、执行器、预筛、维护内核）的 `maxTokens` 统一为 16384，避免推理吃光预算导致“模型未返回内容”。
 
 ### Agent 与工具调用约定
 
 #### 设计理念：路由器 - 执行器 - 状态机（0.8 起）
 
 - 职责分离：**提示词定“做什么”（意图路由 → 任务单），状态机定“做到没有”（完成条件），校验定“做对没有”（工具标准结果 effect）**。
-- 单一路由器：用户消息 → 一次模型调用输出结构化 `{ mode, intent, output, target }`（schema 校验 + 重试，失败回退澄清提问）。意图是枚举（navigate/read/create_append/create_insert/rewrite/delete/batch_edit/meta/outline/target_words/context_edit），不再用正则猜意图。
+- 单一路由器：用户消息 → 一次模型调用输出结构化 `{ mode, intent, output, target }`（schema 校验 + 重试，失败回退澄清提问）。意图是枚举（navigate/read/create_append/create_insert/rewrite/delete/batch_edit/meta/outline/target_words），不再用正则猜意图。
 - 任务单交接：编排器按 intent 生成任务单（工具白名单 + 步骤 + 完成条件）注入执行器；执行器不再重新解读用户消息，只执行与汇报——这是根治“预筛和执行模型理解不一致”的关键。
 - 原生 function calling：工具循环走 `tools`/`tool_calls` + `role:"tool"` 回填，退役文本 JSON 工具协议；路由/聊天/正文生成仍走 JSON 模式。
 - 状态机：完成条件分 counted（计数达标）/ single（主工具成功）/ signal（卡片信号）/ none（模型回复即结束）；工具执行后确定性转移；写类工具在任务完成后被拦截，展示信号允许执行以携带卡片。
@@ -321,15 +351,15 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 
 ### 长小说与全书聚合操作注意事项
 
-- 旧“全量事件迁移/初始化”函数（`ensureChapterEvents`）已删除：旧 `book.timeline → chapter.events` 迁移改由 `normalizeBook` 确定性完成，新书首轮事件与概况走 `initializeBookMeta`（一次性，≤5 章）。未来若需对长书做全量事件补齐，必须先分块，属后续规划。
+- 旧“全量事件迁移/初始化”函数（`ensureChapterEvents`）与 `book.timeline → chapter.events` 迁移均已删除（0.8.53 实测存量书已无旧字段）；新书首轮事件走 `initializeBookMeta`（一次性，≤5 章）。未来若需对长书做全量事件补齐，必须先分块。
 - `maintainChapterMeta` 统一维护内核：输入 = 变更章全文 + 前后章摘要 + 变更章现有 events（O(变更数)），输出 = summary + events，一次关思考调用原子写入，不携带全书事件列表，长小说安全（0.8.39 起不再维护全书概况）。
-- 日常续写、改写、问答、读章已走局部上下文（目标章/前后章摘要与节选 + 当天聊天；0.8.39 起不再注入全书概况与关系网全文），不随章数膨胀，长篇小说在这些路径上没有障碍。
+- 日常续写、改写、问答、读章已走局部上下文（目标章/前后章摘要与节选 + 当天聊天；0.8.39 起不再注入全书概况，关系网也已在 0.9.0 删除），不随章数膨胀，长篇小说在这些路径上没有障碍。
 - 删除章节支持任意章（含中间章）：删除不调 AI、不触发维护（0.8.39 起不再记录 `pendingDeletes`）；插入/删除中间章自动重排标准前缀（`renumberChapterPrefixes`）；章节摘要/事件残留由下一次改写触发维护或 `refresh_chapter_meta` 立即刷新。
-- 后续规划（已取消，不做）：关系网自动维护/交互升级、发展线事件↔章节与人物↔关系网联动、事件时间字段（真实时间轴）、大图性能优化、发展线分支。
+- 明确不做：发展线分支、真时间轴/事件真实时间字段、事件↔章节联动、人物↔关系网联动、大图性能优化、书架页。
 
 ### 并发与写操作约定
 
-- 写操作按“慢写 / 快写”分类：**慢写**（聊天消息、摘要/事件维护 `POST /summary`、关系网生成、章节删除）必须通过书级写队列（`lib/writeQueue.js` 的 `enqueueBookWrite(bookId, task)`）按 `bookId` 串行执行，防止基于旧快照的整书写回互相覆盖；**后续新增任何会修改书籍的慢写入口必须走队列**。
+- 写操作按“慢写 / 快写”分类：**慢写**（聊天消息、摘要/事件维护 `POST /summary`、章节删除）必须通过书级写队列（`lib/writeQueue.js` 的 `enqueueBookWrite(bookId, task)`）按 `bookId` 串行执行，防止基于旧快照的整书写回互相覆盖；**后续新增任何会修改书籍的慢写入口必须走队列**。
 - **快写**（用户手动编辑保存 `PUT` 章节、手动新建空章、回收站操作）旁路不排队，写回前重读磁盘最新并只写自己的字段，避免被 AI 长任务卡住；极端并发残留由后续版本号乐观锁补足（记账 0.7.x）。
 - 同一本书的慢写串行、不同书并行；队列任务失败不阻塞后续任务；队列为内存态，仅适用于单进程部署。
 
@@ -355,10 +385,10 @@ npm start
 
 ## 验证记录
 
-- 后端测试：52 个自动化测试通过。
+- 后端测试：127 个自动化测试通过（`npm test`）。
 - 前端构建：`npm run build` 通过。
 - 冒烟验证：登录成功、草稿创建成功、聊天消息持久化、生产页面 200。
-- 真实大模型调用依赖根目录 `.env` 中的 `DEEPSEEK_API_KEY`。
+- 真实大模型调用依赖设置页“模型配置”中的有效 Key（或 `.env` 兜底），当前激活项为 DSWRONG666666 会 401，验证需先切 DSRIGHT。
 
 ## 版本更新说明
 
