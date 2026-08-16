@@ -18,7 +18,7 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 
 ### 用户认证
 
-- 登录、注册、退出登录。
+- 登录、注册、退出登录，支持修改昵称（作者显示名）。
 - 密码使用 bcrypt 哈希存储，不保存明文。
 - 登录成功返回 JWT，前端保存到 localStorage。
 - 未登录访问受保护页面时自动跳回登录页。
@@ -229,6 +229,7 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 - `POST /api/auth/login`
 - `GET /api/auth/me`
 - `PUT /api/auth/password`
+- `PUT /api/auth/nickname`
 - `GET /api/books`
 - `PUT /api/books/order`
 - `GET /api/books/trash`
@@ -2025,7 +2026,8 @@ npm start
 - 新增 `GET /api/styles`（返回预设，不含 prompt）与 `PUT /api/books/:id/writing-style`（乐观锁 version + 校验）。
 - 新增“书籍信息”页（BookSidePanel 第四个标签）：左侧竖版封面（`data/covers/` 本地上传，`POST /api/books/:id/cover` + `/covers` 静态读取，JPG/PNG/WebP/GIF ≤5MB），右侧粗体书名、作者（账户昵称）、简介、文笔风格下拉；简介从侧栏头部移入此页。
 - 封面上传/替换自动清理旧图；彻底删除书籍时同步删除封面文件。
-- 导航“书架”改名“书城”；“我的”新增“书架”标签（分“创作/收藏”两区，书型卡片展示封面，无封面默认书名首字）与“创作管理”标签；聊天书本卡与书籍信息页封面同步图片/首字兜底。
+- 导航“书架”改名“书城”；“我的”新增“书架”标签（分“创作/收藏”两区、中间分割线，书型卡片展示封面，无封面默认书名首字）与“创作管理”标签；聊天书本卡与书籍信息页封面同步图片/首字兜底。
+- 账户设置新增“改昵称”（作者显示名，`PUT /api/auth/nickname`）。
 
 完成结果：单元测试 131/131、前端 build 通过；版本号统一 0.9.8（根/server/client）；分支 codex/0.9.8-style-template，本地提交未推送。
 

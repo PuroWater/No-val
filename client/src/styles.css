@@ -2581,8 +2581,12 @@ ne-tooltip-detail {
 .shelf-split {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 24px;
+  gap: 0 24px;
   align-items: start;
+}
+.shelf-region + .shelf-region {
+  border-left: 1px solid var(--border);
+  padding-left: 24px;
 }
 .shelf-region {
   min-width: 0;

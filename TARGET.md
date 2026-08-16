@@ -92,6 +92,7 @@ Novel Agent/
 - `POST /api/auth/login`：登录，返回 JWT。
 - `GET /api/auth/me`：获取当前用户信息。
 - `PUT /api/auth/password`：修改密码。
+- `PUT /api/auth/nickname`：修改昵称（作者显示名）。
 - `GET /api/books`：当前用户书籍列表（按 状态 + sortOrder 排序）。
 - `PUT /api/books/order`：创作台拖拽排序写回。
 - `GET /api/books/trash`：回收站。
@@ -2825,7 +2826,7 @@ Novel Agent/
 - `writingSystem` 注入文笔约束（只影响之后新建/改写正文，评审/维护/构思不注入）；
 - `GET /api/styles`、`PUT /api/books/:id/writing-style`、`POST /api/books/:id/cover`；
 - 书籍信息页：左封面（本地上传，≤5MB）+ 右书名/作者/简介/文笔风格下拉；简介从侧栏头部移入；
-- 导航“书架”改名“书城”；“我的”新增“书架”标签（创作/收藏两区 + 书型卡片 + 封面/首字兜底）与“创作管理”标签；聊天书本卡与书籍信息页封面同步。
+- 导航“书架”改名“书城”；“我的”新增“书架”标签（创作/收藏两区 + 中间分割线 + 书型卡片 + 封面/首字兜底）与“创作管理”标签；聊天书本卡与书籍信息页封面同步；账户设置新增“改昵称”。
 
 完成内容：
 - 全链路落地；单元测试 131/131、前端 build 通过；版本号统一 0.9.8（根/server/client）；分支 codex/0.9.8-style-template，本地提交未推送。

@@ -22,7 +22,7 @@ export default function Sidebar() {
       </nav>
       <div className="user-menu">
         <button className="user-button" onClick={() => setOpen((value) => !value)}>
-          {user?.username || '账号'}
+          {user?.nickname || user?.username || '账号'}
         </button>
         {open && (
           <div className="user-dropdown">

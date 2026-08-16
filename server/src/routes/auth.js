@@ -8,7 +8,7 @@ const router = Router();
 const SECRET = () => process.env.JWT_SECRET || 'dev-secret';
 
 function publicUser(user) {
-  return { id: user.id, username: user.username };
+  return { id: user.id, username: user.username, nickname: user.nickname || user.username };
 }
 
 router.post('/register', async (req, res) => {
@@ -28,6 +28,7 @@ router.post('/register', async (req, res) => {
     id: `u_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
     username: name,
     passwordHash: await hashPassword(password),
+    nickname: name,
     createdAt: new Date().toISOString()
   };
   users.push(user);
@@ -49,6 +50,19 @@ router.post('/login', async (req, res) => {
 
 router.get('/me', requireAuth, (req, res) => {
   res.json({ user: req.user });
+});
+
+router.put('/nickname', requireAuth, (req, res) => {
+  const nickname = String(req.body?.nickname || '').trim();
+  if (!nickname || nickname.length > 20) {
+    return res.status(400).json({ error: '昵称需为 1-20 个字符' });
+  }
+  const users = readJson(USERS_FILE, []);
+  const user = users.find((item) => item.id === req.user.id);
+  if (!user) return res.status(404).json({ error: '用户不存在' });
+  user.nickname = nickname;
+  writeJson(USERS_FILE, users);
+  res.json({ user: publicUser(user) });
 });
 
 router.put('/password', requireAuth, async (req, res) => {

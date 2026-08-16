@@ -275,7 +275,7 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
           </div>
           <div className="book-info-main">
             <h2 className="book-info-title">{book.title}</h2>
-            <p className="book-info-author">作者：{user?.username || '未知'}</p>
+            <p className="book-info-author">作者：{user?.nickname || user?.username || '未知'}</p>
             <p className="book-info-outline">{book.outline || '暂无简介'}</p>
             <div className="book-info-style">
               <label className="book-info-style-label">文笔风格</label>

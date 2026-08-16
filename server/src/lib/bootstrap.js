@@ -32,6 +32,7 @@ export async function ensureInitialData() {
     users.push({
       id: `u_${Date.now()}`,
       username: 'admin',
+      nickname: 'admin',
       passwordHash: await hashPassword('123456'),
       createdAt: new Date().toISOString()
     });
