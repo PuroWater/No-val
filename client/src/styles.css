@@ -2832,8 +2832,8 @@ ne-tooltip-detail {
 }
 
 .character-card {
-  flex: 0 0 170px;
-  width: 170px;
+  flex: 0 0 210px;
+  width: 210px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -2844,11 +2844,17 @@ ne-tooltip-detail {
   overflow: hidden;
 }
 .character-card.expanded {
-  flex: 0 0 540px;
-  width: 540px;
+  flex: 0 0 560px;
+  width: 560px;
   flex-direction: row;
   align-items: stretch;
   gap: 0;
+}
+.character-expand-divider {
+  flex: 0 0 1px;
+  align-self: stretch;
+  border-left: 1px dashed var(--border);
+  margin: 0 12px;
 }
 .character-card-left {
   display: flex;
@@ -2859,11 +2865,8 @@ ne-tooltip-detail {
   min-height: 0;
 }
 .character-card.expanded .character-card-left {
-  flex: 0 0 150px;
-  width: 150px;
-  border-right: 1px dashed var(--border);
-  padding-right: 10px;
-  margin-right: 10px;
+  flex: 0 0 190px;
+  width: 190px;
 }
 .character-card .character-card-cover {
   flex: 0 0 auto;
