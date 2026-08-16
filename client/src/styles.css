@@ -2383,8 +2383,29 @@ ne-tooltip-detail {
   cursor: grabbing;
 }
 
+.directory-grip {
+  flex: none;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: -1px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.directory-item:hover .directory-grip,
+.directory-item.drag-over .directory-grip {
+  opacity: 1;
+}
+
+/* 拖动中的源条目：半透明 + 虚线框 */
+.directory-item.dragging {
+  opacity: 0.45;
+  outline: 1px dashed var(--accent);
+  outline-offset: -1px;
+}
+
+/* 落点：目标上方插入线提示 */
 .directory-item.drag-over {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: #ffffff;
+  border-top: 2px solid var(--accent);
+  border-radius: 0;
 }

@@ -24,6 +24,7 @@ export default function WorkspacePage() {
   // 0.9.7 拖拽排序
   const [dragId, setDragId] = useState('');
   const [dragOverId, setDragOverId] = useState('');
+  const [draggingId, setDraggingId] = useState('');
 
   async function loadBooks() {
     const data = await api('/books');
@@ -136,6 +137,7 @@ export default function WorkspacePage() {
     const to = list.findIndex((book) => book.id === targetId);
     setDragId('');
     setDragOverId('');
+    setDraggingId('');
     if (from === -1 || to === -1) return;
     const next = [...list];
     const [moved] = next.splice(from, 1);
@@ -188,15 +190,17 @@ export default function WorkspacePage() {
               {drafts.map((book) => (
                 <button
                   key={book.id}
-                  className={`directory-item ${selectedBookId === book.id ? 'active' : ''}${dragOverId === book.id ? ' drag-over' : ''}`}
+                  className={`directory-item ${selectedBookId === book.id ? 'active' : ''}${dragOverId === book.id ? ' drag-over' : ''}${draggingId === book.id ? ' dragging' : ''}`}
                   draggable
                   onClick={() => chooseBook(book.id)}
-                  onDragStart={(e) => { setDragId(book.id); e.dataTransfer.effectAllowed = 'move'; }}
+                  onDragStart={(e) => { setDragId(book.id); setDraggingId(book.id); e.dataTransfer.effectAllowed = 'move'; }}
                   onDragOver={(e) => e.preventDefault()}
                   onDragEnter={() => setDragOverId(book.id)}
                   onDragLeave={() => setDragOverId((v) => (v === book.id ? '' : v))}
+                  onDragEnd={() => { setDraggingId(''); setDragOverId(''); }}
                   onDrop={() => handleDrop('draft', book.id)}
                 >
+                  <span className="directory-grip" aria-hidden="true">⋮⋮</span>
                   <span className="directory-label">{book.title}</span>
                   <span className="directory-delete" onClick={(e) => { e.stopPropagation(); setDeleteTarget(book); }}>删除</span>
                 </button>
@@ -209,15 +213,17 @@ export default function WorkspacePage() {
               {readyBooks.map((book) => (
                 <button
                   key={book.id}
-                  className={`directory-item ${selectedBookId === book.id ? 'active' : ''}${dragOverId === book.id ? ' drag-over' : ''}`}
+                  className={`directory-item ${selectedBookId === book.id ? 'active' : ''}${dragOverId === book.id ? ' drag-over' : ''}${draggingId === book.id ? ' dragging' : ''}`}
                   draggable
                   onClick={() => chooseBook(book.id)}
-                  onDragStart={(e) => { setDragId(book.id); e.dataTransfer.effectAllowed = 'move'; }}
+                  onDragStart={(e) => { setDragId(book.id); setDraggingId(book.id); e.dataTransfer.effectAllowed = 'move'; }}
                   onDragOver={(e) => e.preventDefault()}
                   onDragEnter={() => setDragOverId(book.id)}
                   onDragLeave={() => setDragOverId((v) => (v === book.id ? '' : v))}
+                  onDragEnd={() => { setDraggingId(''); setDragOverId(''); }}
                   onDrop={() => handleDrop('ready', book.id)}
                 >
+                  <span className="directory-grip" aria-hidden="true">⋮⋮</span>
                   <span className="directory-label">{book.title}</span>
                   <span className="directory-delete" onClick={(e) => { e.stopPropagation(); setDeleteTarget(book); }}>删除</span>
                 </button>
