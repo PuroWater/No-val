@@ -71,50 +71,52 @@ export default function CharacterCard({ card, bookId, focusChapter, expanded, on
 
   return (
     <div className={`character-card${expanded ? ' expanded' : ''}`}>
-      <button
-        type="button"
-        className="character-card-cover"
-        onClick={(event) => imageTip.openAt(event)}
-        {...bindHover('点击设置图片')}
-      >
-        {card.avatar ? <img src={card.avatar} alt={card.name} /> : <span className="character-card-fallback">{card.name?.[0] || '角'}</span>}
-      </button>
-
-      <div className="character-card-info">
-        <div className="character-card-name">{card.name}</div>
-        {current && <div className="character-card-meta">当前：第{currentChapter}章</div>}
-        <div className="character-card-actions">
-          <button type="button" onClick={(event) => current && openDetail(event, current)} disabled={!current}>详情</button>
-          <button type="button" onClick={onToggleHistory} disabled={history.length === 0}>{expanded ? '收起' : '历史'}</button>
-        </div>
-        {expanded && (
-          <div className="character-history-panel">
-            <input
-              className="directory-search character-history-search"
-              placeholder="搜索该角色章号…"
-              value={historyQuery}
-              onChange={(e) => setHistoryQuery(e.target.value)}
-            />
-            <div className="character-history-list">
-              {filteredHistory.length === 0 ? (
-                <p className="muted">没有匹配的历史</p>
-              ) : (
-                filteredHistory.slice().reverse().map((item) => (
-                  <button
-                    key={item.chapter}
-                    type="button"
-                    className="character-history-item"
-                    onClick={(event) => openDetail(event, item)}
-                  >
-                    <span>第{Number(item.chapter) + 1}章</span>
-                    <span>{snapshotRecent(item.snapshot) || '（无近况）'}</span>
-                  </button>
-                ))
-              )}
-            </div>
+      <div className="character-card-left">
+        <button
+          type="button"
+          className="character-card-cover"
+          onClick={(event) => imageTip.openAt(event)}
+          {...bindHover('点击设置图片')}
+        >
+          {card.avatar ? <img src={card.avatar} alt={card.name} /> : <span className="character-card-fallback">{card.name?.[0] || '角'}</span>}
+        </button>
+        <div className="character-card-info">
+          <div className="character-card-name">{card.name}</div>
+          {current && <div className="character-card-meta">当前：第{currentChapter}章</div>}
+          <div className="character-card-actions">
+            <button type="button" onClick={(event) => current && openDetail(event, current)} disabled={!current}>详情</button>
+            <button type="button" onClick={onToggleHistory} disabled={history.length === 0}>{expanded ? '收起' : '历史'}</button>
           </div>
-        )}
+        </div>
       </div>
+
+      {expanded && (
+        <div className="character-history-panel">
+          <input
+            className="directory-search character-history-search"
+            placeholder="搜索该角色章号…"
+            value={historyQuery}
+            onChange={(e) => setHistoryQuery(e.target.value)}
+          />
+          <div className="character-history-list">
+            {filteredHistory.length === 0 ? (
+              <p className="muted">没有匹配的历史</p>
+            ) : (
+              filteredHistory.slice().reverse().map((item) => (
+                <button
+                  key={item.chapter}
+                  type="button"
+                  className="character-history-item"
+                  onClick={(event) => openDetail(event, item)}
+                >
+                  <span>第{Number(item.chapter) + 1}章</span>
+                  <span>{snapshotRecent(item.snapshot) || '（无近况）'}</span>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
 
       <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" style={{ display: 'none' }} onChange={handleFile} />
       {error && <p className="form-error">{error}</p>}
