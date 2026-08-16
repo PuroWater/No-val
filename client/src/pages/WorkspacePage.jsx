@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import ChatPanel from '../components/ChatPanel.jsx';
 import BookSidePanel from '../components/BookSidePanel.jsx';
@@ -21,10 +21,12 @@ export default function WorkspacePage() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [error, setError] = useState('');
   const [bookQuery, setBookQuery] = useState('');
-  // 0.9.7 拖拽排序
-  const [dragId, setDragId] = useState('');
+  // 0.9.7 拖拽排序（指针事件自实现，避免原生 DnD 的禁止光标/幽灵图）
   const [dragOverId, setDragOverId] = useState('');
   const [draggingId, setDraggingId] = useState('');
+  const dragStateRef = useRef(null);   // { id, group, startY, moved }
+  const suppressClickRef = useRef(false);
+  const dragOverIdRef = useRef('');
 
   async function loadBooks() {
     const data = await api('/books');
@@ -129,20 +131,67 @@ export default function WorkspacePage() {
     api('/books/order', { method: 'PUT', body: JSON.stringify({ ids }) }).catch((err) => setError(err.message));
   }
 
-  // 拖拽排序：同一分组内把 dragId 移动到 targetId 位置，写回后端
-  function handleDrop(group, targetId) {
-    if (!dragId || dragId === targetId) { setDragId(''); setDragOverId(''); return; }
+  // 提交排序：同一分组内把 sourceId 移动到 targetId 位置，写回后端
+  function commitReorder(group, sourceId, targetId) {
     const list = group === 'draft' ? drafts : readyBooks;
-    const from = list.findIndex((book) => book.id === dragId);
+    const from = list.findIndex((book) => book.id === sourceId);
     const to = list.findIndex((book) => book.id === targetId);
-    setDragId('');
-    setDragOverId('');
-    setDraggingId('');
     if (from === -1 || to === -1) return;
     const next = [...list];
     const [moved] = next.splice(from, 1);
     next.splice(to, 0, moved);
     persistOrder(group === 'draft' ? next : drafts, group === 'draft' ? readyBooks : next);
+  }
+
+  function clearDrag() {
+    dragStateRef.current = null;
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    window.removeEventListener('pointermove', onWindowDragMove);
+    window.removeEventListener('pointerup', onWindowDragUp);
+    window.removeEventListener('pointercancel', onWindowDragUp);
+    setDraggingId('');
+    setDragOverId('');
+    dragOverIdRef.current = '';
+    // 点击事件在 pointerup 之后同步触发，先让 click 消费抑制标记，再兜底重置
+    setTimeout(() => { suppressClickRef.current = false; }, 0);
+  }
+
+  function onWindowDragMove(event) {
+    const st = dragStateRef.current;
+    if (!st) return;
+    if (!st.moved && Math.abs(event.clientY - st.startY) < 6) return;
+    st.moved = true;
+    suppressClickRef.current = true;
+    document.body.style.cursor = 'grabbing';
+    document.body.style.userSelect = 'none';
+    if (!draggingId) setDraggingId(st.id);
+    // 由指针位置定位落点（仅同分组内有效）
+    const el = document.elementFromPoint(event.clientX, event.clientY);
+    const item = el?.closest?.('.directory-item');
+    const targetId = item?.dataset?.bookId || '';
+    const targetGroup = item?.dataset?.group || '';
+    if (targetId && targetGroup === st.group) { setDragOverId(targetId); dragOverIdRef.current = targetId; }
+  }
+
+  function onWindowDragUp() {
+    const st = dragStateRef.current;
+    const moved = Boolean(st?.moved);
+    const sourceId = st?.id;
+    const group = st?.group;
+    const targetId = dragOverIdRef.current;
+    clearDrag();
+    if (moved && sourceId && group && targetId && targetId !== sourceId) {
+      commitReorder(group, sourceId, targetId);
+    }
+  }
+
+  function onItemPointerDown(event, book, group) {
+    if (event.button !== 0) return;
+    dragStateRef.current = { id: book.id, group, startY: event.clientY, moved: false };
+    window.addEventListener('pointermove', onWindowDragMove);
+    window.addEventListener('pointerup', onWindowDragUp);
+    window.addEventListener('pointercancel', onWindowDragUp);
   }
 
   async function confirmDelete() {
@@ -190,15 +239,11 @@ export default function WorkspacePage() {
               {drafts.map((book) => (
                 <button
                   key={book.id}
+                  data-book-id={book.id}
+                  data-group="draft"
                   className={`directory-item ${selectedBookId === book.id ? 'active' : ''}${dragOverId === book.id ? ' drag-over' : ''}${draggingId === book.id ? ' dragging' : ''}`}
-                  draggable
-                  onClick={() => chooseBook(book.id)}
-                  onDragStart={(e) => { setDragId(book.id); setDraggingId(book.id); e.dataTransfer.effectAllowed = 'move'; }}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDragEnter={() => setDragOverId(book.id)}
-                  onDragLeave={() => setDragOverId((v) => (v === book.id ? '' : v))}
-                  onDragEnd={() => { setDraggingId(''); setDragOverId(''); }}
-                  onDrop={() => handleDrop('draft', book.id)}
+                  onClick={() => { if (suppressClickRef.current) { suppressClickRef.current = false; return; } chooseBook(book.id); }}
+                  onPointerDown={(e) => onItemPointerDown(e, book, 'draft')}
                 >
                   <span className="directory-grip" aria-hidden="true">⋮⋮</span>
                   <span className="directory-label">{book.title}</span>
@@ -213,15 +258,11 @@ export default function WorkspacePage() {
               {readyBooks.map((book) => (
                 <button
                   key={book.id}
+                  data-book-id={book.id}
+                  data-group="ready"
                   className={`directory-item ${selectedBookId === book.id ? 'active' : ''}${dragOverId === book.id ? ' drag-over' : ''}${draggingId === book.id ? ' dragging' : ''}`}
-                  draggable
-                  onClick={() => chooseBook(book.id)}
-                  onDragStart={(e) => { setDragId(book.id); setDraggingId(book.id); e.dataTransfer.effectAllowed = 'move'; }}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDragEnter={() => setDragOverId(book.id)}
-                  onDragLeave={() => setDragOverId((v) => (v === book.id ? '' : v))}
-                  onDragEnd={() => { setDraggingId(''); setDragOverId(''); }}
-                  onDrop={() => handleDrop('ready', book.id)}
+                  onClick={() => { if (suppressClickRef.current) { suppressClickRef.current = false; return; } chooseBook(book.id); }}
+                  onPointerDown={(e) => onItemPointerDown(e, book, 'ready')}
                 >
                   <span className="directory-grip" aria-hidden="true">⋮⋮</span>
                   <span className="directory-label">{book.title}</span>
