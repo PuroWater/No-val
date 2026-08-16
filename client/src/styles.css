@@ -858,9 +858,9 @@ button, input, textarea, select {
 }
 .character-card-actions {
   display: flex;
+  flex-direction: column;
   gap: 6px;
-  flex-wrap: wrap;
-  justify-content: center;
+  width: 100%;
 }
 .character-card-actions button {
   padding: 5px 9px;
@@ -2865,8 +2865,8 @@ ne-tooltip-detail {
   min-height: 0;
 }
 .character-card.expanded .character-card-left {
-  flex: 0 0 190px;
-  width: 190px;
+  flex: 0 0 188px;
+  width: 188px;
 }
 .character-card .character-card-cover {
   flex: 0 0 auto;
