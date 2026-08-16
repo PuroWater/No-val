@@ -2,6 +2,63 @@ export function newId(prefix) {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+// 背包归一化（0.9.6）：条目 { name, status }，按重要性顺序截断，超出的合并为"杂物"。
+// maxItems 为硬上限（含"杂物"聚合条目）。
+export function normalizeBag(raw, maxItems = 30) {
+  const list = (Array.isArray(raw) ? raw : [])
+    .map((item) => {
+      const name = String(item?.name || '').trim();
+      const status = String(item?.status || '').trim();
+      return { name, status, ...(item?.junk ? { junk: true } : {}) };
+    })
+    .filter((item) => item.name);
+  const seen = new Set();
+  const unique = [];
+  for (const item of list) {
+    const key = item.name + '\u0000' + item.status;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(item);
+  }
+  const cap = Math.max(1, Number(maxItems) || 30);
+  if (unique.length <= cap) return unique;
+  const kept = unique.slice(0, cap - 1);
+  const overflow = unique.slice(cap - 1).map((item) => item.name).join('、');
+  kept.push({ name: '杂物', status: overflow, junk: true });
+  return kept;
+}
+
+// 角色快照归一化（0.9.6）：旧版字符串快照 → 结构化 { identity, bag, goal, recent }。
+export function normalizeCharacterSnapshot(raw) {
+  if (typeof raw === 'string') {
+    return { identity: '', bag: [], goal: '', recent: String(raw).trim() };
+  }
+  if (!raw || typeof raw !== 'object') return { identity: '', bag: [], goal: '', recent: '' };
+  return {
+    identity: String(raw.identity || '').trim(),
+    bag: normalizeBag(raw.bag),
+    goal: String(raw.goal || '').trim(),
+    recent: String(raw.recent || '').trim()
+  };
+}
+
+// 角色卡归一化：{ name, history: [{ chapter, snapshot }] }，逐张快照结构化。
+export function normalizeCharacters(raw) {
+  return (Array.isArray(raw) ? raw : [])
+    .map((card) => ({
+      name: String(card?.name || '').trim(),
+      history: Array.isArray(card?.history)
+        ? card.history
+            .map((item) => ({
+              chapter: Number(item?.chapter),
+              snapshot: normalizeCharacterSnapshot(item?.snapshot)
+            }))
+            .filter((item) => Number.isInteger(item.chapter))
+        : []
+    }))
+    .filter((card) => card.name);
+}
+
 export function nextChapterId(book) {
   return `c_${book.id}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 }
@@ -72,8 +129,8 @@ export function normalizeBook(book) {
   if (!book.deletedAt) book.deletedAt = null;
   // 全书概况已删除（0.8.39）：旧数据残留加载即清除
   delete book.storySummary;
-  // 人物设定卡（0.9.0 方案 B）：按章历史快照 [{ name, history: [{ chapter, snapshot }] }]
-  if (!Array.isArray(book.characters)) book.characters = [];
+  // 人物设定卡（0.9.6）：按章结构化快照 [{ name, history: [{ chapter, snapshot: { identity, bag, goal, recent } }] }]，旧字符串快照自动迁移
+  book.characters = normalizeCharacters(book.characters);
   if (!book.targetWords) book.targetWords = 0;
   // 乐观锁版本号：仅快写路径递增；AI 慢写不递增，保持“手动保存覆盖 AI 修改”的语义
   if (!Number.isInteger(book.version) || book.version < 0) book.version = 0;

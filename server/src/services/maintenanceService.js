@@ -3,6 +3,7 @@
 // 维护调用关闭思考模式（thinking=disabled）以换取速度。
 import { callModel } from '../lib/modelCall.js';
 import { resolveThinking } from '../lib/thinking.js';
+import { normalizeCharacterSnapshot } from '../lib/bookUtils.js';
 
 function eventId() {
   return `t_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
@@ -21,17 +22,39 @@ function cleanEvents(raw) {
     .filter((item) => item.event);
 }
 
-// 人物设定卡快照归一化（0.9.0 方案 B）：只保留有名字且有快照描述的项。
+// 人物设定卡快照归一化（0.9.6）：结构化快照 { identity, bag, goal, recent }，
+// 旧版字符串快照自动迁移；只保留有名字且有实质内容的项（近况/背包/身份/目标任一非空）。
 export function normalizeCharacterUpdates(raw) {
   if (!Array.isArray(raw)) return [];
   return raw
     .map((item) => ({
       name: String(item?.name || '').trim(),
-      snapshot: String(item?.snapshot || '').trim()
+      snapshot: normalizeCharacterSnapshot(item?.snapshot)
     }))
-    .filter((item) => item.name && item.snapshot);
+    .filter((item) => item.name && (item.snapshot.recent || item.snapshot.identity || item.snapshot.goal || item.snapshot.bag.length > 0));
 }
 
+// 已有角色背包参考（0.9.6）：取"本章现有事件 + 前后章事件"涉及的角色，注入其最新一张快照的背包，
+// 供维护 AI 携带到新快照——未变化条目原样保留，防"前期获得后期查无音讯"。
+function buildOldCharacterRef(book, index, prev, next) {
+  const names = new Set();
+  const collect = (chapter) => (chapter?.events || []).forEach((ev) => (ev.characters || []).forEach((n) => names.add(String(n).trim())));
+  collect(book.chapters?.[index]);
+  collect(prev);
+  collect(next);
+  if (names.size === 0) return '';
+  const lines = [];
+  (book.characters || []).forEach((card) => {
+    if (!names.has(card.name)) return;
+    const history = (card.history || []).filter((item) => Number(item.chapter) < index);
+    const latest = history[history.length - 1];
+    if (!latest || !latest.snapshot) return;
+    const s = latest.snapshot;
+    const bagText = (s.bag || []).map((b) => (b.status ? `${b.name}（${b.status}）` : b.name)).join('、');
+    lines.push(`${card.name}：${bagText || '（无背包）'}`);
+  });
+  return lines.length > 0 ? `已有角色背包参考（本章未变化的条目请原样保留进新快照）：\n${lines.join('\n')}` : '';
+}
 // 事件确定性归一化（维护内核通用规则，非单工具补丁）：
 // 1) 每章最多 3 个事件（prompt 要求按重要性排序，这里做硬上限）；
 // 2) 一章只允许一个主要背景 context[0]：取出现最多的为统一背景，其余事件归入，
@@ -93,6 +116,7 @@ export async function maintainChapterMeta(book, { chapterIndex, mode = 'modify',
     : '';
   const prevEvents = prev ? chapterEventsText(prev) : '';
   const nextEvents = next ? chapterEventsText(next) : '';
+  const oldCharacterRef = buildOldCharacterRef(book, index, prev, next);
   const user = [
     `目标章节：第 ${index + 1} 章《${chapter.title}》（${mode === 'new' ? '新建' : '改写'}）`,
     prev ? `上一章摘要：${prev.summary || `${prev.title}\n${prev.content.slice(0, 500)}`}` : '',
@@ -101,7 +125,8 @@ export async function maintainChapterMeta(book, { chapterIndex, mode = 'modify',
     nextEvents ? `下一章事件：${nextEvents}` : '',
     `章节正文：\n${content.slice(0, 12000)}`,
     existingEvents,
-    '返回 JSON：{"summary":"本章 80-150 字剧情摘要","events":[{"event":"事件","characters":["人物"],"context":["大背景","场景"]}],"characters":[{"name":"角色名","snapshot":"本章该角色状态概括（80 字以内）"}]}。事件规则（分三步）：1) context[0] 为本章主线背景/阶段，一章只允许一个，参考前后章保持一致（如从家族过渡到北境、本章主要是北境则写"北境"）；2) 只选本章正文中最重要的最多 3 个事件（按重要性排序、删除琐碎细节）；3) 每条事件配 context[1] 场景：场景是事件实际发生地点/推进节点，不必地理上属于背景；地点离开大背景地理范围时优先用「大背景/地点」拼合模板（如"家族/藏书阁""家族/矿洞"），在大背景内直接写地点；场景同时体现剧情推进，大背景下场景最多 3 个。其余规则：events 必须能在本章正文中找到依据、不得凭空编造；每条 event 正文 50-100 字；context 只允许两层（大背景+场景）并延续前后章背景；每条事件 context 至少 1 层、不得为空。角色规则：只列本章出现且值得建档的重要角色（主角/重要配角/反派；无关的局部喽啰如无名小妖、路人不要列）；snapshot 概括该角色本章的状态（80 字以内），按故事类型灵活（可以是身份/实力/处境/与主角或关键人物的关系等，不限于玄幻模板）；**仅当该角色状态有重大变化（实力突破、身份改变、重大事件、与主角关系改变）时才给出 snapshot**，若只是出场对话、没有状态变化则不要输出该角色；不得臆想正文未体现的变化。'
+    oldCharacterRef ? `\n${oldCharacterRef}` : '',
+    '返回 JSON：{"summary":"本章 80-150 字剧情摘要","events":[{"event":"事件","characters":["人物"],"context":["大背景","场景"]}],"characters":[{"name":"角色名","snapshot":{"identity":"身份/基础（正文明确才写具体值，未明确用模糊总结如实力高强/财力雄厚，约20字，禁止编造）","bag":[{"name":"物品/功法/系统/宝物/资产名","status":"状态/层数/说明（约20字）"}],"goal":"当前目标（约30字）","recent":"本章近况（50字以内）"}}]}。事件规则（分三步）：1) context[0] 为本章主线背景/阶段，一章只允许一个，参考前后章保持一致（如从家族过渡到北境、本章主要是北境则写"北境"）；2) 只选本章正文中最重要的最多 3 个事件（按重要性排序、删除琐碎细节）；3) 每条事件配 context[1] 场景：场景是事件实际发生地点/推进节点，不必地理上属于背景；地点离开大背景地理范围时优先用「大背景/地点」拼合模板（如"家族/藏书阁""家族/矿洞"），在大背景内直接写地点；场景同时体现剧情推进，大背景下场景最多 3 个。其余规则：events 必须能在本章正文中找到依据、不得凭空编造；每条 event 正文 50-100 字；context 只允许两层（大背景+场景）并延续前后章背景；每条事件 context 至少 1 层、不得为空。角色规则：只列本章出现且值得建档的重要角色（主角/重要配角/反派；无关的局部喽啰如无名小妖、路人不要列）；snapshot 为结构化对象：identity 身份/基础（正文明确才写具体值，未明确用模糊总结如"实力高强/财力雄厚/深不可测"，约20字，禁止编造具体功法名/数字/身份细节）、bag 背包条目（name+status，功法·层数/宝物/资产/系统/一次性物品等，题材无关）、goal 当前目标（约30字）、recent 本章近况（50字以内）；背包规则：参考"已有角色背包参考"，输出本章该角色的**完整背包**（保留未变化条目 + 应用本章增/改/删），条目按重要性从高到低排列，删除/丢弃/一次性使用必须有正文依据，正文未体现的变化不得臆想；仅当该角色状态有实质变化（实力突破、身份改变、获得/失去重要物品、重大事件、与主角关系改变）时才给出 snapshot，只是出场对话则不要输出该角色。'
   ].filter(Boolean).join('\n');
   const result = await callModel(
     () => ({

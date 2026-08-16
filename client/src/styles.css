@@ -2188,3 +2188,56 @@ ne-tooltip-detail {
   background: var(--accent);
   color: #ffffff;
 }
+
+/* 0.9.6 人物快照二级展开（身份/背包/目标/近况） */
+.character-detail-toggle {
+  margin-top: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.character-detail-toggle:hover,
+.character-detail-toggle.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+.character-detail {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.character-detail-row {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.character-detail-row strong {
+  flex-shrink: 0;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.character-bag {
+  margin: 0;
+  padding-left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.character-bag li.junk {
+  opacity: 0.65;
+}

@@ -89,7 +89,21 @@ export function characterContextRef(book, { untilChapter = Number.MAX_SAFE_INTEG
   return lines.length > 0 ? `相关人物近期动向：\n${lines.join('\n')}` : '';
 }
 
-// 人物设定快照（0.9.0 方案 B）：相关人物截至 untilChapter（不含）的最新历史快照，按章增量、局部有界。
+// 人物设定快照（0.9.6）：相关人物截至 untilChapter（不含）的最新一张结构化快照卡
+// （identity + bag + goal + recent），局部有界；注入只读相关卡，不遍历历史链。
+function formatCharacterSnapshot(snapshot) {
+  if (!snapshot || typeof snapshot !== 'object') return '（无）';
+  const parts = [];
+  if (snapshot.identity) parts.push(`身份：${snapshot.identity}`);
+  const real = (snapshot.bag || []).filter((b) => !b.junk);
+  if (real.length > 0) parts.push(`背包：${real.map((b) => (b.status ? `${b.name}（${b.status}）` : b.name)).join('、')}`);
+  const junk = (snapshot.bag || []).filter((b) => b.junk);
+  if (junk.length > 0) parts.push(`杂物：${junk.map((b) => b.status || b.name).join('、')}`);
+  if (snapshot.goal) parts.push(`目标：${snapshot.goal}`);
+  if (snapshot.recent) parts.push(`近况：${snapshot.recent}`);
+  return parts.join('；') || '（无）';
+}
+
 export function characterCardsRef(book, { untilChapter = Number.MAX_SAFE_INTEGER, relatedNames = [] } = {}) {
   const names = [...new Set((relatedNames || []).map((n) => String(n).trim()).filter(Boolean))];
   if (names.length === 0) return '';
@@ -98,8 +112,8 @@ export function characterCardsRef(book, { untilChapter = Number.MAX_SAFE_INTEGER
     if (!names.includes(card.name)) return;
     const history = (card.history || []).filter((item) => Number(item.chapter) < untilChapter);
     const latest = history[history.length - 1];
-    if (latest && String(latest.snapshot || '').trim()) {
-      lines.push(`- ${card.name}（第${Number(latest.chapter) + 1}章）：${String(latest.snapshot).trim()}`);
+    if (latest && latest.snapshot) {
+      lines.push(`- ${card.name}（第${Number(latest.chapter) + 1}章）：${formatCharacterSnapshot(latest.snapshot)}`);
     }
   });
   return lines.length > 0 ? `人物设定（最新）：\n${lines.join('\n')}` : '';
