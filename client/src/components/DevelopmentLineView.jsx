@@ -209,14 +209,11 @@ export default function DevelopmentLineView({
             {eventPopup.events.length === 0 ? (
               <span>（本章无事件）</span>
             ) : (
-              eventPopup.events.map((ev, index) => {
-                const scene = Array.isArray(ev.context) ? ev.context[1] : '';
-                return (
-                  <div key={index} className="development-line-event-item">
-                    {index + 1}. {String(ev.event || '')}{scene ? `（${scene}）` : ''}
-                  </div>
-                );
-              })
+              eventPopup.events.map((ev, index) => (
+                <div key={index} className="development-line-event-item">
+                  {index + 1}. {String(ev.event || '')}
+                </div>
+              ))
             )}
           </div>
           <div className="character-detail-popup-foot">
