@@ -134,6 +134,10 @@ export function normalizeBook(book) {
   delete book.storySummary;
   // 人物设定卡（0.9.6）：按章结构化快照 [{ name, history: [{ chapter, snapshot: { identity, bag, goal, recent } }] }]，旧字符串快照自动迁移
   book.characters = normalizeCharacters(book.characters);
+  // 0.9.7 排序：sortOrder 缺省用创建时间（旧书按创建序，新书排在各自分组末尾）
+  if (!Number.isFinite(book.sortOrder)) {
+    book.sortOrder = new Date(book.createdAt || book.updatedAt || Date.now()).getTime();
+  }
   if (!book.targetWords) book.targetWords = 0;
   // 乐观锁版本号：仅快写路径递增；AI 慢写不递增，保持“手动保存覆盖 AI 修改”的语义
   if (!Number.isInteger(book.version) || book.version < 0) book.version = 0;

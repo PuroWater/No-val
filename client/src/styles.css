@@ -2373,3 +2373,18 @@ ne-tooltip-detail {
   text-decoration-style: solid;
   opacity: 0.85;
 }
+
+/* 0.9.7 创作台侧栏拖拽排序 */
+.directory-item {
+  cursor: grab;
+}
+
+.directory-item:active {
+  cursor: grabbing;
+}
+
+.directory-item.drag-over {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #ffffff;
+}

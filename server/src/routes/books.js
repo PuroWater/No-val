@@ -19,15 +19,50 @@ function summary(book) {
     chapterCount: book.chapters.length,
     deletedAt: book.deletedAt,
     updatedAt: book.updatedAt,
-    version: book.version
+    version: book.version,
+    sortOrder: book.sortOrder
   };
+}
+
+const STATUS_ORDER = { draft: 0, ready: 1 };
+// 按 (status, sortOrder) 排序：构思中在前、已生成在后，各自按用户拖拽顺序；sortOrder 缺省按创建时间。
+function byDisplayOrder(a, b) {
+  const sa = STATUS_ORDER[a.status] ?? 9;
+  const sb = STATUS_ORDER[b.status] ?? 9;
+  if (sa !== sb) return sa - sb;
+  const oa = Number.isFinite(a.sortOrder) ? a.sortOrder : Number.MAX_SAFE_INTEGER;
+  const ob = Number.isFinite(b.sortOrder) ? b.sortOrder : Number.MAX_SAFE_INTEGER;
+  if (oa !== ob) return oa - ob;
+  return String(a.updatedAt || '').localeCompare(String(b.updatedAt || ''));
 }
 
 router.get('/', (req, res) => {
   const books = listBooks()
     .filter((book) => book.userId === req.user.id && !book.deletedAt)
-    .map(summary);
+    .map(summary)
+    .sort(byDisplayOrder);
   res.json({ books });
+});
+
+// 0.9.7 拖拽排序：ids 为创作台展示的完整顺序（构思中在前、已生成在后），按位置写 sortOrder
+router.put('/order', (req, res) => {
+  const ids = Array.isArray(req.body?.ids) ? req.body.ids.map(String).filter(Boolean) : [];
+  if (ids.length === 0) return res.status(400).json({ error: '排序列表不能为空' });
+  try {
+    ids.forEach((id, index) => {
+      const book = readBookById(id);
+      if (!book || book.userId !== req.user.id || book.deletedAt) return;
+      book.sortOrder = index;
+      saveBook(book);
+    });
+    const books = listBooks()
+      .filter((book) => book.userId === req.user.id && !book.deletedAt)
+      .map(summary)
+      .sort(byDisplayOrder);
+    res.json({ books });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
 router.get('/trash', (req, res) => {

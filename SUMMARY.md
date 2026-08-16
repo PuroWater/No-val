@@ -1978,4 +1978,4 @@ npm start
 - **注入不变**：characterCardsRef 仍按 relatedNames 读相关卡的最新快照（注入身份/背包/目标/近况），不遍历历史链；旧字符串快照经 normalizeBook 自动迁移到 recent；
 - **三类 tooltip 统一抽象（TooltipKit.jsx）**：消息提示性（useToasts/Toasts，toast 屏幕中间）/ 解释性（useHoverTip/HoverTip，黑色悬浮跟随鼠标 x+14/y+16）/ 内容性（useContentTooltip/ContentTip，主题色面板、宽 480px、左上角 x+14/y+16 定位不跟随、点外部关闭）；人物卡详情、发展线事件详情均走 ContentTip（含"点击前往该章节"），"点击查看详细内容"提示用 tooltip2 悬浮；人物卡展开历史改为"第x章：粗体 + 缩进近况"格式（去章节跳转/下划线），背包在详情弹窗内 5 个一行网格（只显名称、悬浮显示 名称：状态）。
 
-完成结果：人物一致性从"单一近况"升级为"结构化快照 + 背包"，写正文/审校注入路径不变；单元测试 126/126、前端 build 通过、golden eval 8/8（重跑确认"再写一章"偶发失败为模型方差）+ 真机维护验证（结构化快照含背包字段产出正确，仙路逆鳞第 1-5 章已重新维护为结构化快照）；版本号统一 0.9.7（根/server/client）；分支 codex/0.9.6-provider-custom，本地提交未推送。
+完成结果：创作台侧栏拖拽排序（书级 sortOrder，后端按 status+sortOrder 排序，"我的"同步）；人物一致性从"单一近况"升级为"结构化快照 + 背包"，写正文/审校注入路径不变；单元测试 126/126、前端 build 通过、golden eval 8/8（重跑确认"再写一章"偶发失败为模型方差）+ 真机维护验证（结构化快照含背包字段产出正确，仙路逆鳞第 1-5 章已重新维护为结构化快照）；版本号统一 0.9.7（根/server/client）；分支 codex/0.9.6-provider-custom，本地提交未推送。

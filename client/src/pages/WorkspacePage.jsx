@@ -21,6 +21,9 @@ export default function WorkspacePage() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [error, setError] = useState('');
   const [bookQuery, setBookQuery] = useState('');
+  // 0.9.7 拖拽排序
+  const [dragId, setDragId] = useState('');
+  const [dragOverId, setDragOverId] = useState('');
 
   async function loadBooks() {
     const data = await api('/books');
@@ -118,6 +121,28 @@ export default function WorkspacePage() {
     window.addEventListener('pointercancel', onUp);
   }
 
+  function persistOrder(nextDrafts, nextReady) {
+    const ids = [...nextDrafts, ...nextReady].map((book) => book.id);
+    const orderMap = new Map(ids.map((id, index) => [id, index]));
+    setBooks((prev) => [...prev].sort((a, b) => (orderMap.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (orderMap.get(b.id) ?? Number.MAX_SAFE_INTEGER)));
+    api('/books/order', { method: 'PUT', body: JSON.stringify({ ids }) }).catch((err) => setError(err.message));
+  }
+
+  // 拖拽排序：同一分组内把 dragId 移动到 targetId 位置，写回后端
+  function handleDrop(group, targetId) {
+    if (!dragId || dragId === targetId) { setDragId(''); setDragOverId(''); return; }
+    const list = group === 'draft' ? drafts : readyBooks;
+    const from = list.findIndex((book) => book.id === dragId);
+    const to = list.findIndex((book) => book.id === targetId);
+    setDragId('');
+    setDragOverId('');
+    if (from === -1 || to === -1) return;
+    const next = [...list];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    persistOrder(group === 'draft' ? next : drafts, group === 'draft' ? readyBooks : next);
+  }
+
   async function confirmDelete() {
     if (!deleteTarget) return;
     try {
@@ -163,8 +188,14 @@ export default function WorkspacePage() {
               {drafts.map((book) => (
                 <button
                   key={book.id}
-                  className={`directory-item ${selectedBookId === book.id ? 'active' : ''}`}
+                  className={`directory-item ${selectedBookId === book.id ? 'active' : ''}${dragOverId === book.id ? ' drag-over' : ''}`}
+                  draggable
                   onClick={() => chooseBook(book.id)}
+                  onDragStart={(e) => { setDragId(book.id); e.dataTransfer.effectAllowed = 'move'; }}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDragEnter={() => setDragOverId(book.id)}
+                  onDragLeave={() => setDragOverId((v) => (v === book.id ? '' : v))}
+                  onDrop={() => handleDrop('draft', book.id)}
                 >
                   <span className="directory-label">{book.title}</span>
                   <span className="directory-delete" onClick={(e) => { e.stopPropagation(); setDeleteTarget(book); }}>删除</span>
@@ -178,8 +209,14 @@ export default function WorkspacePage() {
               {readyBooks.map((book) => (
                 <button
                   key={book.id}
-                  className={`directory-item ${selectedBookId === book.id ? 'active' : ''}`}
+                  className={`directory-item ${selectedBookId === book.id ? 'active' : ''}${dragOverId === book.id ? ' drag-over' : ''}`}
+                  draggable
                   onClick={() => chooseBook(book.id)}
+                  onDragStart={(e) => { setDragId(book.id); e.dataTransfer.effectAllowed = 'move'; }}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDragEnter={() => setDragOverId(book.id)}
+                  onDragLeave={() => setDragOverId((v) => (v === book.id ? '' : v))}
+                  onDrop={() => handleDrop('ready', book.id)}
                 >
                   <span className="directory-label">{book.title}</span>
                   <span className="directory-delete" onClick={(e) => { e.stopPropagation(); setDeleteTarget(book); }}>删除</span>
