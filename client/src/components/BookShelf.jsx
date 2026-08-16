@@ -1,8 +1,8 @@
 import { useStack } from './OverlayStack.jsx';
 
-export default function BookShelf({ books }) {
+function ShelfBooks({ books }) {
   const { open } = useStack();
-  if (books.length === 0) return <p className="muted">书架空空如也，去“创作”写一本吧。</p>;
+  if (books.length === 0) return <p className="muted">还没有创作的书，去“创作”开始吧。</p>;
   return (
     <div className="shelf-grid">
       {books.map((book) => (
@@ -13,6 +13,21 @@ export default function BookShelf({ books }) {
           <span className="shelf-book-title">{book.title}</span>
         </button>
       ))}
+    </div>
+  );
+}
+
+export default function BookShelf({ books }) {
+  return (
+    <div className="shelf-split">
+      <section className="shelf-region">
+        <h3 className="shelf-region-title">创作</h3>
+        <ShelfBooks books={books} />
+      </section>
+      <section className="shelf-region">
+        <h3 className="shelf-region-title">收藏</h3>
+        <p className="muted">收藏功能暂未开放，后续可收藏书城的书。</p>
+      </section>
     </div>
   );
 }

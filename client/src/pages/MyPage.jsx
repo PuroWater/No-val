@@ -6,7 +6,7 @@ import ConfirmModal from '../components/ConfirmModal.jsx';
 
 export default function MyPage() {
   const [books, setBooks] = useState([]);
-  const [tab, setTab] = useState('works');
+  const [tab, setTab] = useState('shelf');
   const [error, setError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null);
 
@@ -32,8 +32,8 @@ export default function MyPage() {
     <section className="page">
       {error && <p className="form-error">{error}</p>}
       <div className="my-tabs">
-        <button className={tab === 'works' ? 'active' : ''} onClick={() => setTab('works')}>作品</button>
         <button className={tab === 'shelf' ? 'active' : ''} onClick={() => setTab('shelf')}>书架</button>
+        <button className={tab === 'works' ? 'active' : ''} onClick={() => setTab('works')}>创作管理</button>
       </div>
       {tab === 'shelf' ? (
         <BookShelf books={readyBooks} />
