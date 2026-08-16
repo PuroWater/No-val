@@ -100,21 +100,23 @@ export default function CharacterCard({ card, bookId, focusChapter, expanded, on
             onChange={(e) => setHistoryQuery(e.target.value)}
           />
           <div className="character-history-list">
-            {filteredHistory.length === 0 ? (
-              <p className="muted">没有匹配的历史</p>
-            ) : (
-              filteredHistory.slice().reverse().map((item) => (
-                <button
-                  key={item.chapter}
-                  type="button"
-                  className="character-history-item"
-                  onClick={(event) => openDetail(event, item)}
-                >
-                  <span>第{Number(item.chapter) + 1}章</span>
-                  <span>{snapshotRecent(item.snapshot) || '（无近况）'}</span>
-                </button>
-              ))
-            )}
+            <div className="character-history-scroll">
+              {filteredHistory.length === 0 ? (
+                <p className="muted">没有匹配的历史</p>
+              ) : (
+                filteredHistory.slice().reverse().map((item) => (
+                  <button
+                    key={item.chapter}
+                    type="button"
+                    className="character-history-item"
+                    onClick={(event) => openDetail(event, item)}
+                  >
+                    <span>第{Number(item.chapter) + 1}章</span>
+                    <span>{snapshotRecent(item.snapshot) || '（无近况）'}</span>
+                  </button>
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}
