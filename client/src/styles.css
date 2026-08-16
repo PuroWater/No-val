@@ -1221,7 +1221,9 @@ button, input, textarea, select {
 }
 
 .directory-label {
+  flex: 1;
   min-width: 0;
+  text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2400,12 +2402,20 @@ ne-tooltip-detail {
 /* 拖动中的源条目：半透明 + 虚线框 */
 .directory-item.dragging {
   opacity: 0.45;
-  outline: 1px dashed var(--accent);
-  outline-offset: -1px;
+  border-style: dashed;
+  border-color: var(--accent);
 }
 
-/* 落点：目标上方插入线提示 */
+/* 落点：目标上方插入线提示（box-shadow 跟随圆角，不出现直角方框） */
 .directory-item.drag-over {
-  border-top: 2px solid var(--accent);
-  border-radius: 0;
+  box-shadow: inset 0 2px 0 0 var(--accent);
+}
+
+/* 选中态深色主题色上仍要能看到拖拽反馈（不改主题色本身） */
+.directory-item.active.dragging {
+  border-color: rgba(255, 255, 255, 0.85);
+}
+
+.directory-item.active.drag-over {
+  box-shadow: inset 0 2px 0 0 rgba(255, 255, 255, 0.85);
 }
