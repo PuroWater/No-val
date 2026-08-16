@@ -90,6 +90,7 @@ export default function CharacterCard({ card, bookId, focusChapter, expanded, on
         </div>
       </div>
 
+      {expanded && <div className="character-expand-divider" />}
       {expanded && (
         <div className="character-history-panel">
           <input

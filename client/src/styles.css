@@ -2834,6 +2834,7 @@ ne-tooltip-detail {
 }
 
 .character-card {
+  --card-inner: calc(240px - 2px - 32px);
   flex: 0 0 240px;
   width: 240px;
   display: flex;
@@ -2852,6 +2853,12 @@ ne-tooltip-detail {
   align-items: stretch;
   gap: 0;
 }
+.character-expand-divider {
+  flex: 0 0 1px;
+  align-self: stretch;
+  border-left: 1px dashed var(--border);
+  margin: 0 16px;
+}
 .character-card-left {
   display: flex;
   flex-direction: column;
@@ -2861,8 +2868,8 @@ ne-tooltip-detail {
   min-height: 0;
 }
 .character-card.expanded .character-card-left {
-  flex: 0 0 206px;
-  width: 206px;
+  flex: 0 0 var(--card-inner);
+  width: var(--card-inner);
 }
 .character-card .character-card-cover {
   flex: 0 0 auto;
@@ -2885,9 +2892,10 @@ ne-tooltip-detail {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  border-left: 1px dashed var(--border);
-  padding-left: 12px;
-  margin-left: 23px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  overflow: hidden;
 }
 .character-history-search {
   margin: 0;
@@ -2962,5 +2970,44 @@ ne-tooltip-detail {
 .character-menu-actions button:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+/* ===== 0.9.8 缩放防挤压：不够宽时裁剪，不换行 ===== */
+.top-nav {
+  overflow: hidden;
+}
+.top-links {
+  min-width: 0;
+}
+.top-links a {
+  white-space: nowrap;
+}
+.user-button {
+  white-space: nowrap;
+}
+.chat-head {
+  overflow: hidden;
+}
+.chat-head-left {
+  overflow: hidden;
+}
+.chat-head-left strong {
+  white-space: nowrap;
+}
+.chat-date-wrap,
+.chat-date-select {
+  white-space: nowrap;
+}
+.chat-head-actions {
+  flex: none;
+}
+.chat-head-actions .side-toggle {
+  white-space: nowrap;
+}
+.chat-input .primary {
+  white-space: nowrap;
+}
+.chat-model-btn {
+  white-space: nowrap;
 }
 
