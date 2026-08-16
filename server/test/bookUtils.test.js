@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeBook } from '../src/lib/bookUtils.js';
+import { normalizeBook, normalizeCharacters } from '../src/lib/bookUtils.js';
 
 test('normalizeBook fills targetWords defaults', () => {
   const book = normalizeBook({ chapters: [] });
@@ -21,5 +21,14 @@ test('normalizeBook fills writingStyle and cover defaults', () => {
   const styled = normalizeBook({ chapters: [], writingStyle: 'ornate', cover: '/covers/x.jpg' });
   assert.equal(styled.writingStyle, 'ornate');
   assert.equal(styled.cover, '/covers/x.jpg');
+});
+
+test('normalizeCharacters preserves avatar and defaults null', () => {
+  const cards = normalizeCharacters([
+    { name: '主角', avatar: '/covers/avatar_x.jpg', history: [{ chapter: 0, snapshot: { recent: '近况' } }] },
+    { name: '配角', history: [] }
+  ]);
+  assert.equal(cards[0].avatar, '/covers/avatar_x.jpg');
+  assert.equal(cards[1].avatar, null);
 });
 

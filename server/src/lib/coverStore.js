@@ -35,6 +35,15 @@ export function saveCover(bookId, { mime, base64 }) {
   return '/covers/' + fileName;
 }
 
+// 角色立绘同样存 data/covers/，用 avatar_ 前缀区分；路径仍走 /covers 静态读取。
+export function saveAvatar(bookId, { mime, base64 }) {
+  ensureDir();
+  const ext = MIME_EXT[mime] || 'jpg';
+  const fileName = 'avatar_' + bookId + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) + '.' + ext;
+  fs.writeFileSync(path.join(COVERS_DIR, fileName), Buffer.from(base64, 'base64'));
+  return '/covers/' + fileName;
+}
+
 // 替换或彻底删除时清理旧封面；只允许删除 /covers/ 下的文件名，防路径穿越。
 export function deleteCoverByPath(cover) {
   if (typeof cover !== 'string' || !cover.startsWith('/covers/')) return;

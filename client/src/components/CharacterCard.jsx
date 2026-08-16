@@ -1,7 +1,5 @@
-// 人物信息卡（0.9.7）：近况为超链接，点击唤出"内容性 tooltip"（类型3，主题色、宽、
-// 左上角 x+14/y+16 定位、不跟随、点外部关闭）显示该快照详情 + 前往该章节；
-// 展开历史：第x章粗体 + 缩进近况（无下划线/链接样式，点击同样可看对应章详情）。
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { api } from '../api.js';
 import { useContentTooltip, ContentTip, useHoverTip, HoverTip } from './TooltipKit.jsx';
 
 function snapshotRecent(snapshot) {
@@ -10,60 +8,83 @@ function snapshotRecent(snapshot) {
   return String(snapshot.recent || '').trim();
 }
 
-export default function CharacterCard({ card, onOpenChapter }) {
-  const [open, setOpen] = useState(false);       // 展开历史
+export default function CharacterCard({ card, bookId, onOpenChapter, onUpdated }) {
+  const [open, setOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+  const fileRef = useRef(null);
   const { popup, openAt, close } = useContentTooltip();
   const { tip, bindHover } = useHoverTip();
   const history = Array.isArray(card.history) ? card.history : [];
   const latest = history[history.length - 1];
   const snap = popup?.snapshot;
 
+  function openLatest(event) {
+    if (!latest) return;
+    openAt(event, { chapter: latest.chapter, snapshot: latest.snapshot });
+  }
+
+  function triggerUpload() {
+    fileRef.current?.click();
+  }
+
+  async function handleFile(event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !bookId) return;
+    setError('');
+    if (file.size > 5 * 1024 * 1024) {
+      setError('立绘图片大小需在 5MB 以内');
+      return;
+    }
+    setUploading(true);
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const data = await api(`/books/${bookId}/characters/avatar`, {
+          method: 'POST',
+          body: JSON.stringify({ name: card.name, image: String(reader.result || '') })
+        });
+        onUpdated?.(data.book);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setUploading(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
   return (
     <div className="character-card">
-      <div className="character-card-main">
-        <div className="character-card-body">
-          <div className="character-card-head">
-            <strong className="character-name">{card.name}</strong>
-            {latest && <span className="character-latest">最新状态·第{Number(latest.chapter) + 1}章</span>}
-          </div>
-          {snapshotRecent(latest?.snapshot) && (
-            <button
-              type="button"
-              className="character-snapshot-link"
-              onClick={(event) => openAt(event, { chapter: latest.chapter, snapshot: latest.snapshot })}
-              {...bindHover('点击查看详细内容')}
-            >
-              {snapshotRecent(latest.snapshot)}
-            </button>
-          )}
-        </div>
-        {history.length > 1 && (
-          <button
-            className={`character-history-toggle${open ? ' active' : ''}`}
-            onClick={() => setOpen((value) => !value)}
-            {...bindHover(open ? '收起历史' : '展开历史')}
-          >
-            {open ? '收起历史' : '展开历史'}
-          </button>
-        )}
+      <button
+        type="button"
+        className="character-card-cover"
+        onClick={openLatest}
+        {...bindHover('查看最新设定详情')}
+      >
+        {card.avatar ? <img src={card.avatar} alt={card.name} /> : <span className="character-card-fallback">{card.name?.[0] || '角'}</span>}
+      </button>
+      <div className="character-card-name">{card.name}</div>
+      {latest && <div className="character-card-meta">最新·第{Number(latest.chapter) + 1}章</div>}
+      <div className="character-card-actions">
+        <button type="button" onClick={openLatest} disabled={!latest}>详情</button>
+        <button type="button" onClick={() => setOpen((v) => !v)} disabled={history.length <= 1}>{open ? '收起历史' : '历史'}</button>
+        <button type="button" onClick={triggerUpload} disabled={uploading}>{uploading ? '上传中' : '立绘'}</button>
+        <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" style={{ display: 'none' }} onChange={handleFile} />
       </div>
+      {error && <p className="form-error">{error}</p>}
       {open && (
         <ul className="character-history">
           {history.slice().reverse().map((item) => (
             <li key={item.chapter}>
-              <div className="character-history-chapter-label">第{Number(item.chapter) + 1}章：</div>
-              {snapshotRecent(item.snapshot) ? (
-                <button
-                  type="button"
-                  className="character-history-snapshot"
-                  onClick={(event) => openAt(event, { chapter: item.chapter, snapshot: item.snapshot })}
-                  {...bindHover('点击查看详细内容')}
-                >
-                  {snapshotRecent(item.snapshot)}
-                </button>
-              ) : (
-                <div className="character-history-snapshot">（无近况）</div>
-              )}
+              <button
+                type="button"
+                className="character-history-chapter"
+                onClick={(event) => openAt(event, { chapter: item.chapter, snapshot: item.snapshot })}
+              >
+                第{Number(item.chapter) + 1}章：{snapshotRecent(item.snapshot) || '（无近况）'}
+              </button>
             </li>
           ))}
         </ul>

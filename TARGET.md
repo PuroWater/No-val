@@ -102,6 +102,7 @@ Novel Agent/
 - `PUT /api/books/:id/chapters/:chapterId`：保存章节内容。
 - `PUT /api/books/:id/writing-style`：设置文笔风格。
 - `POST /api/books/:id/cover`：上传封面。
+- `POST /api/books/:id/characters/avatar`：上传角色立绘。
 - `POST /api/books/:id/chapters/:chapterId/summary`：维护章节摘要/事件。
 - `DELETE /api/books/:id/chapters/:chapterId`：删除任意单章（含中间章）。
 - `DELETE /api/books/:id/chapters`：批量删除末尾章节（body `{ count }`，1-50、至少保留 1 章）。
@@ -2828,6 +2829,7 @@ Novel Agent/
 - 书籍信息页：左封面（本地上传，≤5MB）+ 右书名/作者/简介/文笔风格下拉；简介从侧栏头部移入；
 - 导航“书架”改名“书城”；“我的”新增“书架”标签（创作/收藏两区 + 中间分割线 + 书型卡片 + 封面/首字兜底）与“创作管理”标签；聊天书本卡与书籍信息页封面同步；账户设置新增“改昵称”。
 - 设置页“输出章节数/输出章节字数”改文案 + tooltip2；数字输入改主题色步进器（隐藏原生上下箭头）。
+- 人物信息页新增搜索；人物卡改竖版卡片 + 立绘上传；书籍信息页封面上传拆为“上传封面 / AI 生图”（AI 生图暂未实现）。
 
 完成内容：
 - 全链路落地；单元测试 131/131、前端 build 通过；版本号统一 0.9.8（根/server/client）；分支 codex/0.9.8-style-template，本地提交未推送。

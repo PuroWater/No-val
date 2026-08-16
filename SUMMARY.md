@@ -239,6 +239,7 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 - `PUT /api/books/:id/chapters/:chapterId`
 - `PUT /api/books/:id/writing-style`
 - `POST /api/books/:id/cover`
+- `POST /api/books/:id/characters/avatar`
 - `POST /api/books/:id/chapters/:chapterId/summary`
 - `DELETE /api/books/:id/chapters/:chapterId`（删除任意单章，含中间章）
 - `DELETE /api/books/:id/chapters`（批量删除末尾章节，body `{ count }`，1-50、至少保留 1 章）
@@ -392,7 +393,7 @@ npm start
 
 ## 验证记录
 
-- 后端测试：131 个自动化测试通过（`npm test`）。
+- 后端测试：132 个自动化测试通过（`npm test`）。
 - 前端构建：`npm run build` 通过。
 - 冒烟验证：登录成功、草稿创建成功、聊天消息持久化、生产页面 200。
 - 真实大模型调用依赖设置页“模型配置”中的有效 Key（或 `.env` 兜底），当前激活项为 DSWRONG666666 会 401，验证需先切 DSRIGHT。
@@ -2029,6 +2030,7 @@ npm start
 - 导航“书架”改名“书城”；“我的”新增“书架”标签（分“创作/收藏”两区、中间分割线，书型卡片展示封面，无封面默认书名首字）与“创作管理”标签；聊天书本卡与书籍信息页封面同步图片/首字兜底。
 - 账户设置新增“改昵称”（作者显示名，`PUT /api/auth/nickname`）。
 - 设置页“输出章节数/输出章节字数”改文案 + 悬浮提示（tooltip2）；数字输入改主题色步进器（隐藏原生上下箭头）。
+- 人物信息页新增搜索（角色名/第N章模糊）；人物卡改竖版卡片 + 立绘上传；书籍信息页封面上传拆为“上传封面 / AI 生图”（AI 生图暂未实现）。
 
 完成结果：单元测试 131/131、前端 build 通过；版本号统一 0.9.8（根/server/client）；分支 codex/0.9.8-style-template，本地提交未推送。
 

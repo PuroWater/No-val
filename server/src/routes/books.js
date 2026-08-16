@@ -8,7 +8,7 @@ import { maintainChapterMeta } from '../services/maintenanceService.js';
 import { buildDevelopmentLine } from '../services/storyMetaService.js';
 import { enqueueBookWrite } from '../lib/writeQueue.js';
 import { WRITING_STYLES } from '../lib/stylePresets.js';
-import { parseCoverDataUrl, saveCover, deleteCoverByPath, MAX_COVER_BYTES } from '../lib/coverStore.js';
+import { parseCoverDataUrl, saveCover, saveAvatar, deleteCoverByPath, MAX_COVER_BYTES } from '../lib/coverStore.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -103,6 +103,32 @@ router.put('/:id/writing-style', (req, res) => {
   } catch (err) {
     const status = err.message === '内容已更新，请刷新后重试' ? 409
       : (err.message === '书籍不存在' ? 404 : 400);
+    return res.status(status).json({ error: err.message });
+  }
+});
+
+router.post('/:id/characters/avatar', (req, res) => {
+  const name = String(req.body?.name || '').trim();
+  if (!name) return res.status(400).json({ error: '角色名不能为空' });
+  const parsed = parseCoverDataUrl(req.body?.image);
+  if (!parsed) return res.status(400).json({ error: '立绘图片格式不支持，请上传 JPG/PNG/WebP/GIF' });
+  const size = Buffer.from(parsed.base64, 'base64').length;
+  if (size <= 0 || size > MAX_COVER_BYTES) return res.status(400).json({ error: '立绘图片大小需在 5MB 以内' });
+  try {
+    const book = updateBook(req.user.id, req.params.id, (latest) => {
+      if (latest.deletedAt) throw new Error('书籍不存在');
+      if (!Array.isArray(latest.characters)) latest.characters = [];
+      const card = latest.characters.find((item) => item.name === name);
+      if (!card) throw new Error('角色不存在');
+      const avatar = saveAvatar(latest.id, parsed);
+      if (card.avatar) deleteCoverByPath(card.avatar);
+      card.avatar = avatar;
+      latest.updatedAt = new Date().toISOString();
+      latest.version = (latest.version || 0) + 1;
+    });
+    return res.json({ book });
+  } catch (err) {
+    const status = err.message === '书籍不存在' ? 404 : (err.message === '角色不存在' ? 404 : 400);
     return res.status(status).json({ error: err.message });
   }
 });

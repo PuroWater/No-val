@@ -47,6 +47,7 @@ export function normalizeCharacters(raw) {
   return (Array.isArray(raw) ? raw : [])
     .map((card) => ({
       name: String(card?.name || '').trim(),
+      avatar: typeof card?.avatar === 'string' && card.avatar ? card.avatar : null,
       history: (() => {
         if (!Array.isArray(card?.history)) return [];
         const byChapter = new Map();

@@ -31,6 +31,9 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
   const coverInputRef = useRef(null);
   const [styles, setStyles] = useState([]);
   const [styleSaving, setStyleSaving] = useState(false);
+  const [characterQuery, setCharacterQuery] = useState('');
+  const [notice, setNotice] = useState('');
+  const noticeTimerRef = useRef(null);
   const { user } = useAuth();
 
   async function commitAddChapter(title) {
@@ -213,6 +216,12 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
     reader.readAsDataURL(file);
   }
 
+  function showNotice(text) {
+    setNotice(text);
+    clearTimeout(noticeTimerRef.current);
+    noticeTimerRef.current = setTimeout(() => setNotice(''), 2200);
+  }
+
   return (
     <aside className="book-side-panel">
       <div className="side-panel-head">
@@ -257,8 +266,46 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
         </div>
       ) : tab === 'characters' ? (
         <div className="relation-tab">
-          {(book.characters || []).length === 0 && <p className="muted">暂无角色档案：新建/改写章节时，正文中出现的重要角色会自动建档并记录各章状态变化。</p>}
-          <div className="character-list">{(book.characters || []).map((card) => <CharacterCard key={card.name} card={card} onOpenChapter={(index) => { setTab('content'); setChapterIndex(index); }} />)}</div>
+          {(book.characters || []).length === 0 ? (
+            <p className="muted">暂无角色档案：新建/改写章节时，正文中出现的重要角色会自动建档并记录各章状态变化。</p>
+          ) : (
+            <>
+              <input
+                className="directory-search character-search"
+                placeholder="搜索角色名 / 第N章…"
+                value={characterQuery}
+                onChange={(e) => setCharacterQuery(e.target.value)}
+              />
+              {(() => {
+                const q = characterQuery.trim().toLowerCase();
+                const chapterMatch = q.match(/^第?\s*(\d+)\s*章?$/);
+                const filtered = (book.characters || []).filter((card) => {
+                  if (!q) return true;
+                  if (card.name.toLowerCase().includes(q)) return true;
+                  if (chapterMatch) {
+                    const num = Number(chapterMatch[1]);
+                    return (card.history || []).some((item) => Number(item.chapter) + 1 === num);
+                  }
+                  return false;
+                });
+                return filtered.length === 0 ? (
+                  <p className="muted">没有匹配的角色</p>
+                ) : (
+                  <div className="character-list">
+                    {filtered.map((card) => (
+                      <CharacterCard
+                        key={card.name}
+                        card={card}
+                        bookId={bookId}
+                        onOpenChapter={(index) => { setTab('content'); setChapterIndex(index); }}
+                        onUpdated={setBook}
+                      />
+                    ))}
+                  </div>
+                );
+              })()}
+            </>
+          )}
         </div>
       ) : tab === 'bookInfo' ? (
         <div className="book-info-tab">
@@ -270,7 +317,10 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
                 <div className="book-info-cover-empty">{book.title?.[0] || "书"}</div>
               )}
             </div>
-            <button className="secondary book-info-upload" onClick={triggerCoverUpload}>{book.cover ? '更换封面' : '上传封面'}</button>
+            <div className="book-info-cover-actions">
+              <button className="secondary" onClick={triggerCoverUpload}>{book.cover ? '更换封面' : '上传封面'}</button>
+              <button className="secondary" onClick={() => showNotice('AI 生图功能尚未实现，敬请期待')}>AI 生图</button>
+            </div>
             <input ref={coverInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" style={{ display: 'none' }} onChange={handleCoverChange} />
           </div>
           <div className="book-info-main">
@@ -322,6 +372,11 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
       {aiEditedToast && (
         <div className="toast-layer">
           <div className="saved-toast">本章已被 AI 修改，保存后将以你的最后状态覆盖 AI 的修改。</div>
+        </div>
+      )}
+      {notice && (
+        <div className="toast-layer">
+          <div className="saved-toast">{notice}</div>
         </div>
       )}
     </aside>
