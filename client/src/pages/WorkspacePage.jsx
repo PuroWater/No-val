@@ -35,24 +35,6 @@ export default function WorkspacePage() {
   }
 
   useEffect(() => {
-    const onResize = () => {
-      if (!sideBookId) return;
-      const container = document.querySelector('.workspace-body');
-      const width = container?.clientWidth || window.innerWidth;
-      // 不是全屏/过窄时，收起并列窗口，让聊天区占满，避免按钮与文字被挤压
-      if (width < 900) {
-        setSideBookId('');
-        return;
-      }
-      const minWidth = Math.max(260, Math.floor(width / 3));
-      const maxWidth = Math.max(minWidth, Math.floor((width * 2) / 3));
-      setLeftWidth((prev) => Math.min(maxWidth, Math.max(minWidth, prev)));
-    };
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, [sideBookId]);
-
-  useEffect(() => {
     loadBooks()
       .then((list) => {
         const stored = localStorage.getItem(STORAGE_KEY);

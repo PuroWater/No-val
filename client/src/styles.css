@@ -2887,7 +2887,7 @@ ne-tooltip-detail {
   gap: 6px;
   border-left: 1px dashed var(--border);
   padding-left: 12px;
-  margin-left: 13px;
+  margin-left: 23px;
 }
 .character-history-search {
   margin: 0;
