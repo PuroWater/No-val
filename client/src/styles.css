@@ -1001,7 +1001,7 @@ button, input, textarea, select {
 }
 
 .setting-label {
-  cursor: help;
+  cursor: default;
 }
 
 .setting-number {
