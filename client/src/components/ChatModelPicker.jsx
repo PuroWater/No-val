@@ -1,21 +1,20 @@
-// 聊天输入框模型选择器（0.9.6 v2）：按钮只显示设置名称（保持 56px 高度、横向更窄），
-// 点击菜单向上弹出（输入框在底部），菜单内显示各条目名称；悬浮菜单内某个名称时，
-// 用已有 tooltip 风格显示“名称：模型”。切换即全局激活。
+// 聊天输入框模型选择器：按钮固定宽度（超长省略号），悬浮 tooltip2 显示"当前模型：（名称），点击切换其他模型"；
+// 点击菜单向上弹出（输入框在底部），菜单内显示各条目名称；点击外部关闭菜单；切换即全局激活。
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
+import { useHoverTip, HoverTip } from './TooltipKit.jsx';
 
-
-// tooltip 定位：右上角 = 鼠标 (x-6, y+16)——右边缘贴 x-6、顶边缘贴 y+16，内容向左/下展开。
-// 先按基准定位渲染，再按实际宽高钳制（仅真正出屏才收），不同长度都跟手不钉死。
+// 菜单条目悬浮提示：右上角 = 鼠标 (x-6, y+16)，内容向左/下展开（按实际宽高钳制防出屏）
 const TOOLTIP_MARGIN = 8;
 
 export default function ChatModelPicker({ disabled }) {
   const [entries, setEntries] = useState([]);
   const [activeId, setActiveId] = useState('');
   const [open, setOpen] = useState(false);
-  const [itemTip, setItemTip] = useState(null); // { x, y, text }（跟随鼠标，同设置页写前确认）
+  const [itemTip, setItemTip] = useState(null); // 菜单条目悬浮（右上角锚定）
   const wrapRef = useRef(null);
   const tipRef = useRef(null);
+  const { tip, bindHover } = useHoverTip(); // 按钮悬浮 tooltip2
 
   useEffect(() => {
     api('/providers')
@@ -26,10 +25,17 @@ export default function ChatModelPicker({ disabled }) {
       .catch(() => {});
   }, []);
 
-/  \/\/ 点击外部关闭菜单\r?\n  useEffect\(\(\) => \{\r?\n    if \(!open\) return undefined;\r?\n    const onDocClick = \(event\) => \{\r?\n      if \(wrapRef\.current && !wrapRef\.current\.contains\(event\.target\)\) setOpen\(false\);\r?\n    \};\r?\n    document\.addEventListener\('mousedown', onDocClick\);\r?\n    return \(\) => document\.removeEventListener\('mousedown', onDocClick\);\r?\n  \}, \[open\]\);/
+  // 点击外部关闭菜单
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDocClick = (event) => {
+      if (wrapRef.current && !wrapRef.current.contains(event.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [open]);
 
-  // 右上角锚定在 (x-6, y+16)：右边缘 = x-6、顶边缘 = y+16，内容向左/下展开；
-  // 按实际渲染宽高钳制，仅当内容会超出视口才收拢。
+  // 菜单条目 tooltip：右上角锚定 (x-6, y+16)，按实际宽高钳制
   useLayoutEffect(() => {
     const el = tipRef.current;
     if (!el || !itemTip) return;
@@ -59,7 +65,6 @@ export default function ChatModelPicker({ disabled }) {
       setActiveId(data.active || '');
       setEntries(data.entries || []);
     } catch (err) {
-      // 切换失败：悬浮提示错误信息
       const btnRect = wrapRef.current?.querySelector('.chat-model-btn')?.getBoundingClientRect();
       if (btnRect) {
         setItemTip({ x: btnRect.left, y: btnRect.top, text: err.message });
@@ -73,9 +78,9 @@ export default function ChatModelPicker({ disabled }) {
         className="chat-model-btn"
         disabled={disabled}
         onClick={() => setOpen((v) => !v)}
-        title="切换当前模型（全局生效）"
+        {...bindHover(`当前模型：${activeEntry.name}，点击切换其他模型`)}
       >
-        {activeEntry.name}
+        <span className="chat-model-btn-label">{activeEntry.name}</span>
         <span className="chat-model-arrow" aria-hidden="true" />
       </button>
       {open && (
@@ -95,13 +100,11 @@ export default function ChatModelPicker({ disabled }) {
         </div>
       )}
       {itemTip && (
-        <div
-          ref={tipRef}
-          className="chat-date-tooltip"
-        >
+        <div ref={tipRef} className="chat-date-tooltip">
           {itemTip.text}
         </div>
       )}
+      <HoverTip tip={tip} />
     </div>
   );
 }

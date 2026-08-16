@@ -172,6 +172,7 @@ export default function DevelopmentLineView({
         ref={canvasRef}
         className={`development-line-canvas development-line-canvas-${orientation}`}
         onPointerDown={startDrag}
+        onClick={handleCanvasClick}
         onWheel={handleWheel}
         style={{ touchAction: 'none' }}
       >
