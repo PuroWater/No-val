@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
+import { useContentTooltip, ContentTip } from './TooltipKit.jsx';
 
 function rangeText(start, end) {
   return `第 ${start + 1}-${end + 1} 章`;
@@ -35,6 +36,7 @@ export default function DevelopmentLineView({
   const [hover, setHover] = useState(null);
   const [groupAnchor, setGroupAnchor] = useState(null);
 
+  const { popup: eventPopup, openAt: openEventPopup, close: closeEventPopup } = useContentTooltip();
   const groups = Array.isArray(developmentLine?.groups) ? developmentLine.groups : [];
   // 同一背景可能按连续章节区间拆成多个同标签组，展开状态用唯一 id（label#start-end）
   const expandedGroupData = groups.find((group) => group.id === expandedGroup) || null;
@@ -96,9 +98,13 @@ export default function DevelopmentLineView({
       <button
         key={chapter.chapterIndex}
         className="development-line-node development-line-chapter"
-        onClick={() => {
+        onClick={(event) => {
           if (dragRef.current?.moved) return;
-          onOpenChapter(chapter.chapterIndex);
+          openEventPopup(event, {
+            chapterIndex: chapter.chapterIndex,
+            chapterTitle: chapter.chapterTitle || `第${chapter.chapterIndex + 1}章`,
+            events: chapter.events || []
+          });
         }}
         onMouseEnter={(event) => showHover(event, {
           title: chapter.chapterTitle,
@@ -204,6 +210,39 @@ export default function DevelopmentLineView({
           {renderFloat()}
         </div>
       </div>
+      {eventPopup && (
+        <ContentTip popup={eventPopup} onClose={closeEventPopup} className="development-line-event-popup">
+          <div className="character-detail-popup-head">
+            <strong>{eventPopup.chapterTitle}</strong>
+            <button className="modal-close" onClick={closeEventPopup} aria-label="关闭">×</button>
+          </div>
+          <div className="character-detail-body">
+            {eventPopup.events.length === 0 ? (
+              <span>（本章无事件）</span>
+            ) : (
+              eventPopup.events.map((ev, index) => {
+                const scene = Array.isArray(ev.context) ? ev.context[1] : '';
+                return (
+                  <div key={index} className="development-line-event-item">
+                    {index + 1}. {String(ev.event || '')}{scene ? `（${scene}）` : ''}
+                  </div>
+                );
+              })
+            )}
+          </div>
+          <div className="character-detail-popup-foot">
+            <button
+              className="character-goto-chapter"
+              onClick={() => {
+                closeEventPopup();
+                onOpenChapter(eventPopup.chapterIndex);
+              }}
+            >
+              点击前往该章节
+            </button>
+          </div>
+        </ContentTip>
+      )}
       {hover && (
         <div
           className="chat-date-tooltip development-line-tooltip"
