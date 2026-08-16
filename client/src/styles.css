@@ -1000,6 +1000,10 @@ button, input, textarea, select {
   color: var(--text);
 }
 
+.setting-label {
+  cursor: help;
+}
+
 .setting-number {
   max-width: 180px;
   padding: 9px 10px;
@@ -1007,6 +1011,52 @@ button, input, textarea, select {
   border-radius: 6px;
   background: var(--panel);
   color: var(--text);
+}
+
+.number-stepper {
+  display: flex;
+  align-items: stretch;
+  max-width: 208px;
+}
+.number-stepper .setting-number {
+  width: 150px;
+  max-width: none;
+  border-radius: 6px 0 0 6px;
+  -moz-appearance: textfield;
+}
+.number-stepper .setting-number::-webkit-outer-spin-button,
+.number-stepper .setting-number::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.number-stepper-buttons {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-left: 0;
+  border-radius: 0 6px 6px 0;
+  overflow: hidden;
+}
+.number-stepper-buttons button {
+  width: 28px;
+  flex: 1;
+  border: 0;
+  background: var(--panel);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 10px;
+  line-height: 1;
+}
+.number-stepper-buttons button + button {
+  border-top: 1px solid var(--border);
+}
+.number-stepper-buttons button:hover:not(:disabled) {
+  background: var(--accent);
+  color: #ffffff;
+}
+.number-stepper-buttons button:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 
 .account-form .primary {

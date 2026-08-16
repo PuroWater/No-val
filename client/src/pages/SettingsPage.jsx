@@ -5,6 +5,8 @@ import { applySettings } from '../components/SettingsApplier.jsx';
 import TrashPanel from '../components/TrashPanel.jsx';
 import AccountPanel from '../components/AccountPanel.jsx';
 import ProvidersPanel from '../components/ProvidersPanel.jsx';
+import NumberStepper from '../components/NumberStepper.jsx';
+import { useHoverTip, HoverTip } from '../components/TooltipKit.jsx';
 
 const THEMES = [
   { value: 'system', label: '跟随系统' },
@@ -49,6 +51,7 @@ const SETTING_TITLES = { general: '常规设置', appearance: '外观设置', pr
   const [toasts, setToasts] = useState([]);
   const toastIdRef = useRef(0);
   const [permanentTarget, setPermanentTarget] = useState(null);
+  const { tip: hoverTip, bindHover } = useHoverTip();
 
   async function loadTrash() {
     const data = await api('/books/trash');
@@ -222,33 +225,29 @@ const SETTING_TITLES = { general: '常规设置', appearance: '外观设置', pr
           {activeSetting === 'general' && (
             <>
               <div className="settings-group">
-                <span>默认输出章节数</span>
-                <input
-                  className="setting-number"
-                  type="number"
-                  min="1"
-                  max="5"
+                <span className="setting-label" {...bindHover('模型输出的章节数，默认值为3（用户对话优先于设置值，但范围仍在1-5）')}>输出章节数</span>
+                <NumberStepper
                   value={chaptersPerOutput}
-                  onChange={(e) => setChaptersPerOutput(Number(e.target.value))}
-                  onBlur={() => {
-                    const value = Math.min(5, Math.max(1, Math.round(Number(chaptersPerOutput) || 1)));
+                  min={1}
+                  max={5}
+                  onChange={setChaptersPerOutput}
+                  onCommit={(raw) => {
+                    const value = Math.min(5, Math.max(1, Math.round(Number(raw) || 1)));
                     setChaptersPerOutput(value);
                     save(theme, fontSize, value, chapterWords, enterToSend, developmentLineOrientation, thinkingMode, thinkingStages, reviewAfterWrite);
                   }}
                 />
               </div>
               <div className="settings-group">
-                <span>默认输出字数（每章）</span>
-                <input
-                  className="setting-number"
-                  type="number"
-                  min="1000"
-                  max="10000"
-                  step="500"
+                <span className="setting-label" {...bindHover('模型输出每章的默认字数，范围为1000-10000，默认值为2000。（用户对话优先于设置值，但范围仍在1000-10000）')}>输出章节字数</span>
+                <NumberStepper
                   value={chapterWords}
-                  onChange={(e) => setChapterWords(Number(e.target.value))}
-                  onBlur={() => {
-                    const value = Math.min(10000, Math.max(1000, Math.round(Number(chapterWords) || 1000)));
+                  min={1000}
+                  max={10000}
+                  step={500}
+                  onChange={setChapterWords}
+                  onCommit={(raw) => {
+                    const value = Math.min(10000, Math.max(1000, Math.round(Number(raw) || 1000)));
                     setChapterWords(value);
                     save(theme, fontSize, chaptersPerOutput, value, enterToSend, developmentLineOrientation, thinkingMode, thinkingStages, reviewAfterWrite);
                   }}
@@ -446,6 +445,7 @@ const SETTING_TITLES = { general: '常规设置', appearance: '外观设置', pr
           ))}
         </div>
       )}
+      <HoverTip tip={hoverTip} />
     </section>
   );
 }
