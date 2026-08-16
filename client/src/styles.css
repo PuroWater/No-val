@@ -644,8 +644,8 @@ button, input, textarea, select {
 
 .book-card-link {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  gap: 12px;
   width: 100%;
   text-align: left;
   color: var(--text);
@@ -654,6 +654,37 @@ button, input, textarea, select {
   border: 0;
   padding: 0;
   cursor: pointer;
+}
+
+.book-card-cover {
+  width: 56px;
+  height: 74px;
+  flex: 0 0 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: 800;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+}
+
+.book-card-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.book-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
 }
 
 .book-delete {
@@ -1390,6 +1421,14 @@ button, input, textarea, select {
   background: var(--accent);
   color: #ffffff;
   font-weight: 700;
+  overflow: hidden;
+}
+
+.book-widget-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .book-widget-info {
@@ -2459,8 +2498,15 @@ ne-tooltip-detail {
   display: block;
 }
 .book-info-cover-empty {
-  color: var(--muted);
-  font-size: 13px;
+  color: #ffffff;
+  font-size: 56px;
+  font-weight: 800;
+  background: var(--accent);
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .book-info-upload {
   width: 180px;
@@ -2510,5 +2556,92 @@ ne-tooltip-detail {
 }
 .book-info-hint {
   font-size: 12px;
+}
+
+/* ===== 0.9.8 我的-书架 / 书城改造 ===== */
+.my-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.my-tabs button {
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+}
+.my-tabs button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+.shelf-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 20px 16px;
+  align-items: start;
+}
+.shelf-book {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  color: var(--text);
+  text-align: center;
+}
+.shelf-book-cover {
+  width: 120px;
+  height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px 8px 8px 4px;
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
+  overflow: hidden;
+  background: var(--panel);
+  position: relative;
+}
+.shelf-book-cover::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  background: rgba(0, 0, 0, 0.12);
+}
+.shelf-book-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.shelf-book-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 48px;
+  font-weight: 800;
+}
+.shelf-book-title {
+  width: 120px;
+  font-size: 13px;
+  line-height: 1.4;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 

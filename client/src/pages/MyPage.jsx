@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import BookList from '../components/BookList.jsx';
+import BookShelf from '../components/BookShelf.jsx';
 import ConfirmModal from '../components/ConfirmModal.jsx';
 
 export default function MyPage() {
   const [books, setBooks] = useState([]);
+  const [tab, setTab] = useState('works');
   const [error, setError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null);
 
@@ -24,10 +26,20 @@ export default function MyPage() {
     }
   }
 
+  const readyBooks = books.filter((book) => book.status !== 'draft');
+
   return (
     <section className="page">
       {error && <p className="form-error">{error}</p>}
-      <BookList books={books.filter((book) => book.status !== 'draft')} onDelete={setDeleteTarget} />
+      <div className="my-tabs">
+        <button className={tab === 'works' ? 'active' : ''} onClick={() => setTab('works')}>作品</button>
+        <button className={tab === 'shelf' ? 'active' : ''} onClick={() => setTab('shelf')}>书架</button>
+      </div>
+      {tab === 'shelf' ? (
+        <BookShelf books={readyBooks} />
+      ) : (
+        <BookList books={readyBooks} onDelete={setDeleteTarget} />
+      )}
       <ConfirmModal
         open={Boolean(deleteTarget)}
         title="删除确认"

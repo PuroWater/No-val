@@ -267,7 +267,7 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
               {book.cover ? (
                 <img className="book-info-cover" src={book.cover} alt={book.title} />
               ) : (
-                <div className="book-info-cover-empty">暂无封面</div>
+                <div className="book-info-cover-empty">{book.title?.[0] || "书"}</div>
               )}
             </div>
             <button className="secondary book-info-upload" onClick={triggerCoverUpload}>{book.cover ? '更换封面' : '上传封面'}</button>

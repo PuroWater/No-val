@@ -22,7 +22,8 @@ function summary(book) {
     deletedAt: book.deletedAt,
     updatedAt: book.updatedAt,
     version: book.version,
-    sortOrder: book.sortOrder
+    sortOrder: book.sortOrder,
+    cover: book.cover
   };
 }
 

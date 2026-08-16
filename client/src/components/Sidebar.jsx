@@ -17,7 +17,7 @@ export default function Sidebar() {
       <div className="top-brand">Novel Agent</div>
       <nav className="top-links">
         <NavLink to="/workspace">创作</NavLink>
-        <NavLink to="/shelf">书架</NavLink>
+        <NavLink to="/shelf">书城</NavLink>
         <NavLink to="/my">我的</NavLink>
       </nav>
       <div className="user-menu">
