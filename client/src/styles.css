@@ -2836,8 +2836,8 @@ ne-tooltip-detail {
 }
 
 .character-card {
-  flex: 0 0 210px;
-  width: 210px;
+  flex: 0 0 240px;
+  width: 240px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -2858,9 +2858,13 @@ ne-tooltip-detail {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  width: 176px;
-  flex: 0 0 176px;
+  width: 100%;
+  flex: 1;
   min-height: 0;
+}
+.character-card.expanded .character-card-left {
+  flex: 0 0 206px;
+  width: 206px;
 }
 .character-card .character-card-cover {
   flex: 0 0 auto;
@@ -2875,6 +2879,16 @@ ne-tooltip-detail {
   flex-direction: column;
   align-items: center;
   gap: 6px;
+}
+.character-card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  margin-top: auto;
+}
+.character-card-actions button {
+  width: 100%;
 }
 .character-history-panel {
   flex: 1;
