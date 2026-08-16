@@ -5,14 +5,6 @@ function rangeText(start, end) {
   return `第 ${start + 1}-${end + 1} 章`;
 }
 
-// 事件浮窗显示事件文本（AI 生成时已受 50 字约束），不贴 context/伏笔等字段
-function eventsBrief(events) {
-  return (events || []).map((item, index) => {
-    const text = String(item.event || '').trim();
-    return `${index + 1}. ${text}`;
-  }).join('\n');
-}
-
 function clampScale(scale) {
   return Math.min(2.5, Math.max(0.5, scale));
 }
@@ -106,10 +98,7 @@ export default function DevelopmentLineView({
             events: chapter.events || []
           });
         }}
-        onMouseEnter={(event) => showHover(event, {
-          title: chapter.chapterTitle,
-          detail: eventsBrief(chapter.events)
-        })}
+        onMouseEnter={(event) => showHover(event, { title: '点击查看详细内容' })}
         onMouseMove={(event) => setHover((prev) => (prev ? { ...prev, x: event.clientX, y: event.clientY } : prev))}
         onMouseLeave={() => setHover(null)}
       >

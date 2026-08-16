@@ -2795,7 +2795,7 @@ Novel Agent/
 - 快照结构化：{ identity, bag[], goal, recent }，题材无关的广义背包替换核心设定/拥有物；
 - 维护 AI 读旧背包+当前章输出完整背包（重要性排序）；后端截 30 条、超出标"杂物"；
 - 防失真规则：未变化条目原样保留、增/改/删需正文依据、身份禁臆想；
-- 注入不变（characterCardsRef 读相关卡）；旧数据迁移；卡片近况超链接 + 点击弹出该章快照详情悬浮窗。
+- 注入不变（characterCardsRef 读相关卡）；旧数据迁移；三类 tooltip 抽象 TooltipKit；卡片近况 tooltip2 提示 + 点击弹主题色 tooltip3 详情（背包 5 列网格）；发展线事件同款。
 
 完成内容：
 - 全链路落地（维护端/注入端/UI/迁移/测试）；单元测试 126/126、build 通过、golden eval 8/8 + 真机维护验证；版本号统一 0.9.7（根/server/client）；分支 codex/0.9.6-provider-custom，本地提交未推送。

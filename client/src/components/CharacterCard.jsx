@@ -1,6 +1,6 @@
-// 人物信息卡（0.9.7）：近况为超链接，点击唤出"内容性 tooltip"（TooltipKit 类型3，
+// 人物信息卡（0.9.7）：近况为超链接，点击唤出"内容性 tooltip"（类型3，主题色、宽、
 // 左上角 x+14/y+16 定位、不跟随、点外部关闭）显示该快照详情 + 前往该章节；
-// 展开历史各章近况同样可点开对应章详情，第N章悬浮提示并可点击跳转。
+// 展开历史：第x章粗体 + 缩进近况（无下划线/链接样式，点击同样可看对应章详情）。
 import { useState } from 'react';
 import { useContentTooltip, ContentTip, useHoverTip, HoverTip } from './TooltipKit.jsx';
 
@@ -31,7 +31,7 @@ export default function CharacterCard({ card, onOpenChapter }) {
               type="button"
               className="character-snapshot-link"
               onClick={(event) => openAt(event, { chapter: latest.chapter, snapshot: latest.snapshot })}
-              title="点击查看详细内容"
+              {...bindHover('点击查看详细内容')}
             >
               {snapshotRecent(latest.snapshot)}
             </button>
@@ -51,25 +51,18 @@ export default function CharacterCard({ card, onOpenChapter }) {
         <ul className="character-history">
           {history.slice().reverse().map((item) => (
             <li key={item.chapter}>
-              <button
-                className="character-history-chapter"
-                onClick={() => onOpenChapter?.(item.chapter)}
-                {...bindHover(`前往第${Number(item.chapter) + 1}章`)}
-              >
-                第{Number(item.chapter) + 1}章
-              </button>
-              ：{' '}
+              <div className="character-history-chapter-label">第{Number(item.chapter) + 1}章：</div>
               {snapshotRecent(item.snapshot) ? (
                 <button
                   type="button"
-                  className="character-snapshot-link"
+                  className="character-history-snapshot"
                   onClick={(event) => openAt(event, { chapter: item.chapter, snapshot: item.snapshot })}
-                  title="点击查看详细内容"
+                  {...bindHover('点击查看详细内容')}
                 >
                   {snapshotRecent(item.snapshot)}
                 </button>
               ) : (
-                ''
+                <div className="character-history-snapshot">（无近况）</div>
               )}
             </li>
           ))}
@@ -92,8 +85,13 @@ export default function CharacterCard({ card, onOpenChapter }) {
                 <ul className="character-bag">
                   {(snap.bag || []).map((item2, index) => (
                     <li key={index} className={item2.junk ? 'junk' : ''}>
-                      <strong>{item2.name}</strong>
-                      {item2.status ? `：${item2.status}` : ''}
+                      <button
+                        type="button"
+                        className="character-bag-item"
+                        {...bindHover(item2.status ? `${item2.name}：${item2.status}` : item2.name)}
+                      >
+                        {item2.name}
+                      </button>
                     </li>
                   ))}
                 </ul>

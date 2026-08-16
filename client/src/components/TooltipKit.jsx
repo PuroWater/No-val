@@ -1,7 +1,7 @@
 // 三类 tooltip 统一抽象（0.9.7）：避免各处复制粘贴。
 // 类型1 消息提示性：toast（屏幕中间，已保存/测试连接消息）→ useToasts + <Toasts/>
 // 类型2 解释性：悬浮跟随鼠标（设置页开启按钮说明）→ useHoverTip + <HoverTip/>
-// 类型3 内容性：点击唤出，左上角 x+14/y+16 定位、不跟随鼠标、点外部关闭（人物卡详情/发展线事件详情）→ useContentTooltip + <ContentTip/>
+// 类型3 内容性：点击唤出，左上角 x+14/y+16 定位、不跟随鼠标、点外部关闭（人物卡详情/发展线事件详情）→ useContentTooltip + <ContentTip/>；主题色、宽、内容多
 import { useEffect, useRef, useState } from 'react';
 
 // ---------- 类型1：消息提示性 toast ----------
@@ -80,7 +80,7 @@ export function ContentTip({ popup, onClose, className = '', children }) {
   return (
     <div
       data-content-tip
-      className={`chat-date-tooltip content-tip ${className}`.trim()}
+      className={`content-tip ${className}`.trim()}
       style={{
         left: Math.max(8, Math.min(popup.x + 14, window.innerWidth - 300)),
         top: Math.max(8, Math.min(popup.y + 16, window.innerHeight - 90))
