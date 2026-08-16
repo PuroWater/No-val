@@ -858,9 +858,9 @@ button, input, textarea, select {
 }
 .character-card-actions {
   display: flex;
+  flex-direction: column;
   gap: 6px;
-  flex-wrap: wrap;
-  justify-content: center;
+  width: 100%;
 }
 .character-card-actions button {
   padding: 5px 9px;
@@ -2801,17 +2801,19 @@ ne-tooltip-detail {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  overflow-y: auto;
+  overflow: hidden;
 }
 .character-search {
   flex: 0 0 auto;
 }
 .character-row {
+  flex: 1;
+  min-height: 0;
   display: flex;
   gap: 14px;
   overflow-x: auto;
   overflow-y: hidden;
-  align-items: flex-start;
+  align-items: stretch;
   padding-bottom: 8px;
   scrollbar-width: thin;
 }
@@ -2872,6 +2874,7 @@ ne-tooltip-detail {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: flex-start;
   gap: 6px;
 }
 .character-history-panel {
