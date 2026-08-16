@@ -659,7 +659,7 @@ button, input, textarea, select {
 .book-card-cover {
   width: 56px;
   flex: 0 0 56px;
-  aspect-ratio: 9 / 16;
+  aspect-ratio: 3 / 4;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1534,7 +1534,7 @@ button, input, textarea, select {
 
 .book-widget-cover {
   width: 46px;
-  aspect-ratio: 9 / 16;
+  aspect-ratio: 3 / 4;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2602,7 +2602,7 @@ ne-tooltip-detail {
 }
 .book-info-cover-wrap {
   width: 180px;
-  aspect-ratio: 9 / 16;
+  aspect-ratio: 3 / 4;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--panel);
@@ -2747,7 +2747,7 @@ ne-tooltip-detail {
 }
 .shelf-book-cover {
   width: 120px;
-  aspect-ratio: 9 / 16;
+  aspect-ratio: 3 / 4;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2837,7 +2837,7 @@ ne-tooltip-detail {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 10px;
+  padding: 16px;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--panel);
@@ -2865,14 +2865,14 @@ ne-tooltip-detail {
   min-height: 0;
 }
 .character-card.expanded .character-card-left {
-  flex: 0 0 188px;
-  width: 188px;
+  flex: 0 0 176px;
+  width: 176px;
 }
 .character-card .character-card-cover {
   flex: 0 0 auto;
   width: 100%;
   height: auto;
-  aspect-ratio: 9 / 16;
+  aspect-ratio: 3 / 4;
 }
 .character-card-info {
   flex: 1;
