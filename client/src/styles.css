@@ -2589,14 +2589,12 @@ ne-tooltip-detail {
 
 /* ===== 0.9.8 书籍信息页 ===== */
 .book-info-tab {
+  flex: 1;
+  min-height: 0;
   display: flex;
   gap: 24px;
   padding: 16px;
-  min-height: 0;
   overflow: auto;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--panel);
 }
 .book-info-cover-col {
   display: flex;
