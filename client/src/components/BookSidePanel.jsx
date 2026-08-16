@@ -33,6 +33,7 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
   const [styles, setStyles] = useState([]);
   const [styleSaving, setStyleSaving] = useState(false);
   const [characterQuery, setCharacterQuery] = useState('');
+  const [expandedName, setExpandedName] = useState('');
   const [notice, setNotice] = useState('');
   const noticeTimerRef = useRef(null);
   const { user } = useAuth();
@@ -291,10 +292,10 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
               {filteredCharacters.length === 0 ? (
                 <p className="muted">没有匹配的角色</p>
               ) : (
-                <>
-                  {mainCharacters.length > 0 && (
-                    <div className="character-group">
-                      <h4 className="character-group-title">主角</h4>
+                <div className="character-groups-row">
+                  <div className="character-group">
+                    <h4 className="character-group-title">主角</h4>
+                    {mainCharacters.length > 0 ? (
                       <CharacterRow>
                         {mainCharacters.map((card) => (
                           <CharacterCard
@@ -302,17 +303,21 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
                             card={card}
                             bookId={bookId}
                             focusChapter={focusChapter}
+                            expanded={expandedName === card.name}
+                            onToggleHistory={() => setExpandedName((prev) => (prev === card.name ? '' : card.name))}
                             onOpenChapter={(index) => { setTab('content'); setChapterIndex(index); }}
                             onUpdated={setBook}
                             onNotice={showNotice}
                           />
                         ))}
                       </CharacterRow>
-                    </div>
-                  )}
-                  {supportCharacters.length > 0 && (
-                    <div className="character-group">
-                      <h4 className="character-group-title">配角</h4>
+                    ) : (
+                      <p className="muted">暂无主角档案</p>
+                    )}
+                  </div>
+                  <div className="character-group">
+                    <h4 className="character-group-title">配角</h4>
+                    {supportCharacters.length > 0 ? (
                       <CharacterRow>
                         {supportCharacters.map((card) => (
                           <CharacterCard
@@ -320,15 +325,19 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
                             card={card}
                             bookId={bookId}
                             focusChapter={focusChapter}
+                            expanded={expandedName === card.name}
+                            onToggleHistory={() => setExpandedName((prev) => (prev === card.name ? '' : card.name))}
                             onOpenChapter={(index) => { setTab('content'); setChapterIndex(index); }}
                             onUpdated={setBook}
                             onNotice={showNotice}
                           />
                         ))}
                       </CharacterRow>
-                    </div>
-                  )}
-                </>
+                    ) : (
+                      <p className="muted">暂无配角档案</p>
+                    )}
+                  </div>
+                </div>
               )}
             </>
           )}
