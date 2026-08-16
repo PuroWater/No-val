@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { normalizeCharacterUpdates } from '../src/services/maintenanceService.js';
 import { characterCardsRef, characterContextRef } from '../src/lib/writingPrompts.js';
-import { normalizeBag } from '../src/lib/bookUtils.js';
+import { normalizeBag, normalizeCharacters } from '../src/lib/bookUtils.js';
 
 test('normalizeCharacterUpdates keeps named entries with structured snapshot', () => {
   const updates = normalizeCharacterUpdates([
@@ -90,4 +90,22 @@ test('characterCardsRef formats bag/identity/goal/recent', () => {
   assert.ok(out.includes('寒髓噬灵诀（第3层）'));
   assert.ok(out.includes('目标：寻找解药'));
   assert.ok(out.includes('近况：深入矿洞'));
+});
+
+test('normalizeCharacters dedupes history by chapter keeping last', () => {
+  const chars = normalizeCharacters([
+    {
+      name: '张三',
+      history: [
+        { chapter: 0, snapshot: '旧第1章' },
+        { chapter: 0, snapshot: { identity: '新身份', bag: [], goal: '', recent: '新第1章' } },
+        { chapter: 2, snapshot: '第3章' }
+      ]
+    }
+  ]);
+  assert.equal(chars[0].history.length, 2);
+  assert.equal(chars[0].history[0].chapter, 0);
+  assert.equal(chars[0].history[0].snapshot.recent, '新第1章');
+  assert.equal(chars[0].history[1].chapter, 2);
+  assert.equal(chars[0].history[1].snapshot.recent, '第3章');
 });

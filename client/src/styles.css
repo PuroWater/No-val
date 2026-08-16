@@ -392,7 +392,7 @@ button, input, textarea, select {
 
 .chat-date-tooltip {
   position: fixed;
-  z-index: 90;
+  z-index: 96;
   max-width: 260px;
   padding: 6px 10px;
   background: #1f2328;
@@ -2207,9 +2207,10 @@ ne-tooltip-detail {
   padding: 0;
   list-style: none;
   flex: 1;
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 4px 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-content: flex-start;
 }
 
 .character-bag li.junk {
@@ -2340,7 +2341,7 @@ ne-tooltip-detail {
   opacity: 0.65;
 }
 
-/* 展开历史：第x章粗体 + 缩进近况（无下划线/链接样式） */
+/* 展开历史：第x章粗体 + 缩进近况（超链接下划线，点击开详情） */
 .character-history-chapter-label {
   font-weight: 700;
 }
@@ -2350,8 +2351,16 @@ ne-tooltip-detail {
   border: 0;
   background: none;
   font: inherit;
-  color: var(--text);
   text-align: left;
   cursor: pointer;
   line-height: 1.5;
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+
+.character-history-snapshot:hover {
+  text-decoration-style: solid;
+  opacity: 0.85;
 }

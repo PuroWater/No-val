@@ -47,14 +47,17 @@ export function normalizeCharacters(raw) {
   return (Array.isArray(raw) ? raw : [])
     .map((card) => ({
       name: String(card?.name || '').trim(),
-      history: Array.isArray(card?.history)
-        ? card.history
-            .map((item) => ({
-              chapter: Number(item?.chapter),
-              snapshot: normalizeCharacterSnapshot(item?.snapshot)
-            }))
-            .filter((item) => Number.isInteger(item.chapter))
-        : []
+      history: (() => {
+        if (!Array.isArray(card?.history)) return [];
+        const byChapter = new Map();
+        for (const item of card.history) {
+          const chapter = Number(item?.chapter);
+          if (!Number.isInteger(chapter)) continue;
+          // 同章多次维护保留最后一次（旧重复自动清理）
+          byChapter.set(chapter, normalizeCharacterSnapshot(item?.snapshot));
+        }
+        return [...byChapter.entries()].sort((a, b) => a[0] - b[0]).map(([chapter, snapshot]) => ({ chapter, snapshot }));
+      })()
     }))
     .filter((card) => card.name);
 }

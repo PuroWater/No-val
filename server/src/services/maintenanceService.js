@@ -148,7 +148,13 @@ export async function maintainChapterMeta(book, { chapterIndex, mode = 'modify',
       const existing = book.characters.find((item) => item.name === update.name);
       if (existing) {
         if (!Array.isArray(existing.history)) existing.history = [];
-        existing.history.push({ chapter: index, snapshot: update.snapshot });
+        // 同章已存在快照时替换（重维护不产生重复旧历史）
+        const sameChapter = existing.history.findIndex((item) => Number(item.chapter) === index);
+        if (sameChapter >= 0) {
+          existing.history[sameChapter] = { chapter: index, snapshot: update.snapshot };
+        } else {
+          existing.history.push({ chapter: index, snapshot: update.snapshot });
+        }
       } else {
         book.characters.push({ name: update.name, history: [{ chapter: index, snapshot: update.snapshot }] });
       }
