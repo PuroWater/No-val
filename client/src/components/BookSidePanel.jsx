@@ -5,6 +5,7 @@ import ChapterDirectory from './ChapterDirectory.jsx';
 import CharacterCard from './CharacterCard.jsx';
 import DevelopmentLineView from './DevelopmentLineView.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
+import { useAuth } from '../auth/AuthContext.jsx';
 
 export default function BookSidePanel({ bookId, onClose, onBack, openChapter, refreshSignal }) {
   const [book, setBook] = useState(null);
@@ -27,6 +28,10 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
   const aiToastTimerRef = useRef(null);
   const editingDirtyRef = useRef(false);
   const lastOpenChapterRef = useRef(null);
+  const coverInputRef = useRef(null);
+  const [styles, setStyles] = useState([]);
+  const [styleSaving, setStyleSaving] = useState(false);
+  const { user } = useAuth();
 
   async function commitAddChapter(title) {
     if (!book || !title) return;
@@ -102,6 +107,10 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
   }, []);
 
   useEffect(() => {
+    api('/styles').then((data) => setStyles(data.styles || [])).catch(() => {});
+  }, []);
+
+  useEffect(() => {
     // 仅在外部指定章节（openChapter）变化时定位；自动刷新导致 book 变化不重置当前查看位置
     if (book && Number.isInteger(openChapter) && openChapter >= 1 && openChapter <= book.chapters.length && lastOpenChapterRef.current !== openChapter) {
       lastOpenChapterRef.current = openChapter;
@@ -155,6 +164,55 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
     }
   }
 
+  async function handleStyleChange(event) {
+    const writingStyle = event.target.value;
+    if (!book || styleSaving) return;
+    setStyleSaving(true);
+    try {
+      const data = await api(`/books/${book.id}/writing-style`, {
+        method: 'PUT',
+        body: JSON.stringify({ writingStyle, version: book.version })
+      });
+      setBook(data.book);
+    } catch (err) {
+      if (/内容已更新/.test(String(err.message))) {
+        setError(`${err.message}（已为你刷新最新内容，请确认后重试）`);
+        api(`/books/${book.id}`).then((data) => setBook(data.book)).catch(() => {});
+      } else {
+        setError(err.message);
+      }
+    } finally {
+      setStyleSaving(false);
+    }
+  }
+
+  function triggerCoverUpload() {
+    coverInputRef.current?.click();
+  }
+
+  async function handleCoverChange(event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !book) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setError('封面图片大小需在 5MB 以内');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const data = await api(`/books/${book.id}/cover`, {
+          method: 'POST',
+          body: JSON.stringify({ image: String(reader.result || '') })
+        });
+        setBook(data.book);
+      } catch (err) {
+        setError(err.message);
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
   return (
     <aside className="book-side-panel">
       <div className="side-panel-head">
@@ -166,12 +224,12 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
             </button>
           )}
         </div>
-        <p className="muted">{book.outline}</p>
       </div>
       <div className="tabs">
         <button className={tab === 'content' ? 'active' : ''} onClick={() => setTab('content')}>内容</button>
         <button className={tab === 'developmentLine' ? 'active' : ''} onClick={() => setTab('developmentLine')}>发展线</button>
         <button className={tab === 'characters' ? 'active' : ''} onClick={() => setTab('characters')}>人物信息</button>
+        <button className={tab === 'bookInfo' ? 'active' : ''} onClick={() => setTab('bookInfo')}>书籍信息</button>
       </div>
       {tab === 'content' ? (
         <div className="book-content">
@@ -201,6 +259,32 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
         <div className="relation-tab">
           {(book.characters || []).length === 0 && <p className="muted">暂无角色档案：新建/改写章节时，正文中出现的重要角色会自动建档并记录各章状态变化。</p>}
           <div className="character-list">{(book.characters || []).map((card) => <CharacterCard key={card.name} card={card} onOpenChapter={(index) => { setTab('content'); setChapterIndex(index); }} />)}</div>
+        </div>
+      ) : tab === 'bookInfo' ? (
+        <div className="book-info-tab">
+          <div className="book-info-cover-col">
+            <div className="book-info-cover-wrap">
+              {book.cover ? (
+                <img className="book-info-cover" src={book.cover} alt={book.title} />
+              ) : (
+                <div className="book-info-cover-empty">暂无封面</div>
+              )}
+            </div>
+            <button className="secondary book-info-upload" onClick={triggerCoverUpload}>{book.cover ? '更换封面' : '上传封面'}</button>
+            <input ref={coverInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" style={{ display: 'none' }} onChange={handleCoverChange} />
+          </div>
+          <div className="book-info-main">
+            <h2 className="book-info-title">{book.title}</h2>
+            <p className="book-info-author">作者：{user?.username || '未知'}</p>
+            <p className="book-info-outline">{book.outline || '暂无简介'}</p>
+            <div className="book-info-style">
+              <label className="book-info-style-label">文笔风格</label>
+              <select className="book-info-style-select" value={book.writingStyle || 'default'} onChange={handleStyleChange} disabled={styleSaving}>
+                {styles.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+              </select>
+            </div>
+            <p className="muted book-info-hint">文笔风格只影响之后新建/改写的正文，不修改已有章节。</p>
+          </div>
         </div>
       ) : (
         <div className="relation-tab">

@@ -7,6 +7,8 @@ import { deleteChapters, updateBook } from '../services/bookService.js';
 import { maintainChapterMeta } from '../services/maintenanceService.js';
 import { buildDevelopmentLine } from '../services/storyMetaService.js';
 import { enqueueBookWrite } from '../lib/writeQueue.js';
+import { WRITING_STYLES } from '../lib/stylePresets.js';
+import { parseCoverDataUrl, saveCover, deleteCoverByPath, MAX_COVER_BYTES } from '../lib/coverStore.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -78,6 +80,55 @@ router.get('/:id', (req, res) => {
     return res.status(404).json({ error: '书籍不存在' });
   }
   res.json({ book });
+});
+
+router.put('/:id/writing-style', (req, res) => {
+  const { writingStyle, version } = req.body || {};
+  if (!WRITING_STYLES.some((item) => item.id === writingStyle)) {
+    return res.status(400).json({ error: '文笔风格不合法' });
+  }
+  try {
+    const book = updateBook(req.user.id, req.params.id, (latest) => {
+      if (latest.deletedAt) throw new Error('书籍不存在');
+      // 乐观锁：与章节保存/回收站同一套快写语义
+      if (Number.isInteger(version) && latest.version !== version) {
+        throw new Error('内容已更新，请刷新后重试');
+      }
+      latest.writingStyle = writingStyle;
+      latest.updatedAt = new Date().toISOString();
+      latest.version = (latest.version || 0) + 1;
+    });
+    return res.json({ book });
+  } catch (err) {
+    const status = err.message === '内容已更新，请刷新后重试' ? 409
+      : (err.message === '书籍不存在' ? 404 : 400);
+    return res.status(status).json({ error: err.message });
+  }
+});
+
+router.post('/:id/cover', (req, res) => {
+  const parsed = parseCoverDataUrl(req.body?.image);
+  if (!parsed) {
+    return res.status(400).json({ error: '封面图片格式不支持，请上传 JPG/PNG/WebP/GIF' });
+  }
+  const size = Buffer.from(parsed.base64, 'base64').length;
+  if (size <= 0 || size > MAX_COVER_BYTES) {
+    return res.status(400).json({ error: '封面图片大小需在 5MB 以内' });
+  }
+  try {
+    const book = updateBook(req.user.id, req.params.id, (latest) => {
+      if (latest.deletedAt) throw new Error('书籍不存在');
+      const cover = saveCover(latest.id, parsed);
+      if (latest.cover) deleteCoverByPath(latest.cover);
+      latest.cover = cover;
+      latest.updatedAt = new Date().toISOString();
+      latest.version = (latest.version || 0) + 1;
+    });
+    return res.json({ book });
+  } catch (err) {
+    const status = err.message === '书籍不存在' ? 404 : 400;
+    return res.status(status).json({ error: err.message });
+  }
 });
 
 const developmentLineHandler = (req, res) => {
@@ -195,6 +246,7 @@ router.delete('/:id/permanent', (req, res) => {
   if (Number.isInteger(version) && book.version !== version) {
     return res.status(409).json({ error: '内容已更新，请刷新后重试' });
   }
+  deleteCoverByPath(book.cover);
   deleteBookFile(book.id);
   res.json({ ok: true });
 });

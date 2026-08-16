@@ -13,8 +13,9 @@ export const OUTLINE_EXPANSION_RULE =
   '当指令或原章节是分条纲要/脉络时，逐条扩展为连贯正文：覆盖所有要点、保持原有顺序、不增删主干情节；' +
   '细节可丰富，但不得遗漏条目或自创主线。';
 
-export function writingSystem(role = '创作') {
-  return `你是小说${role}助手。${CHAPTER_ENDING_RULE}${OUTLINE_EXPANSION_RULE}始终只返回 JSON，不要包含 Markdown。`;
+export function writingSystem(role = '创作', stylePrompt = '') {
+  const style = stylePrompt ? `${stylePrompt}` : '';
+  return `你是小说${role}助手。${CHAPTER_ENDING_RULE}${OUTLINE_EXPANSION_RULE}${style}始终只返回 JSON，不要包含 Markdown。`;
 }
 
 export const PARAGRAPH_RULE = '正文按情节自然分段，段落之间用空行分隔。';

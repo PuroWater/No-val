@@ -147,5 +147,9 @@ export function normalizeBook(book) {
   if (!book.pendingAction) book.pendingAction = null;
   // 跨消息幂等：最近一次成功应用的客户端消息 id（重试令牌）
   if (!book.lastAppliedMessageId) book.lastAppliedMessageId = '';
+  // 文笔风格（0.9.8）：书级预设 id，默认 default；只影响之后写作
+  if (!book.writingStyle) book.writingStyle = 'default';
+  // 封面（0.9.8）：本地上传封面的静态路径，无则 null
+  book.cover = typeof book.cover === 'string' && book.cover ? book.cover : null;
   return book;
 }

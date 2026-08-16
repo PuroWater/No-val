@@ -2,8 +2,8 @@
 
 ## 当前状态
 
-- 当前版本：0.9.7（人物快照结构化 + 广义背包 + 创作台拖拽排序 + 一批 UI/交互修复；详见底部“版本更新说明”）
-- 当前分支：codex/0.9.6-provider-custom（功能分支，未并 develop；全部提交本地未推送）
+- 当前版本：0.9.8（文笔风格模板系统 + 书籍信息页：封面/作者/简介/文笔风格；详见底部“版本更新说明”）
+- 当前分支：codex/0.9.8-style-template（功能分支，未并 develop；全部提交本地未推送）
 - 技术栈：React 18 + Vite 5，Express 4，Node.js 18+，JSON 本地持久化
 - 大模型：多供应商（DeepSeek/OpenAI/Anthropic/OpenRouter/Grok/Kimi/GLM/MiniMax/Ollama/自定义），默认 `deepseek-v4-flash`
 - 数据目录：项目根目录 `data/`
@@ -88,7 +88,7 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 - 我的：展示已生成书籍列表，包含书名、章节数、更新时间，并进入设置页。
 - 书架：内部开发阶段占位页面，仅展示前端 UI。
 - 设置：背景风格按“跟随系统 / 浅色 / 深色 / 护眼绿 / 护眼纸纹”顺序排列，默认护眼纸纹；跟随系统自动匹配操作系统深浅色；小 / 中 / 大字号，每次输出章节数（1-5）与每章大致字数（1000-10000），持久化到 `settings.json`。
-- 书籍详情：`内容 / 人物设定 / 发展线` 三个标签，人物设定展示角色最新快照与按章历史，发展线按大背景/场景/章节展示事件。
+- 书籍详情：`内容 / 人物信息 / 发展线 / 书籍信息` 四个标签；书籍信息页按“商品页”样式展示封面（可本地上传）、书名、作者、简介与文笔风格（可改，只影响之后写作）。
 
 ## 技术架构
 
@@ -171,6 +171,8 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
   "status": "draft" | "ready",
   "title": "书名或未命名新书",
   "outline": "简介",
+  "writingStyle": "default",
+  "cover": null,
   "chapters": [
     {
       "id": "c_xxx",
@@ -233,6 +235,8 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 - `GET /api/books/:id/development-line`
 - `POST /api/books/:id/chapters`
 - `PUT /api/books/:id/chapters/:chapterId`
+- `PUT /api/books/:id/writing-style`
+- `POST /api/books/:id/cover`
 - `POST /api/books/:id/chapters/:chapterId/summary`
 - `DELETE /api/books/:id/chapters/:chapterId`（删除任意单章，含中间章）
 - `DELETE /api/books/:id/chapters`（批量删除末尾章节，body `{ count }`，1-50、至少保留 1 章）
@@ -245,6 +249,7 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 - `GET /api/chat/progress`
 - `GET /api/settings`
 - `PUT /api/settings`
+- `GET /api/styles`
 - `GET /api/providers`、`POST /api/providers`
 - `PUT /api/providers/:id`、`DELETE /api/providers/:id`
 - `POST /api/providers/:id/activate`
@@ -385,7 +390,7 @@ npm start
 
 ## 验证记录
 
-- 后端测试：127 个自动化测试通过（`npm test`）。
+- 后端测试：131 个自动化测试通过（`npm test`）。
 - 前端构建：`npm run build` 通过。
 - 冒烟验证：登录成功、草稿创建成功、聊天消息持久化、生产页面 200。
 - 真实大模型调用依赖设置页“模型配置”中的有效 Key（或 `.env` 兜底），当前激活项为 DSWRONG666666 会 401，验证需先切 DSRIGHT。
@@ -2009,3 +2014,16 @@ npm start
 - **三类 tooltip 统一抽象（TooltipKit.jsx）**：消息提示性（useToasts/Toasts，toast 屏幕中间）/ 解释性（useHoverTip/HoverTip，黑色悬浮跟随鼠标 x+14/y+16）/ 内容性（useContentTooltip/ContentTip，主题色面板、宽 480px、左上角 x+14/y+16 定位不跟随、点外部关闭）；人物卡详情、发展线事件详情均走 ContentTip（含"点击前往该章节"），"点击查看详细内容"提示用 tooltip2 悬浮；人物卡展开历史改为"第x章：粗体 + 缩进近况"格式（去章节跳转/下划线），背包在详情弹窗内 5 个一行网格（只显名称、悬浮显示 名称：状态）。
 
 完成结果：创作台侧栏拖拽排序（书级 sortOrder，后端按 status+sortOrder 排序，"我的"同步）；人物一致性从"单一近况"升级为"结构化快照 + 背包"，写正文/审校注入路径不变；单元测试 126/126、前端 build 通过、golden eval 8/8（重跑确认"再写一章"偶发失败为模型方差）+ 真机维护验证（结构化快照含背包字段产出正确，仙路逆鳞第 1-5 章已重新维护为结构化快照）；版本号统一 0.9.7（根/server/client）；分支 codex/0.9.6-provider-custom，本地提交未推送。
+
+### 2026-08-16 v0.9.8 文笔风格模板系统 + 书籍信息页
+
+更新内容：
+- 新增书级 `book.writingStyle`（预设 id，默认 `default`），`normalizeBook` 补默认；只影响之后新建/改写的正文，不回溯已有章节。
+- 新增 `lib/stylePresets.js` 后端单一来源：默认 / 简洁明快 / 细腻铺陈 / 口语生活 / 书面文艺 / 辞藻华丽 / 排句节奏 共 7 个预设；`resolveWritingStyle` 找不到回退默认。
+- `writingSystem(role, stylePrompt)` 注入文笔约束；`createChapter` / `rewriteChapter` 按书传入风格 prompt；评审/维护/构思定稿不注入。
+- 新增 `GET /api/styles`（返回预设，不含 prompt）与 `PUT /api/books/:id/writing-style`（乐观锁 version + 校验）。
+- 新增“书籍信息”页（BookSidePanel 第四个标签）：左侧竖版封面（`data/covers/` 本地上传，`POST /api/books/:id/cover` + `/covers` 静态读取，JPG/PNG/WebP/GIF ≤5MB），右侧粗体书名、作者（账户昵称）、简介、文笔风格下拉；简介从侧栏头部移入此页。
+- 封面上传/替换自动清理旧图；彻底删除书籍时同步删除封面文件。
+
+完成结果：单元测试 131/131、前端 build 通过；版本号统一 0.9.8（根/server/client）；分支 codex/0.9.8-style-template，本地提交未推送。
+

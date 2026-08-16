@@ -2424,3 +2424,91 @@ ne-tooltip-detail {
 .directory-item.active.drag-over {
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.95), 0 0 0 5px var(--accent);
 }
+
+/* ===== 0.9.8 书籍信息页 ===== */
+.book-info-tab {
+  display: flex;
+  gap: 24px;
+  padding: 20px;
+  min-height: 0;
+  overflow: auto;
+}
+.book-info-cover-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 200px;
+}
+.book-info-cover-wrap {
+  width: 180px;
+  height: 240px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.book-info-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.book-info-cover-empty {
+  color: var(--muted);
+  font-size: 13px;
+}
+.book-info-upload {
+  width: 180px;
+}
+.book-info-main {
+  flex: 1;
+  min-width: 0;
+}
+.book-info-title {
+  margin: 0 0 6px;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.3;
+}
+.book-info-author {
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.book-info-outline {
+  margin: 0 0 20px;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+.book-info-style {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.book-info-style-label {
+  color: var(--muted);
+  font-size: 14px;
+  white-space: nowrap;
+}
+.book-info-style-select {
+  min-width: 160px;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 14px;
+}
+.book-info-hint {
+  font-size: 12px;
+}
+

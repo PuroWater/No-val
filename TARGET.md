@@ -1,8 +1,8 @@
 【项目目标】
 在当前开发环境下（已安装 VSCode、Node.js），生成一个可直接运行的**小说创作平台 Web 应用**。项目不连接任何数据库，后端数据使用本地 JSON 文件持久化。前端为 React 单页应用（SPA），后端为 Express，调用大模型（默认 DeepSeek，支持多供应商）辅助创作。
 
-当前版本：0.9.7  
-最近更新：2026-08-16 v0.9.7 人物快照结构化 + 广义背包 + 创作台拖拽排序 + 一批 UI/交互修复
+当前版本：0.9.8  
+最近更新：2026-08-16 v0.9.8 文笔风格模板系统 + 书籍信息页（封面/作者/简介/文笔风格）
 
 【文档职责】
 
@@ -63,7 +63,7 @@ Novel Agent/
    - 每个书籍会话的聊天记录持久化到书籍 JSON，切换板块后回到创作页仍保持原会话。
 4. 我的
    - 展示当前用户创作过的书籍列表，包含书名、章节数、更新时间。
-   - 点击书籍进入详情页，详情页提供“内容 / 发展线 / 人物信息”三个栏位。
+   - 点击书籍进入详情页，详情页提供“内容 / 发展线 / 人物信息 / 书籍信息”四个栏位；书籍信息页展示封面（可本地上传）、书名、作者、简介与文笔风格（可改）。
    - “内容”栏支持按章查看和编辑，编辑后自动保存（如停止输入 1 秒后保存）。
 5. 发展线
    - 由章节事件派生（零 AI 成本），按“大背景 → 场景 → 章节 → 事件”分层展示。
@@ -81,7 +81,7 @@ Novel Agent/
 
 - `data/users.json`：用户账号（id、username、passwordHash、createdAt）。
 - `data/providers.json`：模型条目（供应商 + Key + 模型）。
-- `data/books/` 与 `data/drafts/`：书籍与构思，每本一个 `<bookId>.json`（软删归档为 `<bookId>.archived.json`）；字段见 `SUMMARY.md` 数据模型（已无 `relations`）。
+- `data/books/` 与 `data/drafts/`：书籍与构思，每本一个 `<bookId>.json`（软删归档为 `<bookId>.archived.json`）；字段见 `SUMMARY.md` 数据模型（已无 `relations`，含 `writingStyle`/`cover`）。
 - `data/settings.json`：用户偏好（主题/字号/输出规模/思考开关/写前确认/写后审校/发展线方向）。
 - 数据文件在首次启动时自动创建；读写采用简单 JSON 持久化，本阶段不引入数据库。
 
@@ -98,12 +98,15 @@ Novel Agent/
 - `GET /api/books/:id/development-line`：发展线派生视图。
 - `POST /api/books/:id/chapters`：手动新建空章。
 - `PUT /api/books/:id/chapters/:chapterId`：保存章节内容。
+- `PUT /api/books/:id/writing-style`：设置文笔风格。
+- `POST /api/books/:id/cover`：上传封面。
 - `POST /api/books/:id/chapters/:chapterId/summary`：维护章节摘要/事件。
 - `DELETE /api/books/:id/chapters/:chapterId`：删除任意单章（含中间章）。
 - `DELETE /api/books/:id/chapters`：批量删除末尾章节（body `{ count }`，1-50、至少保留 1 章）。
 - `DELETE /api/books/:id`、`POST /api/books/:id/restore`、`DELETE /api/books/:id/permanent`：软删/恢复/彻底删除。
 - `POST /api/chat/sessions`、`POST /api/chat/message`、`POST /api/chat/abort`、`GET /api/chat/progress`：草稿会话、消息推进、中断、进度。
 - `GET /api/settings`、`PUT /api/settings`：读取、保存设置。
+- `GET /api/styles`：获取文笔风格预设。
 - `GET /api/providers`、`POST /api/providers`、`PUT /api/providers/:id`、`DELETE /api/providers/:id`、`POST /api/providers/:id/activate`、`POST /api/providers/:id/test`、`POST /api/providers/fetch-models`：模型服务管理。
 - 除注册、登录外，其余接口需要携带 JWT。
 
@@ -2814,7 +2817,7 @@ Novel Agent/
 ### 后续建议方向（2026-08-16 更新）
 
 - **三个待议问题**（用户未拍板）：token 占用精确数据；规模信任守卫结构化（讨论“路由输出带用户明确提及字段的标记”等替代正则方案）；开思考稳定性（接受“质量模式偶发重发”，或后续调优）。
-- **写作风格模板走 skill 系统（0.9.7 定稿）**：第 2 步待做——书级 `book.writingStyle` 注入 writingSystem（文笔风格：辞藻/排句/口语书面/成语习惯），详情页可实时改、只影响之后写作；第 3 步先记着——题材模板（末日/玄幻修仙/都市言情/武侠/重生/系统/无限），需先搜集整理模板资料再定。
+- **写作风格模板（文笔部分）已落地（0.9.8）**：书级 `book.writingStyle` 注入 writingSystem，书籍信息页可改、只影响之后写作；第 3 步先记着——题材模板（末日/玄幻修仙/都市言情/武侠/重生/系统/无限），需先搜集整理模板资料再定。
 - **暂缓**：主线/伏笔索引（events.foreshadow，方案 D）。
 
 已取消/明确不做：docs/ 入库（不上传）、客户端自动重试（不要重试按钮）、发展线分支、真时间轴/事件真实时间字段、事件↔章节联动、人物↔关系网联动、大图优化、书架页。

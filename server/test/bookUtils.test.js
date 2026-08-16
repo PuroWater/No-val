@@ -14,3 +14,12 @@ test('normalizeBook fills targetWords defaults', () => {
   assert.equal(legacy.targetWords, 300000);
 });
 
+test('normalizeBook fills writingStyle and cover defaults', () => {
+  const book = normalizeBook({ chapters: [] });
+  assert.equal(book.writingStyle, 'default');
+  assert.equal(book.cover, null);
+  const styled = normalizeBook({ chapters: [], writingStyle: 'ornate', cover: '/covers/x.jpg' });
+  assert.equal(styled.writingStyle, 'ornate');
+  assert.equal(styled.cover, '/covers/x.jpg');
+});
+

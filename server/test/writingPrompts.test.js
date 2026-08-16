@@ -15,6 +15,13 @@ test('writingSystem injects chapter ending and outline expansion rules', () => {
   assert.ok(system.includes('只返回 JSON'));
 });
 
+test('writingSystem injects writing style prompt when provided', () => {
+  const style = '文笔简洁明快：多用短句，少修饰。';
+  const system = writingSystem('创作', style);
+  assert.ok(system.includes(style));
+  assert.ok(system.indexOf(style) < system.indexOf('始终只返回 JSON'));
+});
+
 test('creationContextRef keeps uniform order and appends progress for new chapter', () => {
   const book = { targetWords: 2000, chapters: [{ content: 'x'.repeat(1000) }] };
   const prev = { title: '第1章', summary: '上章摘要', content: '上章结尾内容' };

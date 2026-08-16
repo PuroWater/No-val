@@ -4,6 +4,7 @@ import { clampOutput, ensureChapterTitle, renumberChapterPrefixes, trimChapterTo
 import { callModel, maxTokensForWords } from '../lib/modelCall.js';
 import { resolveThinking } from '../lib/thinking.js';
 import { writingSystem, PARAGRAPH_RULE, chatContextRef, creationContextRef, rewriteContextRef, characterContextRef, characterCardsRef } from '../lib/writingPrompts.js';
+import { resolveWritingStyle } from '../lib/stylePresets.js';
 import { maintainChapterMeta } from './maintenanceService.js';
 
 export const MAX_BATCH_DELETE = 50;
@@ -94,7 +95,8 @@ async function writeBodyWithLengthControl({
   chatContext = '',
   settings = {},
   signal,
-  chapterNo = ''
+  chapterNo = '',
+  stylePrompt = ''
 }) {
   const target = Math.round(Number(chapterWords) || 0);
   const run = async (current, currentTitle, currentInstruction, currentRemark) => {
@@ -104,7 +106,7 @@ async function writeBodyWithLengthControl({
       : `创作新章节（插入为第 ${chapterNo} 章），本章约 ${target} 字。${currentRemark ? `\n补充说明：${currentRemark}` : ''}\n章节标题统一为“第X章 + 标题”格式；${PARAGRAPH_RULE}\n返回 JSON：{"title":"章节标题","content":"章节正文"}。\n用户指令：${currentInstruction || '继续创作'}${chatContextRef(chatContext)}\n${contextLines}${characterContext ? `\n${characterContext}` : ''}`;
     const result = await callModel(
       () => ({
-        system: writingSystem(isRewrite ? '改写' : '创作'),
+        system: writingSystem(isRewrite ? '改写' : '创作', stylePrompt),
         user,
         maxTokens: maxTokensForWords(target),
         thinkingType: resolveThinking(settings, 'writing') ? 'enabled' : 'disabled'
@@ -137,6 +139,7 @@ async function writeBodyWithLengthControl({
 // 内部一次写正文调用（开思考、大预算，只产 title/content），写后自动维护章节元数据并重排受影响前缀。
 export async function createChapter(book, { anchorIndex, title, instruction, remark = '', settings = {}, signal, position = 'after', chatContext = '' } = {}) {
   const chapterWords = clampOutput(settings.chapterWords, 1000, 10000, 2000);
+  const stylePrompt = resolveWritingStyle(book.writingStyle).prompt;
   const insertAt = Number.isInteger(anchorIndex) && anchorIndex >= 0 && anchorIndex < book.chapters.length
     ? (position === 'before' ? anchorIndex : anchorIndex + 1)
     : book.chapters.length;
@@ -160,7 +163,8 @@ export async function createChapter(book, { anchorIndex, title, instruction, rem
     chatContext,
     settings,
     signal,
-    chapterNo: insertAt + 1
+    chapterNo: insertAt + 1,
+    stylePrompt
   });
   const now = new Date().toISOString();
   // 新章标题强制按当前位置编号：去掉 AI 可能携带的任意“第N章”前缀再按位置补齐
@@ -205,6 +209,7 @@ export async function rewriteChapter(book, chapterIndex, instruction, settings =
   const target = book.chapters[chapterIndex];
   if (!target) throw new Error('章节不存在');
   const chapterWords = clampOutput(settings.chapterWords, 1000, 10000, 2000);
+  const stylePrompt = resolveWritingStyle(book.writingStyle).prompt;
   const prev = chapterIndex > 0 ? book.chapters[chapterIndex - 1] : null;
   const next = chapterIndex < book.chapters.length - 1 ? book.chapters[chapterIndex + 1] : null;
   const context = rewriteContextRef(book, prev, next);
@@ -227,7 +232,8 @@ export async function rewriteChapter(book, chapterIndex, instruction, settings =
     ].filter(Boolean).join('\n'),
     chatContext,
     settings,
-    signal: settings.signal
+    signal: settings.signal,
+    stylePrompt
   });
   // 标题按当前位置规范化（与 createChapter 一致），防止模型返回无“第N章”前缀的标题覆盖后丢失格式
   target.title = ensureChapterTitle(chapterIndex, String(body.title || target.title).trim());
