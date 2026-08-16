@@ -7,6 +7,7 @@ export default function CharacterRow({ children }) {
     const el = ref.current;
     if (!el) return undefined;
     const onWheel = (event) => {
+      if (event.target.closest('.character-history-list')) return;
       if (Math.abs(event.deltaY) >= Math.abs(event.deltaX)) {
         el.scrollLeft += event.deltaY;
         event.preventDefault();

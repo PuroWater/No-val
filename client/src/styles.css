@@ -2892,10 +2892,6 @@ ne-tooltip-detail {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 16px;
-  overflow: hidden;
 }
 .character-history-search {
   margin: 0;
@@ -2908,7 +2904,9 @@ ne-tooltip-detail {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding-right: 4px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
 }
 .character-history-item {
   display: flex;
@@ -2973,11 +2971,9 @@ ne-tooltip-detail {
 }
 
 /* ===== 0.9.8 缩放防挤压：不够宽时裁剪，不换行 ===== */
-.top-nav {
-  overflow: hidden;
-}
 .top-links {
   min-width: 0;
+  overflow: hidden;
 }
 .top-links a {
   white-space: nowrap;
@@ -3008,6 +3004,9 @@ ne-tooltip-detail {
   white-space: nowrap;
 }
 .chat-model-btn {
+  white-space: nowrap;
+}
+.status-badge {
   white-space: nowrap;
 }
 
