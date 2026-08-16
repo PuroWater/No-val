@@ -859,7 +859,11 @@ button, input, textarea, select {
 .character-card-actions {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 16px;
+  width: 100%;
+  margin-top: auto;
+}
+.character-card-actions button {
   width: 100%;
 }
 .character-card-actions button {
@@ -2850,12 +2854,6 @@ ne-tooltip-detail {
   align-items: stretch;
   gap: 0;
 }
-.character-expand-divider {
-  flex: 0 0 1px;
-  align-self: stretch;
-  border-left: 1px dashed var(--border);
-  margin: 0 12px;
-}
 .character-card-left {
   display: flex;
   flex-direction: column;
@@ -2880,7 +2878,6 @@ ne-tooltip-detail {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
   gap: 6px;
 }
 .character-history-panel {
@@ -2889,6 +2886,9 @@ ne-tooltip-detail {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  border-left: 1px dashed var(--border);
+  padding-left: 12px;
+  margin-left: 12px;
 }
 .character-history-search {
   margin: 0;
