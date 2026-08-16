@@ -225,7 +225,7 @@ const SETTING_TITLES = { general: '常规设置', appearance: '外观设置', pr
           {activeSetting === 'general' && (
             <>
               <div className="settings-group">
-                <span className="setting-label" {...bindHover('模型输出的章节数，默认值为3（用户对话优先于设置值，但范围仍在1-5）')}>输出章节数</span>
+                <span className="setting-label" {...bindHover('模型输出的章节数，范围为1-5，默认值为3（用户对话优先于设置值，但范围仍在1-5）')}>输出章节数</span>
                 <NumberStepper
                   value={chaptersPerOutput}
                   min={1}
