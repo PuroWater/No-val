@@ -32,3 +32,12 @@ test('normalizeCharacters preserves avatar and defaults null', () => {
   assert.equal(cards[1].avatar, null);
 });
 
+test('normalizeBook assigns main/support roles with fallback main', () => {
+  const book = normalizeBook({ chapters: [], characters: [{ name: '甲', history: [] }, { name: '乙', history: [] }] });
+  assert.equal(book.characters[0].role, 'main');
+  assert.equal(book.characters[1].role, 'support');
+  const explicit = normalizeBook({ chapters: [], characters: [{ name: '乙', role: 'main', history: [] }, { name: '甲', history: [] }] });
+  assert.equal(explicit.characters[0].role, 'main');
+  assert.equal(explicit.characters[1].role, 'support');
+});
+

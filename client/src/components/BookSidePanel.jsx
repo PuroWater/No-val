@@ -3,6 +3,7 @@ import { api } from '../api.js';
 import ChapterEditor from './ChapterEditor.jsx';
 import ChapterDirectory from './ChapterDirectory.jsx';
 import CharacterCard from './CharacterCard.jsx';
+import CharacterRow from './CharacterRow.jsx';
 import DevelopmentLineView from './DevelopmentLineView.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
 import { useAuth } from '../auth/AuthContext.jsx';
@@ -140,6 +141,17 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
 
   const chapter = book.chapters[chapterIndex];
 
+  const characterQueryText = characterQuery.trim().toLowerCase();
+  const chapterMatch = characterQueryText.match(/^第?\s*(\d+)\s*章?$/);
+  const focusChapter = chapterMatch ? Number(chapterMatch[1]) : null;
+  const filteredCharacters = (book.characters || []).filter((card) => {
+    if (!characterQueryText) return true;
+    if (card.name.toLowerCase().includes(characterQueryText)) return true;
+    return Number.isInteger(focusChapter) && (card.history || []).some((item) => Number(item.chapter) + 1 === focusChapter);
+  });
+  const mainCharacters = filteredCharacters.filter((card) => card.role === 'main');
+  const supportCharacters = filteredCharacters.filter((card) => card.role !== 'main');
+
   async function saveChapter(patch) {
     try {
       const data = await api(`/books/${book.id}/chapters/${chapter.id}`, {
@@ -265,7 +277,7 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
           </div>
         </div>
       ) : tab === 'characters' ? (
-        <div className="relation-tab">
+        <div className="relation-tab character-tab">
           {(book.characters || []).length === 0 ? (
             <p className="muted">暂无角色档案：新建/改写章节时，正文中出现的重要角色会自动建档并记录各章状态变化。</p>
           ) : (
@@ -276,34 +288,48 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
                 value={characterQuery}
                 onChange={(e) => setCharacterQuery(e.target.value)}
               />
-              {(() => {
-                const q = characterQuery.trim().toLowerCase();
-                const chapterMatch = q.match(/^第?\s*(\d+)\s*章?$/);
-                const filtered = (book.characters || []).filter((card) => {
-                  if (!q) return true;
-                  if (card.name.toLowerCase().includes(q)) return true;
-                  if (chapterMatch) {
-                    const num = Number(chapterMatch[1]);
-                    return (card.history || []).some((item) => Number(item.chapter) + 1 === num);
-                  }
-                  return false;
-                });
-                return filtered.length === 0 ? (
-                  <p className="muted">没有匹配的角色</p>
-                ) : (
-                  <div className="character-list">
-                    {filtered.map((card) => (
-                      <CharacterCard
-                        key={card.name}
-                        card={card}
-                        bookId={bookId}
-                        onOpenChapter={(index) => { setTab('content'); setChapterIndex(index); }}
-                        onUpdated={setBook}
-                      />
-                    ))}
-                  </div>
-                );
-              })()}
+              {filteredCharacters.length === 0 ? (
+                <p className="muted">没有匹配的角色</p>
+              ) : (
+                <>
+                  {mainCharacters.length > 0 && (
+                    <div className="character-group">
+                      <h4 className="character-group-title">主角</h4>
+                      <CharacterRow>
+                        {mainCharacters.map((card) => (
+                          <CharacterCard
+                            key={card.name}
+                            card={card}
+                            bookId={bookId}
+                            focusChapter={focusChapter}
+                            onOpenChapter={(index) => { setTab('content'); setChapterIndex(index); }}
+                            onUpdated={setBook}
+                            onNotice={showNotice}
+                          />
+                        ))}
+                      </CharacterRow>
+                    </div>
+                  )}
+                  {supportCharacters.length > 0 && (
+                    <div className="character-group">
+                      <h4 className="character-group-title">配角</h4>
+                      <CharacterRow>
+                        {supportCharacters.map((card) => (
+                          <CharacterCard
+                            key={card.name}
+                            card={card}
+                            bookId={bookId}
+                            focusChapter={focusChapter}
+                            onOpenChapter={(index) => { setTab('content'); setChapterIndex(index); }}
+                            onUpdated={setBook}
+                            onNotice={showNotice}
+                          />
+                        ))}
+                      </CharacterRow>
+                    </div>
+                  )}
+                </>
+              )}
             </>
           )}
         </div>

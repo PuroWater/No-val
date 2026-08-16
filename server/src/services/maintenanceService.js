@@ -29,6 +29,7 @@ export function normalizeCharacterUpdates(raw) {
   return raw
     .map((item) => ({
       name: String(item?.name || '').trim(),
+      role: item?.role === 'main' ? 'main' : 'support',
       snapshot: normalizeCharacterSnapshot(item?.snapshot)
     }))
     .filter((item) => item.name && (item.snapshot.recent || item.snapshot.identity || item.snapshot.goal || item.snapshot.bag.length > 0));
@@ -126,7 +127,7 @@ export async function maintainChapterMeta(book, { chapterIndex, mode = 'modify',
     `章节正文：\n${content.slice(0, 12000)}`,
     existingEvents,
     oldCharacterRef ? `\n${oldCharacterRef}` : '',
-    '返回 JSON：{"summary":"本章 80-150 字剧情摘要","events":[{"event":"事件","characters":["人物"],"context":["大背景","场景"]}],"characters":[{"name":"角色名","snapshot":{"identity":"身份/基础（正文明确才写具体值，未明确用模糊总结如实力高强/财力雄厚，约20字，禁止编造）","bag":[{"name":"物品/能力/道具/资产/系统名","status":"状态/说明（约20字）"}],"goal":"当前目标（约30字）","recent":"本章近况（50字以内）"}}]}。事件规则（分三步）：1) context[0] 为本章主线背景/阶段，一章只允许一个，参考前后章保持一致（如从家族过渡到北境、本章主要是北境则写"北境"）；2) 只选本章正文中最重要的最多 3 个事件（按重要性排序、删除琐碎细节）；3) 每条事件配 context[1] 场景：场景是事件实际发生地点/推进节点，不必地理上属于背景；地点离开大背景地理范围时优先用「大背景/地点」拼合模板（如"家族/藏书阁""家族/矿洞"），在大背景内直接写地点；场景同时体现剧情推进，大背景下场景最多 3 个。其余规则：events 必须能在本章正文中找到依据、不得凭空编造；每条 event 正文 50-100 字；context 只允许两层（大背景+场景）并延续前后章背景；每条事件 context 至少 1 层、不得为空。角色规则：只列本章出现且值得建档的重要角色（主角/重要配角/反派；无关的局部龙套路人不要列）；snapshot 为结构化对象：identity 身份/基础（正文明确才写具体值，未明确用模糊总结如"实力高强/财力雄厚/位高权重/深不可测"，约20字，禁止编造具体数字/名称/身份细节）、bag 背包条目（name+status，如能力/技能/道具/资产/系统/消耗品等，题材无关）、goal 当前目标（约30字）、recent 本章近况（50字以内）；背包规则：参考"已有角色背包参考"，输出本章该角色的**完整背包**（保留未变化条目 + 应用本章增/改/删），条目按重要性从高到低排列（核心能力/系统/与当前主线直接相关的关键物品排最前，次要、装饰性、杂项排最后——每个角色最重要的标志性设定应靠前，不得排到末尾），删除/丢弃/一次性使用必须有正文依据，正文未体现的变化不得臆想；**已消耗/已使用的一次性物品（如服用的药物、用尽的消耗品、用完即弃的道具）直接从背包移除，不留"已使用/已消耗"残留条目——背包只放当前仍持有的东西；仍在手中的物品（能力/道具/资产/系统等）才保留并更新状态**；仅当该角色状态有实质变化（能力/身份/地位改变、获得或失去重要物品、重大事件、与主角关系改变）时才给出 snapshot，只是出场对话则不要输出该角色。'
+    '返回 JSON：{"summary":"本章 80-150 字剧情摘要","events":[{"event":"事件","characters":["人物"],"context":["大背景","场景"]}],"characters":[{"name":"角色名","role":"主角|配角","snapshot":{"identity":"身份/基础（正文明确才写具体值，未明确用模糊总结如实力高强/财力雄厚，约20字，禁止编造）","bag":[{"name":"物品/能力/道具/资产/系统名","status":"状态/说明（约20字）"}],"goal":"当前目标（约30字）","recent":"本章近况（50字以内）"}}]}。事件规则（分三步）：1) context[0] 为本章主线背景/阶段，一章只允许一个，参考前后章保持一致（如从家族过渡到北境、本章主要是北境则写"北境"）；2) 只选本章正文中最重要的最多 3 个事件（按重要性排序、删除琐碎细节）；3) 每条事件配 context[1] 场景：场景是事件实际发生地点/推进节点，不必地理上属于背景；地点离开大背景地理范围时优先用「大背景/地点」拼合模板（如"家族/藏书阁""家族/矿洞"），在大背景内直接写地点；场景同时体现剧情推进，大背景下场景最多 3 个。其余规则：events 必须能在本章正文中找到依据、不得凭空编造；每条 event 正文 50-100 字；context 只允许两层（大背景+场景）并延续前后章背景；每条事件 context 至少 1 层、不得为空。角色规则：只列本章出现且值得建档的重要角色（主角/重要配角/反派；无关的局部龙套路人不要列）；role 只填 主角 或 配角（主角填 主角，重要配角/反派填 配角）；snapshot 为结构化对象：identity 身份/基础（正文明确才写具体值，未明确用模糊总结如"实力高强/财力雄厚/位高权重/深不可测"，约20字，禁止编造具体数字/名称/身份细节）、bag 背包条目（name+status，如能力/技能/道具/资产/系统/消耗品等，题材无关）、goal 当前目标（约30字）、recent 本章近况（50字以内）；背包规则：参考"已有角色背包参考"，输出本章该角色的**完整背包**（保留未变化条目 + 应用本章增/改/删），条目按重要性从高到低排列（核心能力/系统/与当前主线直接相关的关键物品排最前，次要、装饰性、杂项排最后——每个角色最重要的标志性设定应靠前，不得排到末尾），删除/丢弃/一次性使用必须有正文依据，正文未体现的变化不得臆想；**已消耗/已使用的一次性物品（如服用的药物、用尽的消耗品、用完即弃的道具）直接从背包移除，不留"已使用/已消耗"残留条目——背包只放当前仍持有的东西；仍在手中的物品（能力/道具/资产/系统等）才保留并更新状态**；仅当该角色状态有实质变化（能力/身份/地位改变、获得或失去重要物品、重大事件、与主角关系改变）时才给出 snapshot，只是出场对话则不要输出该角色。'
   ].filter(Boolean).join('\n');
   const result = await callModel(
     () => ({
@@ -147,6 +148,7 @@ export async function maintainChapterMeta(book, { chapterIndex, mode = 'modify',
     for (const update of characterUpdates) {
       const existing = book.characters.find((item) => item.name === update.name);
       if (existing) {
+        if (update.role) existing.role = update.role;
         if (!Array.isArray(existing.history)) existing.history = [];
         // 同章已存在快照时替换（重维护不产生重复旧历史）
         const sameChapter = existing.history.findIndex((item) => Number(item.chapter) === index);
@@ -156,7 +158,7 @@ export async function maintainChapterMeta(book, { chapterIndex, mode = 'modify',
           existing.history.push({ chapter: index, snapshot: update.snapshot });
         }
       } else {
-        book.characters.push({ name: update.name, history: [{ chapter: index, snapshot: update.snapshot }] });
+        book.characters.push({ name: update.name, role: update.role || 'support', avatar: null, history: [{ chapter: index, snapshot: update.snapshot }] });
       }
     }
   }

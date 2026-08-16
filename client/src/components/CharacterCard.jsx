@@ -8,20 +8,26 @@ function snapshotRecent(snapshot) {
   return String(snapshot.recent || '').trim();
 }
 
-export default function CharacterCard({ card, bookId, onOpenChapter, onUpdated }) {
-  const [open, setOpen] = useState(false);
+export default function CharacterCard({ card, bookId, focusChapter, onOpenChapter, onUpdated, onNotice }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const fileRef = useRef(null);
-  const { popup, openAt, close } = useContentTooltip();
+  const detailTip = useContentTooltip();
+  const imageTip = useContentTooltip();
+  const historyTip = useContentTooltip();
   const { tip, bindHover } = useHoverTip();
-  const history = Array.isArray(card.history) ? card.history : [];
-  const latest = history[history.length - 1];
-  const snap = popup?.snapshot;
 
-  function openLatest(event) {
-    if (!latest) return;
-    openAt(event, { chapter: latest.chapter, snapshot: latest.snapshot });
+  const history = Array.isArray(card.history) ? card.history : [];
+  const focusIndex = Number.isInteger(focusChapter)
+    ? history.findIndex((item) => Number(item.chapter) + 1 === focusChapter)
+    : -1;
+  const currentIndex = focusIndex >= 0 ? focusIndex : history.length - 1;
+  const current = history[currentIndex] || null;
+  const currentChapter = current ? Number(current.chapter) + 1 : null;
+  const snap = detailTip.popup?.snapshot;
+
+  function openDetail(event, item) {
+    detailTip.openAt(event, { chapter: item.chapter, snapshot: item.snapshot });
   }
 
   function triggerUpload() {
@@ -60,41 +66,66 @@ export default function CharacterCard({ card, bookId, onOpenChapter, onUpdated }
       <button
         type="button"
         className="character-card-cover"
-        onClick={openLatest}
-        {...bindHover('查看最新设定详情')}
+        onClick={(event) => imageTip.openAt(event)}
+        {...bindHover('点击设置图片')}
       >
         {card.avatar ? <img src={card.avatar} alt={card.name} /> : <span className="character-card-fallback">{card.name?.[0] || '角'}</span>}
       </button>
       <div className="character-card-name">{card.name}</div>
-      {latest && <div className="character-card-meta">最新·第{Number(latest.chapter) + 1}章</div>}
+      {current && <div className="character-card-meta">当前：第{currentChapter}章</div>}
       <div className="character-card-actions">
-        <button type="button" onClick={openLatest} disabled={!latest}>详情</button>
-        <button type="button" onClick={() => setOpen((v) => !v)} disabled={history.length <= 1}>{open ? '收起历史' : '历史'}</button>
-        <button type="button" onClick={triggerUpload} disabled={uploading}>{uploading ? '上传中' : '立绘'}</button>
+        <button type="button" onClick={(event) => current && openDetail(event, current)} disabled={!current}>详情</button>
+        <button type="button" onClick={(event) => history.length > 0 && historyTip.openAt(event)} disabled={history.length === 0}>历史</button>
         <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" style={{ display: 'none' }} onChange={handleFile} />
       </div>
       {error && <p className="form-error">{error}</p>}
-      {open && (
-        <ul className="character-history">
-          {history.slice().reverse().map((item) => (
-            <li key={item.chapter}>
-              <button
-                type="button"
-                className="character-history-chapter"
-                onClick={(event) => openAt(event, { chapter: item.chapter, snapshot: item.snapshot })}
-              >
-                第{Number(item.chapter) + 1}章：{snapshotRecent(item.snapshot) || '（无近况）'}
-              </button>
-            </li>
-          ))}
-        </ul>
+
+      {imageTip.popup && (
+        <ContentTip popup={imageTip.popup} onClose={imageTip.close} className="character-menu-popup">
+          <div className="character-detail-popup-head">
+            <strong>设置图片</strong>
+            <button className="modal-close" onClick={imageTip.close} aria-label="关闭">×</button>
+          </div>
+          <div className="character-menu-actions">
+            <button type="button" onClick={() => { imageTip.close(); triggerUpload(); }} disabled={uploading}>
+              {uploading ? '上传中…' : '本地上传'}
+            </button>
+            <button type="button" onClick={() => { imageTip.close(); onNotice?.('AI 生图功能尚未实现，敬请期待'); }}>
+              AI 生成
+            </button>
+            <button type="button" onClick={imageTip.close}>取消</button>
+          </div>
+        </ContentTip>
       )}
-      {popup && (
-        <ContentTip popup={popup} onClose={close} className="character-detail-popup">
+
+      {historyTip.popup && (
+        <ContentTip popup={historyTip.popup} onClose={historyTip.close} className="character-history-popup">
+          <div className="character-detail-popup-head">
+            <strong>{card.name} · 历史</strong>
+            <button className="modal-close" onClick={historyTip.close} aria-label="关闭">×</button>
+          </div>
+          <div className="character-history-list">
+            {history.slice().reverse().map((item) => (
+              <button
+                key={item.chapter}
+                type="button"
+                className="character-history-item"
+                onClick={(event) => { historyTip.close(); openDetail(event, item); }}
+              >
+                <span>第{Number(item.chapter) + 1}章</span>
+                <span>{snapshotRecent(item.snapshot) || '（无近况）'}</span>
+              </button>
+            ))}
+          </div>
+        </ContentTip>
+      )}
+
+      {detailTip.popup && (
+        <ContentTip popup={detailTip.popup} onClose={detailTip.close} className="character-detail-popup">
           <div className="character-detail-popup-head">
             <strong>{card.name}</strong>
-            {Number.isInteger(popup.chapter) && <span>第{Number(popup.chapter) + 1}章</span>}
-            <button className="modal-close" onClick={close} aria-label="关闭">×</button>
+            {Number.isInteger(detailTip.popup.chapter) && <span>第{Number(detailTip.popup.chapter) + 1}章</span>}
+            <button className="modal-close" onClick={detailTip.close} aria-label="关闭">×</button>
           </div>
           <div className="character-detail-body">
             {snap.identity && (
@@ -125,9 +156,9 @@ export default function CharacterCard({ card, bookId, onOpenChapter, onUpdated }
               <div className="character-detail-row"><strong>近况</strong><span>{snap.recent}</span></div>
             )}
           </div>
-          {Number.isInteger(popup.chapter) && (
+          {Number.isInteger(detailTip.popup.chapter) && (
             <div className="character-detail-popup-foot">
-              <button className="character-goto-chapter" onClick={() => { close(); onOpenChapter?.(popup.chapter); }}>
+              <button className="character-goto-chapter" onClick={() => { detailTip.close(); onOpenChapter?.(detailTip.popup.chapter); }}>
                 点击前往该章节
               </button>
             </div>

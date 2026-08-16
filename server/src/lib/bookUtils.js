@@ -48,6 +48,7 @@ export function normalizeCharacters(raw) {
     .map((card) => ({
       name: String(card?.name || '').trim(),
       avatar: typeof card?.avatar === 'string' && card.avatar ? card.avatar : null,
+      role: card?.role === 'main' ? 'main' : 'support',
       history: (() => {
         if (!Array.isArray(card?.history)) return [];
         const byChapter = new Map();
@@ -133,8 +134,12 @@ export function normalizeBook(book) {
   if (!book.deletedAt) book.deletedAt = null;
   // 全书概况已删除（0.8.39）：旧数据残留加载即清除
   delete book.storySummary;
-  // 人物设定卡（0.9.6）：按章结构化快照 [{ name, history: [{ chapter, snapshot: { identity, bag, goal, recent } }] }]，旧字符串快照自动迁移
+  // 人物设定卡（0.9.6）：按章结构化快照 [{ name, role, avatar, history: [{ chapter, snapshot: { identity, bag, goal, recent } }] }]，旧字符串快照自动迁移
   book.characters = normalizeCharacters(book.characters);
+  // 角色主次兜底：旧数据没有 role 时，默认第一张卡为主角，其余为配角
+  if (book.characters.length > 0 && !book.characters.some((card) => card.role === 'main')) {
+    book.characters[0].role = 'main';
+  }
   // 0.9.7 排序：sortOrder 缺省用创建时间（旧书按创建序，新书排在各自分组末尾）
   if (!Number.isFinite(book.sortOrder)) {
     book.sortOrder = new Date(book.createdAt || book.updatedAt || Date.now()).getTime();
