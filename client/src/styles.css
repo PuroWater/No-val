@@ -2857,14 +2857,10 @@ ne-tooltip-detail {
 .character-card-left {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  width: 100%;
-  flex: 1;
-  min-height: 0;
-}
-.character-card.expanded .character-card-left {
-  flex: 0 0 176px;
+  gap: 12px;
   width: 176px;
+  flex: 0 0 176px;
+  min-height: 0;
 }
 .character-card .character-card-cover {
   flex: 0 0 auto;
