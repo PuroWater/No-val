@@ -285,7 +285,7 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
             <>
               <input
                 className="directory-search character-search"
-                placeholder="搜索角色名 / 第N章…"
+                placeholder="搜索章节/角色…"
                 value={characterQuery}
                 onChange={(e) => setCharacterQuery(e.target.value)}
               />
