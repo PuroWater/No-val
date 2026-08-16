@@ -658,8 +658,8 @@ button, input, textarea, select {
 
 .book-card-cover {
   width: 56px;
-  height: 74px;
   flex: 0 0 56px;
+  aspect-ratio: 9 / 16;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1534,7 +1534,7 @@ button, input, textarea, select {
 
 .book-widget-cover {
   width: 46px;
-  height: 60px;
+  aspect-ratio: 9 / 16;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2602,7 +2602,7 @@ ne-tooltip-detail {
 }
 .book-info-cover-wrap {
   width: 180px;
-  height: 240px;
+  aspect-ratio: 9 / 16;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--panel);
@@ -2747,7 +2747,7 @@ ne-tooltip-detail {
 }
 .shelf-book-cover {
   width: 120px;
-  height: 160px;
+  aspect-ratio: 9 / 16;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2832,8 +2832,8 @@ ne-tooltip-detail {
 }
 
 .character-card {
-  flex: 0 0 150px;
-  width: 150px;
+  flex: 0 0 170px;
+  width: 170px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -2844,30 +2844,32 @@ ne-tooltip-detail {
   overflow: hidden;
 }
 .character-card.expanded {
-  flex: 0 0 500px;
-  width: 500px;
+  flex: 0 0 540px;
+  width: 540px;
   flex-direction: row;
   align-items: stretch;
   gap: 0;
 }
 .character-card-left {
-  flex: 0 0 140px;
-  width: 140px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  width: 100%;
+  flex: 1;
   min-height: 0;
 }
 .character-card.expanded .character-card-left {
+  flex: 0 0 150px;
+  width: 150px;
   border-right: 1px dashed var(--border);
-  padding-right: 12px;
-  margin-right: 12px;
+  padding-right: 10px;
+  margin-right: 10px;
 }
 .character-card .character-card-cover {
-  flex: 2;
+  flex: 0 0 auto;
   width: 100%;
   height: auto;
-  min-height: 0;
+  aspect-ratio: 9 / 16;
 }
 .character-card-info {
   flex: 1;
@@ -2875,7 +2877,7 @@ ne-tooltip-detail {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 6px;
 }
 .character-history-panel {

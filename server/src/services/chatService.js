@@ -184,6 +184,11 @@ export function mergeBookState(latest, mutated, changedChapterIds = new Set(), d
   latest.pendingAction = mutated.pendingAction;
   latest.lastAppliedMessageId = mutated.lastAppliedMessageId;
   latest.updatedAt = mutated.updatedAt;
+  // 书级派生/元数据（维护产出的人物卡、文笔/封面/排序）也必须随聊天写回合入，否则会被最新盘覆盖丢失
+  latest.characters = mutated.characters;
+  latest.writingStyle = mutated.writingStyle;
+  latest.cover = mutated.cover;
+  latest.sortOrder = mutated.sortOrder;
   const mutatedChapters = new Map(mutated.chapters.map((chapter) => [chapter.id, chapter]));
   const seen = new Set();
   latest.chapters = latest.chapters
