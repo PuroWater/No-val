@@ -32,18 +32,6 @@ function intentConfirmText(intent, output, target, settings) {
   }
 }
 
-// 用户消息中的显式章数（数字+章 或 中文数字+章），上限 5（单次输出硬上限），无法确定返回 null。
-// 解决"再写一章"被回落到默认章数（路由未返回 chapters 时按默认 3 章写）的问题。
-const CN_NUMBERS = { 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 };
-export function extractChapterCount(text) {
-  const str = String(text || '');
-  const arabic = str.match(/(\d+)\s*[章篇]/);
-  if (arabic) return Math.min(5, Math.max(1, Number(arabic[1])));
-  const cn = str.match(/([一两二三四五六七八九])\s*[章篇]/);
-  if (cn && CN_NUMBERS[cn[1]]) return Math.min(5, Math.max(1, CN_NUMBERS[cn[1]]));
-  return null;
-}
-
 export function isConfirmation(text) {
   return /确认|确定|可以|没问题|不用改|不需要修改|就这样|开始生成|生成吧/.test(String(text));
 }
@@ -411,13 +399,7 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
   // 输出规模信任守卫：字段级——消息提“章”才采用 chapters，提“字数/每章”才采用 chapterWords，
   // 防止模型虚构越界规模覆盖用户设置（自查发现“再写一章”被虚构 chapterWords 触发超限）。
   const safeOutput = {};
-  // 章数：用户消息明确"几章"（数字/中文数字+章）时以用户为准（有则替换）；
-  // 否则路由返回了 chapters 才采用；都没给时保持默认设置
-  const mentionedChapters = extractChapterCount(content);
-  if (/章/.test(content)) {
-    if (mentionedChapters) safeOutput.chapters = mentionedChapters;
-    else if (Number.isInteger(route.output?.chapters)) safeOutput.chapters = route.output.chapters;
-  }
+  if (/章/.test(content) && Number.isInteger(route.output?.chapters)) safeOutput.chapters = route.output.chapters;
   if (/字数|每章/.test(content) && Number.isFinite(route.output?.chapterWords)) safeOutput.chapterWords = route.output.chapterWords;
   const finalOutput = Object.keys(safeOutput).length > 0 ? safeOutput : null;
   const plan = buildPlan(route.intent, { output: finalOutput, target: route.target, settings });

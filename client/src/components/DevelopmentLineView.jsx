@@ -85,6 +85,17 @@ export default function DevelopmentLineView({
     setHover({ x: event.clientX, y: event.clientY, ...payload });
   }
 
+  // 点击画布空白处（非按钮/浮窗/弹窗）：关闭已展开的背景组/场景列表与事件弹窗
+  function handleCanvasClick(event) {
+    if (dragRef.current?.moved) return;
+    if (event.target.closest('button') || event.target.closest('.development-line-float')) return;
+    if (expandedGroup) onToggleGroup(expandedGroup);
+    if (expandedScene) onToggleScene(expandedScene);
+    closeEventPopup();
+    setGroupAnchor(null);
+    setHover(null);
+  }
+
   function renderChapterList(chapters) {
     return (chapters || []).map((chapter) => (
       <button

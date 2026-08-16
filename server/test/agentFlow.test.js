@@ -5,7 +5,6 @@ import { validateArgs, normalizeToolArguments } from '../src/lib/toolArgs.js';
 import { validateOutcome } from '../src/lib/toolOutcome.js';
 import { registerTool, callTool } from '../src/services/toolRegistry.js';
 import { prefilterDraftIntent, runRouter } from '../src/services/router.js';
-import { extractChapterCount } from '../src/services/chatService.js';
 import { runTask, applyTransition } from '../src/services/executor.js';
 import { parseChapterNumber, normalizeChapterTarget } from '../src/lib/chapterUtils.js';
 
@@ -142,7 +141,7 @@ test('runRouter injects default output scale into prompt', async () => {
   assert.ok(captured.includes('默认输出规模'), '提示词应包含默认输出规模');
   assert.ok(captured.includes('3 章'), '提示词应包含默认章节数');
   assert.ok(captured.includes('2500 字'), '提示词应包含默认每章字数');
-  assert.ok(captured.includes('不要臆想'), '提示词应明确禁止臆想输出规模');
+  assert.ok(captured.includes('再写一章') && captured.includes('chapters:1'), '提示词应明确一章=1章');
 });
 
 test('runRouter clamps out-of-range defaults', async () => {
@@ -493,11 +492,3 @@ test('prefilterDraftIntent injects default output scale into prompt', async () =
   assert.ok(captured.includes('3000 字'), '提示词应包含默认每章字数');
 });
 
-test('extractChapterCount parses explicit chapter counts from user message', () => {
-  assert.equal(extractChapterCount('再写一章'), 1);
-  assert.equal(extractChapterCount('写两章'), 2);
-  assert.equal(extractChapterCount('再写 5 章'), 5);
-  assert.equal(extractChapterCount('续写10章'), 5); // 上限 5
-  assert.equal(extractChapterCount('继续写'), null);
-  assert.equal(extractChapterCount('每章多少字'), null);
-});

@@ -1954,8 +1954,8 @@ ne-tooltip-detail {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  width: 150px;
-  max-width: 150px;
+  width: 96px;
+  max-width: 96px;
   height: 42px;
   padding: 0 12px;
   border: 1px solid var(--border);
