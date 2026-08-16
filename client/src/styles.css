@@ -2410,16 +2410,17 @@ ne-tooltip-detail {
   border-color: var(--accent);
 }
 
-/* 落点：整圈环绕提示（box-shadow 跟随圆角，不出现直角方框/单线） */
+/* 落点：整圈环绕提示（2px 圈 + 柔和光晕，跟随圆角，清晰不像细线） */
 .directory-item.drag-over {
-  box-shadow: 0 0 0 2px var(--accent);
+  box-shadow: 0 0 0 2px var(--accent), 0 0 8px rgba(0, 0, 0, 0.18);
 }
 
-/* 选中态深色主题色上仍要能看到拖拽反馈（不改主题色本身） */
+/* 选中态深色主题色上仍要能看到拖拽反馈（不改主题色本身）：
+   白圈在浅色背景上会隐形，外加深色晕使其两侧都可见 */
 .directory-item.active.dragging {
   border-color: rgba(255, 255, 255, 0.85);
 }
 
 .directory-item.active.drag-over {
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.95), 0 0 0 5px rgba(0, 0, 0, 0.28);
 }
