@@ -3,7 +3,6 @@ dist/
 .vite/
 .env
 .env.*
-!.env.example
 data/
 *.log
 .DS_Store
@@ -12,3 +11,5 @@ Thumbs.db
 .vscode/
 *.docx
 docs/
+SUMMARY.md
+TARGET.md
