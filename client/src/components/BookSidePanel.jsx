@@ -5,6 +5,8 @@ import ChapterDirectory from './ChapterDirectory.jsx';
 import CharacterCard from './CharacterCard.jsx';
 import CharacterRow from './CharacterRow.jsx';
 import WorldSettingsPanel from './WorldSettingsPanel.jsx';
+import ModelSelect from './ModelSelect.jsx';
+import { useHoverTip, HoverTip } from './TooltipKit.jsx';
 import DevelopmentLineView from './DevelopmentLineView.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
 import { useAuth } from '../auth/AuthContext.jsx';
@@ -38,6 +40,7 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
   const [notice, setNotice] = useState('');
   const noticeTimerRef = useRef(null);
   const { user } = useAuth();
+  const { tip: hoverTip, bindHover } = useHoverTip();
 
   async function commitAddChapter(title) {
     if (!book || !title) return;
@@ -181,8 +184,7 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
     }
   }
 
-  async function handleStyleChange(event) {
-    const writingStyle = event.target.value;
+  async function saveWritingStyle(writingStyle) {
     if (!book || styleSaving) return;
     setStyleSaving(true);
     try {
@@ -348,13 +350,16 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
             <h2 className="book-info-title">{book.title}</h2>
             <p className="book-info-author">作者：{user?.nickname || user?.username || '未知'}</p>
             <p className="book-info-outline">{book.outline || '暂无简介'}</p>
-            <div className="book-info-style">
-              <label className="book-info-style-label">文笔风格</label>
-              <select className="book-info-style-select" value={book.writingStyle || 'default'} onChange={handleStyleChange} disabled={styleSaving}>
-                {styles.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
-              </select>
+            <div className="book-info-style" {...bindHover('文笔风格只影响之后新建/改写的正文，不修改已有章节')}>
+              <span className="book-info-style-label">文笔风格</span>
+              <ModelSelect
+                value={book.writingStyle || 'default'}
+                onChange={saveWritingStyle}
+                groups={[{ label: '文笔风格', options: styles.map((item) => ({ id: item.id, label: item.label })) }]}
+                placeholder="请选择文笔风格"
+                disabled={styleSaving}
+              />
             </div>
-            <p className="muted book-info-hint">文笔风格只影响之后新建/改写的正文，不修改已有章节。</p>
             <WorldSettingsPanel book={book} onUpdated={setBook} onNotice={showNotice} />
           </div>
         </div>
@@ -401,6 +406,7 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
           <div className="saved-toast">{notice}</div>
         </div>
       )}
+      <HoverTip tip={hoverTip} />
     </aside>
   );
 }

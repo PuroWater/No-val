@@ -97,7 +97,9 @@ router.put('/:id/world', (req, res) => {
         throw new Error('内容已更新，请刷新后重试');
       }
       if (!latest.world || !Array.isArray(latest.world.history)) latest.world = { history: [] };
-      const chapter = latest.chapters.length > 0 ? latest.chapters.length - 1 : 0;
+      const requested = Number(req.body?.chapter);
+      const chapter = Number.isInteger(requested) ? requested : (latest.chapters.length > 0 ? latest.chapters.length - 1 : 0);
+      if (chapter < 0 || chapter >= latest.chapters.length) throw new Error('章节不存在');
       const idx = latest.world.history.findIndex((item) => item.chapter === chapter);
       if (idx >= 0) latest.world.history[idx].snapshot = snapshot;
       else latest.world.history.push({ chapter, snapshot });

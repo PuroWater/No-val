@@ -2663,7 +2663,7 @@ ne-tooltip-detail {
   font-size: 14px;
 }
 .book-info-outline {
-  margin: 0 0 20px;
+  margin: 0 0 32px;
   color: var(--text);
   font-size: 14px;
   line-height: 1.8;
@@ -2673,7 +2673,7 @@ ne-tooltip-detail {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 8px;
+  margin-bottom: 16px;
 }
 .book-info-style-label {
   color: var(--muted);
@@ -3033,44 +3033,26 @@ ne-tooltip-detail {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-top: 8px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
 }
-.world-settings-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.world-current {
+  font-size: 13px;
+  color: var(--muted);
 }
 .world-form {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
-.world-form label {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.world-form label span {
-  font-size: 12px;
-  color: var(--muted);
-}
 .world-form textarea {
   min-height: 60px;
-  resize: vertical;
+  resize: none;
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 8px 10px;
-  background: var(--bg);
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: var(--panel);
   color: var(--text);
-  font-size: 13px;
-  line-height: 1.5;
-}
-.world-history {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  font-size: 14px;
+  line-height: 20px;
 }
 .world-history-list {
   display: flex;
@@ -3098,12 +3080,5 @@ ne-tooltip-detail {
 .world-history-item span:last-child {
   font-size: 13px;
   line-height: 1.5;
-}
-.world-detail-text {
-  margin: 0;
-  white-space: pre-wrap;
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--text);
 }
 
