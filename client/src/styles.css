@@ -2602,7 +2602,7 @@ ne-tooltip-detail {
 }
 .book-info-top {
   display: flex;
-  gap: 24px;
+  gap: 16px;
 }
 .book-info-top-main {
   flex: 1;
@@ -2613,7 +2613,7 @@ ne-tooltip-detail {
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  flex: 0 0 200px;
+  flex: 0 0 180px;
 }
 .book-info-cover-wrap {
   width: 180px;
@@ -3099,7 +3099,13 @@ ne-tooltip-detail {
   color: var(--text);
 }
 .book-info-style-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   margin-bottom: 16px;
+}
+.book-info-style-section .book-info-section-title {
+  margin: 0;
 }
 .book-info-style-section .model-select {
   width: 160px;
