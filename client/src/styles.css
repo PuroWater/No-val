@@ -3173,3 +3173,12 @@ ne-tooltip-detail {
   }
 }
 
+
+/* 0.9.9 模型下拉悬浮菜单（Portal 到 body）：position:fixed 脱离父容器 overflow 裁剪，
+   悬于页面之上，不被模型配置弹窗/书籍信息文笔区等容器截断。定位由 ModelSelect 动态计算。 */
+.model-select-menu-fixed {
+  position: fixed;
+  z-index: 9999;
+  max-height: 260px;
+  overflow-y: auto;
+}

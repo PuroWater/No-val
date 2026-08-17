@@ -18,7 +18,8 @@ export const VENDOR_PRESETS = {
     thinkingDefault: 'on',
     maxOutputTokens: 65536,
     models: [
-      { id: 'deepseek-v4-flash', label: 'deepseek-v4-flash' }
+      { id: 'deepseek-v4-flash', label: 'deepseek-v4-flash' },
+      { id: 'deepseek-v4-pro', label: 'deepseek-v4-pro' }
     ]
   },
   openai: {

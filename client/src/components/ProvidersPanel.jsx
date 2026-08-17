@@ -91,13 +91,18 @@ export default function ProvidersPanel() {
     setFetching(true);
     setFormError('');
     try {
-      const body = (modal?.mode === 'edit' && !form.apiKey)
+      // 仅当“编辑模式 + 未填新 key + 供应商未变”时，才沿用已存条目的 baseUrl/key 拉取；
+      // 一旦切换了供应商（vendor 变化），必须用表单里的 baseUrl + 当前 key，避免沿用原条目的远端配置。
+      const vendorChanged = modal?.mode === 'edit' && form.vendor !== modal.entry.vendor;
+      const useStored = modal?.mode === 'edit' && !form.apiKey && !vendorChanged;
+      const body = useStored
         ? { id: modal.entry.id, vendor: form.vendor }
         : { vendor: form.vendor, baseUrl: form.baseUrl, apiKey: form.apiKey };
       const data = await api('/providers/fetch-models', { method: 'POST', body: JSON.stringify(body) });
       setModels(data.models || []);
       setForm((prev) => ({ ...prev, model: prev.model || (data.models?.[0]?.id || '') }));
     } catch (err) {
+      setModels([]);
       setFormError(err.message);
     } finally {
       setFetching(false);
@@ -123,6 +128,7 @@ export default function ProvidersPanel() {
       closeModal();
       await load();
     } catch (err) {
+      setModels([]);
       setFormError(err.message);
     }
   }
