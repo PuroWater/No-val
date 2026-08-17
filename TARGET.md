@@ -1,8 +1,8 @@
 【项目目标】
 在当前开发环境下（已安装 VSCode、Node.js），生成一个可直接运行的**小说创作平台 Web 应用**。项目不连接任何数据库，后端数据使用本地 JSON 文件持久化。前端为 React 单页应用（SPA），后端为 Express，调用大模型（默认 DeepSeek，支持多供应商）辅助创作。
 
-当前版本：0.9.8  
-最近更新：2026-08-16 v0.9.8 文笔风格模板系统 + 书籍信息页（封面/作者/简介/文笔风格）
+当前版本：0.9.9  
+最近更新：2026-08-17 v0.9.9 世界观设定（worldSettings）
 
 【文档职责】
 
@@ -100,6 +100,7 @@ Novel Agent/
 - `GET /api/books/:id/development-line`：发展线派生视图。
 - `POST /api/books/:id/chapters`：手动新建空章。
 - `PUT /api/books/:id/chapters/:chapterId`：保存章节内容。
+- `PUT /api/books/:id/world`：编辑世界观设定。
 - `PUT /api/books/:id/writing-style`：设置文笔风格。
 - `POST /api/books/:id/cover`：上传封面。
 - `POST /api/books/:id/characters/avatar`：上传角色立绘。

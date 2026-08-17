@@ -163,13 +163,14 @@ test('mergeBookState syncs pendingAction (interrupt state)', () => {
 });
 
 test('mergeBookState persists characters/writingStyle/cover/sortOrder', () => {
-  const latest = { chapters: [], chat: [], characters: [{ name: '旧', history: [] }], writingStyle: 'default', cover: null, sortOrder: 1 };
-  const mutated = { chapters: [], chat: [], characters: [{ name: '新', history: [] }], writingStyle: 'ornate', cover: '/covers/x.jpg', sortOrder: 2 };
+  const latest = { chapters: [], chat: [], characters: [{ name: '旧', history: [] }], writingStyle: 'default', cover: null, sortOrder: 1, world: { history: [] } };
+  const mutated = { chapters: [], chat: [], characters: [{ name: '新', history: [] }], writingStyle: 'ornate', cover: '/covers/x.jpg', sortOrder: 2, world: { history: [{ chapter: 0, snapshot: { summary: 's', factions: [], places: [], systems: [] } }] } };
   mergeBookState(latest, mutated, new Set(), new Set());
   assert.equal(latest.characters[0].name, '新');
   assert.equal(latest.writingStyle, 'ornate');
   assert.equal(latest.cover, '/covers/x.jpg');
   assert.equal(latest.sortOrder, 2);
+  assert.equal(latest.world.history[0].snapshot.summary, 's');
 });
 
 test('syncChangeLogFromEffect unifies bookkeeping from tool effect', () => {

@@ -29,6 +29,29 @@ export function normalizeBag(raw, maxItems = 30) {
 }
 
 // 角色快照归一化（0.9.6）：旧版字符串快照 → 结构化 { identity, bag, goal, recent }。
+export function normalizeWorldSnapshot(raw) {
+  if (!raw || typeof raw !== 'object') raw = {};
+  return {
+    summary: String(raw.summary || '').trim(),
+    factions: normalizeBag(raw.factions),
+    places: normalizeBag(raw.places),
+    systems: normalizeBag(raw.systems)
+  };
+}
+
+export function normalizeWorld(raw) {
+  if (!raw || typeof raw !== 'object' || !Array.isArray(raw.history)) return { history: [] };
+  const byChapter = new Map();
+  for (const item of raw.history) {
+    const chapter = Number(item?.chapter);
+    if (!Number.isInteger(chapter) || chapter < 0) continue;
+    const snapshot = normalizeWorldSnapshot(item?.snapshot);
+    if (!snapshot.summary && snapshot.factions.length === 0 && snapshot.places.length === 0 && snapshot.systems.length === 0) continue;
+    byChapter.set(chapter, { chapter, snapshot });
+  }
+  return { history: [...byChapter.values()].sort((a, b) => a.chapter - b.chapter) };
+}
+
 export function normalizeCharacterSnapshot(raw) {
   if (typeof raw === 'string') {
     return { identity: '', bag: [], goal: '', recent: String(raw).trim() };
@@ -136,6 +159,8 @@ export function normalizeBook(book) {
   delete book.storySummary;
   // 人物设定卡（0.9.6）：按章结构化快照 [{ name, role, avatar, history: [{ chapter, snapshot: { identity, bag, goal, recent } }] }]，旧字符串快照自动迁移
   book.characters = normalizeCharacters(book.characters);
+  // 世界观（0.9.9）：单实体 + 按章快照历史
+  book.world = normalizeWorld(book.world);
   // 角色主次兜底：旧数据没有 role 时，默认第一张卡为主角，其余为配角
   if (book.characters.length > 0 && !book.characters.some((card) => card.role === 'main')) {
     book.characters[0].role = 'main';

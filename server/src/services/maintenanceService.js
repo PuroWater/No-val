@@ -3,7 +3,7 @@
 // 维护调用关闭思考模式（thinking=disabled）以换取速度。
 import { callModel } from '../lib/modelCall.js';
 import { resolveThinking } from '../lib/thinking.js';
-import { normalizeCharacterSnapshot } from '../lib/bookUtils.js';
+import { normalizeCharacterSnapshot, normalizeWorldSnapshot } from '../lib/bookUtils.js';
 
 function eventId() {
   return `t_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
@@ -37,6 +37,20 @@ export function normalizeCharacterUpdates(raw) {
 
 // 已有角色背包参考（0.9.6）：取"本章现有事件 + 前后章事件"涉及的角色，注入其最新一张快照的背包，
 // 供维护 AI 携带到新快照——未变化条目原样保留，防"前期获得后期查无音讯"。
+function buildOldWorldRef(book, index) {
+  const history = (book.world?.history || []).filter((item) => Number(item.chapter) < index);
+  const latest = history[history.length - 1];
+  if (!latest?.snapshot) return '';
+  const s = latest.snapshot;
+  const fmt = (list) => list.map((item) => (item.status ? `${item.name}（${item.status}）` : item.name)).join('、');
+  const lines = [];
+  if (s.summary) lines.push(`总述/规则：${s.summary}`);
+  if (s.factions.length) lines.push(`势力：${fmt(s.factions)}`);
+  if (s.places.length) lines.push(`地点：${fmt(s.places)}`);
+  if (s.systems.length) lines.push(`体系/规则：${fmt(s.systems)}`);
+  return lines.length > 0 ? `上一张世界观快照（本章未变化的条目请原样保留进新快照）：\n${lines.join('\n')}` : '';
+}
+
 function buildOldCharacterRef(book, index, prev, next) {
   const names = new Set();
   const collect = (chapter) => (chapter?.events || []).forEach((ev) => (ev.characters || []).forEach((n) => names.add(String(n).trim())));
@@ -118,6 +132,7 @@ export async function maintainChapterMeta(book, { chapterIndex, mode = 'modify',
   const prevEvents = prev ? chapterEventsText(prev) : '';
   const nextEvents = next ? chapterEventsText(next) : '';
   const oldCharacterRef = buildOldCharacterRef(book, index, prev, next);
+  const oldWorldRef = buildOldWorldRef(book, index);
   const user = [
     `目标章节：第 ${index + 1} 章《${chapter.title}》（${mode === 'new' ? '新建' : '改写'}）`,
     prev ? `上一章摘要：${prev.summary || `${prev.title}\n${prev.content.slice(0, 500)}`}` : '',
@@ -127,7 +142,8 @@ export async function maintainChapterMeta(book, { chapterIndex, mode = 'modify',
     `章节正文：\n${content.slice(0, 12000)}`,
     existingEvents,
     oldCharacterRef ? `\n${oldCharacterRef}` : '',
-    '返回 JSON：{"summary":"本章 80-150 字剧情摘要","events":[{"event":"事件","characters":["人物"],"context":["大背景","场景"]}],"characters":[{"name":"角色名","role":"主角|配角","snapshot":{"identity":"身份/基础（正文明确才写具体值，未明确用模糊总结如实力高强/财力雄厚，约20字，禁止编造）","bag":[{"name":"物品/能力/道具/资产/系统名","status":"状态/说明（约20字）"}],"goal":"当前目标（约30字）","recent":"本章近况（50字以内）"}}]}。事件规则（分三步）：1) context[0] 为本章主线背景/阶段，一章只允许一个，参考前后章保持一致（如从家族过渡到北境、本章主要是北境则写"北境"）；2) 只选本章正文中最重要的最多 3 个事件（按重要性排序、删除琐碎细节）；3) 每条事件配 context[1] 场景：场景是事件实际发生地点/推进节点，不必地理上属于背景；地点离开大背景地理范围时优先用「大背景/地点」拼合模板（如"家族/藏书阁""家族/矿洞"），在大背景内直接写地点；场景同时体现剧情推进，大背景下场景最多 3 个。其余规则：events 必须能在本章正文中找到依据、不得凭空编造；每条 event 正文 50-100 字；context 只允许两层（大背景+场景）并延续前后章背景；每条事件 context 至少 1 层、不得为空。角色规则：只列本章出现且值得建档的重要角色（主角/重要配角/反派；无关的局部龙套路人不要列）；role 只填 主角 或 配角（主角填 主角，重要配角/反派填 配角）；snapshot 为结构化对象：identity 身份/基础（正文明确才写具体值，未明确用模糊总结如"实力高强/财力雄厚/位高权重/深不可测"，约20字，禁止编造具体数字/名称/身份细节）、bag 背包条目（name+status，如能力/技能/道具/资产/系统/消耗品等，题材无关）、goal 当前目标（约30字）、recent 本章近况（50字以内）；背包规则：参考"已有角色背包参考"，输出本章该角色的**完整背包**（保留未变化条目 + 应用本章增/改/删），条目按重要性从高到低排列（核心能力/系统/与当前主线直接相关的关键物品排最前，次要、装饰性、杂项排最后——每个角色最重要的标志性设定应靠前，不得排到末尾），删除/丢弃/一次性使用必须有正文依据，正文未体现的变化不得臆想；**已消耗/已使用的一次性物品（如服用的药物、用尽的消耗品、用完即弃的道具）直接从背包移除，不留"已使用/已消耗"残留条目——背包只放当前仍持有的东西；仍在手中的物品（能力/道具/资产/系统等）才保留并更新状态**；仅当该角色状态有实质变化（能力/身份/地位改变、获得或失去重要物品、重大事件、与主角关系改变）时才给出 snapshot，只是出场对话则不要输出该角色。'
+    oldWorldRef ? `\n${oldWorldRef}` : '',
+    '返回 JSON：{"summary":"本章 80-150 字剧情摘要","events":[{"event":"事件","characters":["人物"],"context":["大背景","场景"]}],"characters":[{"name":"角色名","role":"主角|配角","snapshot":{"identity":"身份/基础（正文明确才写具体值，未明确用模糊总结如实力高强/财力雄厚，约20字，禁止编造）","bag":[{"name":"物品/能力/道具/资产/系统名","status":"状态/说明（约20字）"}],"goal":"当前目标（约30字）","recent":"本章近况（50字以内）"}}],"world":{"summary":"总述/规则（正文明确才写具体值，未明确模糊概括，禁臆想）","factions":[{"name":"势力名","status":"说明"}],"places":[{"name":"地点","status":"说明"}],"systems":[{"name":"体系/规则","status":"说明"}]}}。事件规则（分三步）：1) context[0] 为本章主线背景/阶段，一章只允许一个，参考前后章保持一致（如从家族过渡到北境、本章主要是北境则写"北境"）；2) 只选本章正文中最重要的最多 3 个事件（按重要性排序、删除琐碎细节）；3) 每条事件配 context[1] 场景：场景是事件实际发生地点/推进节点，不必地理上属于背景；地点离开大背景地理范围时优先用「大背景/地点」拼合模板（如"家族/藏书阁""家族/矿洞"），在大背景内直接写地点；场景同时体现剧情推进，大背景下场景最多 3 个。其余规则：events 必须能在本章正文中找到依据、不得凭空编造；每条 event 正文 50-100 字；context 只允许两层（大背景+场景）并延续前后章背景；每条事件 context 至少 1 层、不得为空。角色规则：只列本章出现且值得建档的重要角色（主角/重要配角/反派；无关的局部龙套路人不要列）；role 只填 主角 或 配角（主角填 主角，重要配角/反派填 配角）；snapshot 为结构化对象：identity 身份/基础（正文明确才写具体值，未明确用模糊总结如"实力高强/财力雄厚/位高权重/深不可测"，约20字，禁止编造具体数字/名称/身份细节）、bag 背包条目（name+status，如能力/技能/道具/资产/系统/消耗品等，题材无关）、goal 当前目标（约30字）、recent 本章近况（50字以内）；背包规则：参考"已有角色背包参考"，输出本章该角色的**完整背包**（保留未变化条目 + 应用本章增/改/删），条目按重要性从高到低排列（核心能力/系统/与当前主线直接相关的关键物品排最前，次要、装饰性、杂项排最后——每个角色最重要的标志性设定应靠前，不得排到末尾），删除/丢弃/一次性使用必须有正文依据，正文未体现的变化不得臆想；**已消耗/已使用的一次性物品（如服用的药物、用尽的消耗品、用完即弃的道具）直接从背包移除，不留"已使用/已消耗"残留条目——背包只放当前仍持有的东西；仍在手中的物品（能力/道具/资产/系统等）才保留并更新状态**；仅当该角色状态有实质变化（能力/身份/地位改变、获得或失去重要物品、重大事件、与主角关系改变）时才给出 snapshot，只是出场对话则不要输出该角色。世界观规则：参考"上一张世界观快照"，输出本章完整世界观快照；未变化条目原样保留、增/改/删需正文依据；summary 为总述/规则模糊概括、禁止臆想；factions/places/systems 按重要性排序，最多 30 条（超出后端截断）。'
   ].filter(Boolean).join('\n');
   const result = await callModel(
     () => ({
@@ -161,6 +177,16 @@ export async function maintainChapterMeta(book, { chapterIndex, mode = 'modify',
         book.characters.push({ name: update.name, role: update.role || 'support', avatar: null, history: [{ chapter: index, snapshot: update.snapshot }] });
       }
     }
+  }
+  // 0.9.9 世界观快照：单实体 + 按章历史（同章替换、增量补录）
+  const worldSnapshot = normalizeWorldSnapshot(result.world);
+  const hasWorld = worldSnapshot.summary || worldSnapshot.factions.length > 0 || worldSnapshot.places.length > 0 || worldSnapshot.systems.length > 0;
+  if (hasWorld) {
+    if (!book.world || !Array.isArray(book.world.history)) book.world = { history: [] };
+    const wi = book.world.history.findIndex((item) => Number(item.chapter) === index);
+    if (wi >= 0) book.world.history[wi].snapshot = worldSnapshot;
+    else book.world.history.push({ chapter: index, snapshot: worldSnapshot });
+    book.world.history.sort((a, b) => Number(a.chapter) - Number(b.chapter));
   }
   chapter.updatedAt = new Date().toISOString();
   book.updatedAt = chapter.updatedAt;

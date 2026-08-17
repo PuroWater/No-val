@@ -90,6 +90,21 @@ export function characterContextRef(book, { untilChapter = Number.MAX_SAFE_INTEG
   return lines.length > 0 ? `相关人物近期动向：\n${lines.join('\n')}` : '';
 }
 
+// 世界观快照（0.9.9）：取 untilChapter 之前最新一张世界观快照，局部有界；写正文只读、可扩展不封闭。
+export function worldSnapshotRef(book, { untilChapter = Number.MAX_SAFE_INTEGER } = {}) {
+  const history = (book.world?.history || []).filter((item) => Number(item.chapter) < untilChapter);
+  const latest = history[history.length - 1];
+  if (!latest?.snapshot) return '';
+  const s = latest.snapshot;
+  const fmt = (list) => list.map((item) => (item.status ? `${item.name}（${item.status}）` : item.name)).join('、');
+  const parts = [];
+  if (s.summary) parts.push(`总述/规则：${s.summary}`);
+  if (s.factions.length) parts.push(`势力：${fmt(s.factions)}`);
+  if (s.places.length) parts.push(`地点：${fmt(s.places)}`);
+  if (s.systems.length) parts.push(`体系/规则：${fmt(s.systems)}`);
+  return parts.length > 0 ? `世界设定（当前已知，剧情需要时可新增）：\n${parts.join('\n')}` : '';
+}
+
 // 人物设定快照（0.9.6）：相关人物截至 untilChapter（不含）的最新一张结构化快照卡
 // （identity + bag + goal + recent），局部有界；注入只读相关卡，不遍历历史链。
 function formatCharacterSnapshot(snapshot) {

@@ -4,6 +4,7 @@ import ChapterEditor from './ChapterEditor.jsx';
 import ChapterDirectory from './ChapterDirectory.jsx';
 import CharacterCard from './CharacterCard.jsx';
 import CharacterRow from './CharacterRow.jsx';
+import WorldSettingsPanel from './WorldSettingsPanel.jsx';
 import DevelopmentLineView from './DevelopmentLineView.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
 import { useAuth } from '../auth/AuthContext.jsx';
@@ -354,6 +355,7 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
               </select>
             </div>
             <p className="muted book-info-hint">文笔风格只影响之后新建/改写的正文，不修改已有章节。</p>
+            <WorldSettingsPanel book={book} onUpdated={setBook} onNotice={showNotice} />
           </div>
         </div>
       ) : (

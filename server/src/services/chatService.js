@@ -189,6 +189,7 @@ export function mergeBookState(latest, mutated, changedChapterIds = new Set(), d
   latest.writingStyle = mutated.writingStyle;
   latest.cover = mutated.cover;
   latest.sortOrder = mutated.sortOrder;
+  latest.world = mutated.world;
   const mutatedChapters = new Map(mutated.chapters.map((chapter) => [chapter.id, chapter]));
   const seen = new Set();
   latest.chapters = latest.chapters

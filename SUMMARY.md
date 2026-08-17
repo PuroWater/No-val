@@ -2,8 +2,8 @@
 
 ## 当前状态
 
-- 当前版本：0.9.8（文笔风格模板系统 + 书籍信息页：封面/作者/简介/文笔风格；详见底部“版本更新说明”）
-- 当前分支：codex/0.9.8-style-template（功能分支，未并 develop；全部提交本地未推送）
+- 当前版本：0.9.9（世界观 worldSettings：单实体按章快照、维护/注入/UI；详见底部“版本更新说明”）
+- 当前分支：codex/0.9.9-worldsettings（功能分支，未并 develop；全部提交本地未推送）
 - 技术栈：React 18 + Vite 5，Express 4，Node.js 18+，JSON 本地持久化
 - 大模型：多供应商（DeepSeek/OpenAI/Anthropic/OpenRouter/Grok/Kimi/GLM/MiniMax/Ollama/自定义），默认 `deepseek-v4-flash`
 - 数据目录：项目根目录 `data/`
@@ -174,6 +174,7 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
   "outline": "简介",
   "writingStyle": "default",
   "cover": null,
+  "world": { "history": [{ "chapter": 0, "snapshot": { "summary": "总述/规则", "factions": [], "places": [], "systems": [] } }] },
   "chapters": [
     {
       "id": "c_xxx",
@@ -237,6 +238,7 @@ Novel Agent 是一个本地可直接运行的小说创作平台 Web 应用。前
 - `GET /api/books/:id/development-line`
 - `POST /api/books/:id/chapters`
 - `PUT /api/books/:id/chapters/:chapterId`
+- `PUT /api/books/:id/world`
 - `PUT /api/books/:id/writing-style`
 - `POST /api/books/:id/cover`
 - `POST /api/books/:id/characters/avatar`
@@ -393,7 +395,7 @@ npm start
 
 ## 验证记录
 
-- 后端测试：134 个自动化测试通过（`npm test`）。
+- 后端测试：137 个自动化测试通过（`npm test`）。
 - 前端构建：`npm run build` 通过。
 - 冒烟验证：登录成功、草稿创建成功、聊天消息持久化、生产页面 200。
 - 真实大模型调用依赖设置页“模型配置”中的有效 Key（或 `.env` 兜底），当前激活项为 DSWRONG666666 会 401，验证需先切 DSRIGHT。
@@ -2033,4 +2035,17 @@ npm start
 - 人物信息页新增搜索（角色名/第N章模糊，搜索第N章时卡片“当前”同步聚焦该章）；人物卡改横排竖版卡片（封面/配图统一 9:16，主角/配角同排分割线，滚轮横滑，立绘点击浮窗上传/AI 生图占位，历史在卡片右侧内联展开并可局部搜索）；修复聊天写回未合并人物卡/文笔/封面/排序的丢失问题。；书籍信息页封面上传拆为“上传封面 / AI 生图”（AI 生图暂未实现）。
 
 完成结果：单元测试 131/131、前端 build 通过；版本号统一 0.9.8（根/server/client）；分支 codex/0.9.8-style-template，本地提交未推送。
+
+### 2026-08-17 v0.9.9 世界观设定（worldSettings）
+
+更新内容：
+- 书级 `book.world = { history: [{ chapter, snapshot: { summary, factions[], places[], systems[] } }] }`，单实体 + 按章快照历史；复用 `normalizeBag`（截 30、超出标其他）。
+- 维护 AI 读上一张世界观快照 + 当前章正文，输出本章完整快照；同章重维护替换、增量补录新势力/地点/体系。
+- 注入 `worldSnapshotRef(book, { untilChapter })`：新建取最新、改写按位置取该章前；写正文只读、可扩展不封闭。
+- 评审辅助增加“世界观/等级体系重大矛盾”检查。
+- `mergeBookState` 同步 `book.world`（避免写回丢失）。
+- UI：书籍信息页新增“世界观设定”编辑区（总述/势力/地点/体系，历史按章搜索 + ContentTip 详情）。
+- `PUT /api/books/:id/world` 编辑最新世界观快照。
+
+完成结果：单元测试 137/137、前端 build 通过；版本号统一 0.9.9（根/server/client）；分支 codex/0.9.9-worldsettings，本地提交未推送。
 

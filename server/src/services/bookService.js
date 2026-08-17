@@ -3,7 +3,7 @@ import { nextChapterId } from '../lib/bookUtils.js';
 import { clampOutput, ensureChapterTitle, renumberChapterPrefixes, trimChapterToLimit } from '../lib/chapterUtils.js';
 import { callModel, maxTokensForWords } from '../lib/modelCall.js';
 import { resolveThinking } from '../lib/thinking.js';
-import { writingSystem, PARAGRAPH_RULE, chatContextRef, creationContextRef, rewriteContextRef, characterContextRef, characterCardsRef } from '../lib/writingPrompts.js';
+import { writingSystem, PARAGRAPH_RULE, chatContextRef, creationContextRef, rewriteContextRef, characterContextRef, characterCardsRef, worldSnapshotRef } from '../lib/writingPrompts.js';
 import { resolveWritingStyle } from '../lib/stylePresets.js';
 import { maintainChapterMeta } from './maintenanceService.js';
 
@@ -46,10 +46,12 @@ export async function reviewChapter(book, chapterIndex, { instruction = '', sett
     characterContextRef(book, { untilChapter: index + 1, relatedNames }),
     characterCardsRef(book, { untilChapter: index + 1, relatedNames })
   ].filter(Boolean).join('\n');
+  const worldInfo = worldSnapshotRef(book, { untilChapter: index + 1 });
   const result = await callModel(
     () => ({
       system: '你是小说章节评审助手。重点检查章节衔接与收尾，辅助检查人物合理性；不评价文笔，不修改正文。只返回 JSON，不要包含 Markdown。',
-      user: `请评审第 ${index + 1} 章《${target.title}》的衔接质量与人物合理性。\n上一章结尾（节选）：${prev ? String(prev.content || '').slice(-600) : '（无上一章）'}\n本章全文：\n${target.content}\n下一章开头（节选）：${next ? String(next.content || '').slice(0, 600) : '（无下一章）'}\n人物近期动向与设定：\n${characterInfo || '（无）'}\n\n检查点（逐项核对，衔接为重点）：\n1) 上一章结尾 → 本章开头是否衔接断裂（如上一章人物已出门，本章开头仍在门内、时间地点不接）；\n2) 本章结尾 → 下一章开头是否衔接断裂（如有下一章）；\n3) 上一章/本章/下一章是否存在“总结升华鸡汤式”收尾（如“他知道明天会更好”“一切才刚刚开始”这类与情节推进无关的升华总结句）；\n4) 人物合理性（辅助）：本章人物称呼/身份/能力/实力是否与“人物设定”产生重大矛盾（如父亲变成儿子、性别颠倒、凭空换身份）——注意：修为上涨、继承家产等结合事件看合理的变化不算问题，不要误报。\n\n返回 JSON：{"pass":true|false,"issues":"发现的问题要点（无则空）","instruction":"pass=false 时的修改意见：先摘录问题处的原文，再说明应如何修复；必须明确“仅修复衔接问题与人物合理性重大矛盾，不得改变情节主线与本章已有内容”"}。pass=true 时 instruction 返回空字符串。`,
+      user: `请评审第 ${index + 1} 章《${target.title}》的衔接质量与人物合理性。\n上一章结尾（节选）：${prev ? String(prev.content || '').slice(-600) : '（无上一章）'}\n本章全文：\n${target.content}\n下一章开头（节选）：${next ? String(next.content || '').slice(0, 600) : '（无下一章）'}\n人物近期动向与设定：\n${characterInfo || '（无）'}\n世界观设定：\n${worldInfo || '（无）'}\n\n检查点（逐项核对，衔接为重点）：\n1) 上一章结尾 → 本章开头是否衔接断裂（如上一章人物已出门，本章开头仍在门内、时间地点不接）；\n2) 本章结尾 → 下一章开头是否衔接断裂（如有下一章）；\n3) 上一章/本章/下一章是否存在“总结升华鸡汤式”收尾（如“他知道明天会更好”“一切才刚刚开始”这类与情节推进无关的升华总结句）；\n4) 人物合理性（辅助）：本章人物称呼/身份/能力/实力是否与“人物设定”产生重大矛盾；
+5) 世界观合理性（辅助）：本章力量/等级/势力/规则是否与“世界观设定”产生重大矛盾（合理变化不误报）（如父亲变成儿子、性别颠倒、凭空换身份）——注意：修为上涨、继承家产等结合事件看合理的变化不算问题，不要误报。\n\n返回 JSON：{"pass":true|false,"issues":"发现的问题要点（无则空）","instruction":"pass=false 时的修改意见：先摘录问题处的原文，再说明应如何修复；必须明确“仅修复衔接问题与人物合理性重大矛盾，不得改变情节主线与本章已有内容”"}。pass=true 时 instruction 返回空字符串。`,
       maxTokens: 16384,
       thinkingType: resolveThinking(settings, 'review') ? 'enabled' : 'disabled'
     }),
@@ -96,14 +98,15 @@ async function writeBodyWithLengthControl({
   settings = {},
   signal,
   chapterNo = '',
-  stylePrompt = ''
+  stylePrompt = '',
+  worldContext = ''
 }) {
   const target = Math.round(Number(chapterWords) || 0);
   const run = async (current, currentTitle, currentInstruction, currentRemark) => {
     const isRewrite = Boolean(current);
     const user = isRewrite
-      ? `根据修改意见改写章节，本章约 ${target} 字。${PARAGRAPH_RULE}返回 JSON：{"title":"章节标题","content":"新内容"}。\n原章节：\n${currentTitle}\n${current}\n${summary ? `本章摘要：${summary}\n` : ''}修改意见：${currentInstruction || '请按用户意图润色重写本章'}${currentRemark ? `\n补充说明：${currentRemark}` : ''}${chatContextRef(chatContext)}\n附近章节语境：\n${contextLines}${characterContext ? `\n${characterContext}` : ''}`
-      : `创作新章节（插入为第 ${chapterNo} 章），本章约 ${target} 字。${currentRemark ? `\n补充说明：${currentRemark}` : ''}\n章节标题统一为“第X章 + 标题”格式；${PARAGRAPH_RULE}\n返回 JSON：{"title":"章节标题","content":"章节正文"}。\n用户指令：${currentInstruction || '继续创作'}${chatContextRef(chatContext)}\n${contextLines}${characterContext ? `\n${characterContext}` : ''}`;
+      ? `根据修改意见改写章节，本章约 ${target} 字。${PARAGRAPH_RULE}返回 JSON：{"title":"章节标题","content":"新内容"}。\n原章节：\n${currentTitle}\n${current}\n${summary ? `本章摘要：${summary}\n` : ''}修改意见：${currentInstruction || '请按用户意图润色重写本章'}${currentRemark ? `\n补充说明：${currentRemark}` : ''}${chatContextRef(chatContext)}\n附近章节语境：\n${contextLines}${characterContext ? `\n${characterContext}` : ''}${worldContext ? `\n${worldContext}` : ''}`
+      : `创作新章节（插入为第 ${chapterNo} 章），本章约 ${target} 字。${currentRemark ? `\n补充说明：${currentRemark}` : ''}\n章节标题统一为“第X章 + 标题”格式；${PARAGRAPH_RULE}\n返回 JSON：{"title":"章节标题","content":"章节正文"}。\n用户指令：${currentInstruction || '继续创作'}${chatContextRef(chatContext)}\n${contextLines}${characterContext ? `\n${characterContext}` : ''}${worldContext ? `\n${worldContext}` : ''}`;
     const result = await callModel(
       () => ({
         system: writingSystem(isRewrite ? '改写' : '创作', stylePrompt),
@@ -145,6 +148,7 @@ export async function createChapter(book, { anchorIndex, title, instruction, rem
     : book.chapters.length;
   const prev = insertAt > 0 ? book.chapters[insertAt - 1] : null;
   const next = insertAt < book.chapters.length ? book.chapters[insertAt] : null;
+  const worldContext = worldSnapshotRef(book, { untilChapter: insertAt });
   const context = creationContextRef(book, prev, next);
   const relatedNames = [
     ...(prev?.events || []).flatMap((event) => event.characters || []),
@@ -164,7 +168,8 @@ export async function createChapter(book, { anchorIndex, title, instruction, rem
     settings,
     signal,
     chapterNo: insertAt + 1,
-    stylePrompt
+    stylePrompt,
+    worldContext
   });
   const now = new Date().toISOString();
   // 新章标题强制按当前位置编号：去掉 AI 可能携带的任意“第N章”前缀再按位置补齐
@@ -210,6 +215,7 @@ export async function rewriteChapter(book, chapterIndex, instruction, settings =
   if (!target) throw new Error('章节不存在');
   const chapterWords = clampOutput(settings.chapterWords, 1000, 10000, 2000);
   const stylePrompt = resolveWritingStyle(book.writingStyle).prompt;
+  const worldContext = worldSnapshotRef(book, { untilChapter: chapterIndex + 1 });
   const prev = chapterIndex > 0 ? book.chapters[chapterIndex - 1] : null;
   const next = chapterIndex < book.chapters.length - 1 ? book.chapters[chapterIndex + 1] : null;
   const context = rewriteContextRef(book, prev, next);
@@ -233,7 +239,8 @@ export async function rewriteChapter(book, chapterIndex, instruction, settings =
     chatContext,
     settings,
     signal: settings.signal,
-    stylePrompt
+    stylePrompt,
+    worldContext
   });
   // 标题按当前位置规范化（与 createChapter 一致），防止模型返回无“第N章”前缀的标题覆盖后丢失格式
   target.title = ensureChapterTitle(chapterIndex, String(body.title || target.title).trim());

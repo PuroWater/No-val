@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeBook, normalizeCharacters } from '../src/lib/bookUtils.js';
+import { normalizeBook, normalizeCharacters, normalizeWorld } from '../src/lib/bookUtils.js';
 
 test('normalizeBook fills targetWords defaults', () => {
   const book = normalizeBook({ chapters: [] });
@@ -39,5 +39,20 @@ test('normalizeBook assigns main/support roles with fallback main', () => {
   const explicit = normalizeBook({ chapters: [], characters: [{ name: '乙', role: 'main', history: [] }, { name: '甲', history: [] }] });
   assert.equal(explicit.characters[0].role, 'main');
   assert.equal(explicit.characters[1].role, 'support');
+});
+
+test('normalizeBook fills world default', () => {
+  const book = normalizeBook({ chapters: [] });
+  assert.deepEqual(book.world, { history: [] });
+});
+
+test('normalizeWorld dedupes by chapter and filters empty snapshots', () => {
+  const world = normalizeWorld({ history: [
+    { chapter: 0, snapshot: { summary: 'a', factions: [], places: [], systems: [] } },
+    { chapter: 0, snapshot: { summary: 'b', factions: [], places: [], systems: [] } },
+    { chapter: 1, snapshot: { summary: '', factions: [], places: [], systems: [] } }
+  ] });
+  assert.equal(world.history.length, 1);
+  assert.equal(world.history[0].snapshot.summary, 'b');
 });
 

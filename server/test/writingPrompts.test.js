@@ -5,7 +5,8 @@ import {
   CHAPTER_ENDING_RULE,
   OUTLINE_EXPANSION_RULE,
   creationContextRef,
-  rewriteContextRef
+  rewriteContextRef,
+  worldSnapshotRef
 } from '../src/lib/writingPrompts.js';
 
 test('writingSystem injects chapter ending and outline expansion rules', () => {
@@ -58,3 +59,18 @@ test('rewriteContextRef has no progress line and same prefix order', () => {
   assert.ok(out.indexOf('上一章结尾') < out.indexOf('下一章摘要'));
   assert.ok(out.indexOf('下一章摘要') < out.indexOf('下一章开头'));
 });
+
+test('worldSnapshotRef returns latest snapshot before untilChapter', () => {
+  const book = { world: { history: [
+    { chapter: 0, snapshot: { summary: 's0', factions: [], places: [], systems: [] } },
+    { chapter: 2, snapshot: { summary: 's2', factions: [{ name: 'A', status: 'x' }], places: [], systems: [] } }
+  ] } };
+  const before2 = worldSnapshotRef(book, { untilChapter: 2 });
+  assert.ok(before2.includes('s0'));
+  assert.ok(!before2.includes('s2'));
+  const before3 = worldSnapshotRef(book, { untilChapter: 3 });
+  assert.ok(before3.includes('s2'));
+  assert.ok(before3.includes('势力：A（x）'));
+  assert.equal(worldSnapshotRef(book, { untilChapter: 0 }), '');
+});
+

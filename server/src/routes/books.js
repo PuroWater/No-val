@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { getUserSettings } from '../services/settingsService.js';
 import { readBookById, listBooks, saveBook, deleteBookFile } from '../lib/store.js';
 import { ensureChapterTitle } from '../lib/chapterUtils.js';
+import { normalizeWorldSnapshot } from '../lib/bookUtils.js';
 import { requireAuth } from '../middleware/auth.js';
 import { deleteChapters, updateBook } from '../services/bookService.js';
 import { maintainChapterMeta } from '../services/maintenanceService.js';
@@ -81,6 +82,35 @@ router.get('/:id', (req, res) => {
     return res.status(404).json({ error: '书籍不存在' });
   }
   res.json({ book });
+});
+
+router.put('/:id/world', (req, res) => {
+  const snapshot = normalizeWorldSnapshot(req.body?.snapshot);
+  if (!snapshot.summary && snapshot.factions.length === 0 && snapshot.places.length === 0 && snapshot.systems.length === 0) {
+    return res.status(400).json({ error: '世界观设定不能为空' });
+  }
+  const { version } = req.body || {};
+  try {
+    const book = updateBook(req.user.id, req.params.id, (latest) => {
+      if (latest.deletedAt) throw new Error('书籍不存在');
+      if (Number.isInteger(version) && latest.version !== version) {
+        throw new Error('内容已更新，请刷新后重试');
+      }
+      if (!latest.world || !Array.isArray(latest.world.history)) latest.world = { history: [] };
+      const chapter = latest.chapters.length > 0 ? latest.chapters.length - 1 : 0;
+      const idx = latest.world.history.findIndex((item) => item.chapter === chapter);
+      if (idx >= 0) latest.world.history[idx].snapshot = snapshot;
+      else latest.world.history.push({ chapter, snapshot });
+      latest.world.history.sort((a, b) => Number(a.chapter) - Number(b.chapter));
+      latest.updatedAt = new Date().toISOString();
+      latest.version = (latest.version || 0) + 1;
+    });
+    return res.json({ book });
+  } catch (err) {
+    const status = err.message === '内容已更新，请刷新后重试' ? 409
+      : (err.message === '书籍不存在' ? 404 : 400);
+    return res.status(status).json({ error: err.message });
+  }
 });
 
 router.put('/:id/writing-style', (req, res) => {

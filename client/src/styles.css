@@ -3028,3 +3028,82 @@ ne-tooltip-detail {
   background: var(--accent);
 }
 
+/* ===== 0.9.9 世界观设定（worldSettings UI） ===== */
+.world-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.world-settings-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.world-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.world-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.world-form label span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.world-form textarea {
+  min-height: 60px;
+  resize: vertical;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.world-history {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.world-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.world-history-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.world-history-item span:first-child {
+  font-size: 12px;
+  color: var(--muted);
+}
+.world-history-item span:last-child {
+  font-size: 13px;
+  line-height: 1.5;
+}
+.world-detail-text {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text);
+}
+
