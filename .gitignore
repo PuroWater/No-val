@@ -13,3 +13,5 @@ Thumbs.db
 docs/
 SUMMARY.md
 TARGET.md
+server/test/
+server/scripts/eval/

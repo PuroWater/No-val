@@ -19,22 +19,8 @@
 ```bash
 # 安装依赖（server + client）
 npm run install:all
-```
-
-### 开发模式
-
-```bash
-npm run dev:server   # 后端 http://localhost:3001
-npm run dev:client   # 前端 http://localhost:5173
-```
-
-访问 `http://localhost:5173`。
-
-### 生产模式
-
-```bash
 npm run build   # 构建前端到 client/dist
-npm start       # 后端 3001 同时托管前端产物
+npm start
 ```
 
 访问 `http://localhost:3001`。
@@ -46,14 +32,7 @@ npm start       # 后端 3001 同时托管前端产物
 
 ## 🔧 模型配置
 
-模型服务在设置页管理，配置（含 API Key）保存在本地 `data/providers.json`（`data/` 已被 gitignore，不会提交到仓库）。
-
-可选环境变量（创建 `.env` 文件）：
-
-| 变量 | 说明 | 默认 |
-|---|---|---|
-| `PORT` | 后端端口 | `3001` |
-| `JWT_SECRET` | JWT 签名密钥（生产建议自定义） | `dev-secret` |
+模型服务在设置页管理，配置（含 API Key）保存在本地 `data/providers.json`
 
 ## 📁 目录结构
 
@@ -63,21 +42,8 @@ npm start       # 后端 3001 同时托管前端产物
 ├─ server/          # Express 后端（ESM）
 │  └─ src/          # 路由、服务、Agent 架构、模型适配器
 ├─ data/            # 运行时数据（JSON，已 gitignore）
-│  ├─ users.json    # 用户（bcrypt 密码哈希）
-│  ├─ providers.json# 模型服务配置（含 API Key）
-│  ├─ books/        # 已生成图书
-│  └─ drafts/       # 构思中图书
-└─ docs/            # 设计文档（已 gitignore）
+   ├─ users.json    # 用户（bcrypt 密码哈希）
+   ├─ providers.json# 模型服务配置（含 API Key）
+   ├─ books/        # 已生成图书
+   └─ drafts/       # 构思中图书
 ```
-
-## 🧪 测试
-
-```bash
-npm test        # 140 个单元测试（server）
-npm run eval    # golden eval 真实模型回归（需运行中的后端 + 真实模型）
-```
-
-## 📄 文档
-
-- `TARGET.md`：迭代目标与版本记录（本地维护，不入库）
-- `SUMMARY.md`：项目详细概况与技术架构（本地维护，不入库）
