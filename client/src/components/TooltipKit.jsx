@@ -2,7 +2,7 @@
 // 类型1 消息提示性：toast（屏幕中间，已保存/测试连接消息）→ useToasts + <Toasts/>
 // 类型2 解释性：悬浮跟随鼠标（设置页开启按钮说明）→ useHoverTip + <HoverTip/>
 // 类型3 内容性：点击唤出，左上角 x+14/y+16 定位、不跟随鼠标、点外部关闭（人物卡详情/发展线事件详情）→ useContentTooltip + <ContentTip/>；主题色、宽、内容多
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 // ---------- 类型1：消息提示性 toast ----------
 export function useToasts() {
@@ -76,15 +76,33 @@ export function useContentTooltip() {
 }
 
 export function ContentTip({ popup, onClose, className = '', children }) {
+  const ref = useRef(null);
+  const [pos, setPos] = useState(null);
+  useLayoutEffect(() => {
+    if (!popup || !ref.current) return;
+    const el = ref.current;
+    const w = el.offsetWidth;
+    const h = el.offsetHeight;
+    const margin = 8;
+    let left = Math.min(popup.x + 14, window.innerWidth - w - margin);
+    left = Math.max(margin, left);
+    let top = popup.y + 16;
+    // 下方空间不够时向上展开：弹窗左下角锚定 (x+14, y-16)
+    if (top + h > window.innerHeight - margin) {
+      top = Math.max(margin, popup.y - h - 16);
+    } else {
+      top = Math.max(margin, top);
+    }
+    setPos({ left, top });
+  }, [popup]);
   if (!popup) return null;
+  const style = pos || { left: Math.max(8, Math.min(popup.x + 14, window.innerWidth - 300)), top: Math.max(8, Math.min(popup.y + 16, window.innerHeight - 90)) };
   return (
     <div
+      ref={ref}
       data-content-tip
       className={`content-tip ${className}`.trim()}
-      style={{
-        left: Math.max(8, Math.min(popup.x + 14, window.innerWidth - 300)),
-        top: Math.max(8, Math.min(popup.y + 16, window.innerHeight - 90))
-      }}
+      style={style}
     >
       {children}
     </div>

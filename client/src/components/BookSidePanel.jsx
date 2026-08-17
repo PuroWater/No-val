@@ -332,36 +332,39 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
         </div>
       ) : tab === 'bookInfo' ? (
         <div className="book-info-tab">
-          <div className="book-info-cover-col">
-            <div className="book-info-cover-wrap">
-              {book.cover ? (
-                <img className="book-info-cover" src={book.cover} alt={book.title} />
-              ) : (
-                <div className="book-info-cover-empty">{book.title?.[0] || "书"}</div>
-              )}
+          <div className="book-info-top">
+            <div className="book-info-cover-col">
+              <div className="book-info-cover-wrap">
+                {book.cover ? (
+                  <img className="book-info-cover" src={book.cover} alt={book.title} />
+                ) : (
+                  <div className="book-info-cover-empty">{book.title?.[0] || "书"}</div>
+                )}
+              </div>
+              <div className="book-info-cover-actions">
+                <button className="secondary" onClick={triggerCoverUpload}>{book.cover ? '更换封面' : '上传封面'}</button>
+                <button className="secondary" onClick={() => showNotice('AI 生图功能尚未实现，敬请期待')}>AI 生图</button>
+              </div>
+              <input ref={coverInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" style={{ display: 'none' }} onChange={handleCoverChange} />
             </div>
-            <div className="book-info-cover-actions">
-              <button className="secondary" onClick={triggerCoverUpload}>{book.cover ? '更换封面' : '上传封面'}</button>
-              <button className="secondary" onClick={() => showNotice('AI 生图功能尚未实现，敬请期待')}>AI 生图</button>
+            <div className="book-info-top-main">
+              <h2 className="book-info-title">{book.title}</h2>
+              <p className="book-info-author">作者：{user?.nickname || user?.username || '未知'}</p>
+              <p className="book-info-outline">{book.outline || '暂无简介'}</p>
             </div>
-            <input ref={coverInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" style={{ display: 'none' }} onChange={handleCoverChange} />
           </div>
-          <div className="book-info-main">
-            <h2 className="book-info-title">{book.title}</h2>
-            <p className="book-info-author">作者：{user?.nickname || user?.username || '未知'}</p>
-            <p className="book-info-outline">{book.outline || '暂无简介'}</p>
-            <div className="book-info-style-section" {...bindHover('文笔风格只影响之后新建/改写的正文，不修改已有章节')}>
-              <h4 className="book-info-section-title">文笔风格</h4>
-              <ModelSelect
-                value={book.writingStyle || 'default'}
-                onChange={saveWritingStyle}
-                groups={[{ label: '文笔风格', options: styles.map((item) => ({ id: item.id, label: item.label })) }]}
-                placeholder="请选择文笔风格"
-                disabled={styleSaving}
-              />
-            </div>
-            <WorldSettingsPanel book={book} onUpdated={setBook} onNotice={showNotice} />
+          <div className="book-info-style-section">
+            <h4 className="book-info-section-title">文笔风格</h4>
+            <ModelSelect
+              value={book.writingStyle || 'default'}
+              onChange={saveWritingStyle}
+              groups={[{ label: '文笔风格', options: styles.map((item) => ({ id: item.id, label: item.label })) }]}
+              placeholder="请选择文笔风格"
+              disabled={styleSaving}
+              buttonHover={bindHover('文笔风格只影响之后新建/改写的正文，不修改已有章节')}
+            />
           </div>
+          <WorldSettingsPanel book={book} onUpdated={setBook} onNotice={showNotice} />
         </div>
       ) : (
         <div className="relation-tab">

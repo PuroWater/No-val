@@ -2592,12 +2592,21 @@ ne-tooltip-detail {
   flex: 1;
   min-height: 0;
   display: flex;
-  gap: 24px;
+  flex-direction: column;
+  gap: 0;
   padding: 16px;
   overflow: auto;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--panel);
+}
+.book-info-top {
+  display: flex;
+  gap: 24px;
+}
+.book-info-top-main {
+  flex: 1;
+  min-width: 0;
 }
 .book-info-cover-col {
   display: flex;
@@ -3093,6 +3102,6 @@ ne-tooltip-detail {
   margin-bottom: 16px;
 }
 .book-info-style-section .model-select {
-  width: 320px;
+  width: 160px;
 }
 

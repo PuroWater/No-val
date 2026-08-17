@@ -2,7 +2,7 @@
 // groups: [{ label, options: [{ id, label }] }]；点击按钮展开菜单（向下弹出），点击选项回调 onChange。
 import { useEffect, useRef, useState } from 'react';
 
-export default function ModelSelect({ value, onChange, groups = [], placeholder = '请选择模型', disabled = false }) {
+export default function ModelSelect({ value, onChange, groups = [], placeholder = '请选择模型', disabled = false, buttonHover = {} }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
   const flat = groups.flatMap((group) => group.options || []);
@@ -19,7 +19,7 @@ export default function ModelSelect({ value, onChange, groups = [], placeholder 
 
   return (
     <div className="model-select" ref={wrapRef}>
-      <button type="button" className="model-select-btn" disabled={disabled} onClick={() => setOpen((v) => !v)}>
+      <button type="button" className="model-select-btn" disabled={disabled} onClick={() => setOpen((v) => !v)} {...buttonHover}>
         <span className="model-select-value">{current ? current.label : placeholder}</span>
         <span className="chat-model-arrow" aria-hidden="true" />
       </button>
