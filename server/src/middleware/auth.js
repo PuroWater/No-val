@@ -12,7 +12,7 @@ export function requireAuth(req, res, next) {
     const users = readJson(USERS_FILE, []);
     const user = users.find((item) => item.id === payload.sub);
     if (!user) return res.status(401).json({ error: '用户不存在' });
-    req.user = { id: user.id, username: user.username };
+    req.user = { id: user.id, username: user.username, nickname: user.nickname || user.username };
     next();
   } catch {
     return res.status(401).json({ error: '登录已过期' });

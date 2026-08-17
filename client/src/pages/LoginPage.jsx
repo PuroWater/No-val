@@ -32,7 +32,7 @@ export default function LoginPage() {
   return (
     <div className="login-page">
       <form className="login-card" onSubmit={handleSubmit}>
-        <h1>Novel Agent</h1>
+        <h1>No-val</h1>
         <p className="login-subtitle">小说创作平台</p>
         <div className="mode-tabs">
           <button type="button" className={mode === 'login' ? 'active' : ''} onClick={() => setMode('login')}>登录</button>

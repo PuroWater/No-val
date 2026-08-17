@@ -1,11 +1,10 @@
 {
-  "name": "novel-agent",
-  "version": "0.6.4",
+  "name": "no-val",
+  "version": "0.9.9",
   "private": true,
   "scripts": {
     "start": "npm --prefix server start",
     "build": "npm --prefix client run build",
-    "test": "npm --prefix server test",
     "dev:server": "npm --prefix server run dev",
     "dev:client": "npm --prefix client run dev",
     "install:all": "npm install --prefix server && npm install --prefix client"

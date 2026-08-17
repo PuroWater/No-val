@@ -8,9 +8,14 @@ export default function BookList({ books, onDelete }) {
       {books.map((book) => (
         <div key={book.id} className="book-card">
           <button className="book-card-link" onClick={() => open({ bookId: book.id, chapter: 1 })}>
-            <strong>{book.title}</strong>
-            <span>{book.chapterCount} 章</span>
-            <span className="muted">更新于 {new Date(book.updatedAt).toLocaleString()}</span>
+            <span className="book-card-cover">
+              {book.cover ? <img src={book.cover} alt={book.title} /> : (book.title?.[0] || '书')}
+            </span>
+            <span className="book-card-meta">
+              <strong>{book.title}</strong>
+              <span>{book.chapterCount} 章</span>
+              <span className="muted">更新于 {new Date(book.updatedAt).toLocaleString()}</span>
+            </span>
           </button>
           {onDelete && (
             <button className="book-delete" title="删除" onClick={() => onDelete(book)}>删除</button>

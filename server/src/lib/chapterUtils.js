@@ -1,33 +1,77 @@
-export function fuzzyScore(title, query) {
-  const t = String(title || '').toLowerCase();
-  const q = String(query || '').toLowerCase();
-  if (!t || !q) return 0;
-  if (t === q) return 100;
-  if (t.includes(q) || q.includes(t)) return 90;
-  const setT = new Set(t.split(''));
-  const setQ = new Set(q.split(''));
-  let overlap = 0;
-  for (const ch of setQ) {
-    if (setT.has(ch)) overlap += 1;
-  }
-  return Math.round((overlap / setQ.size) * 60);
+// 输出规模收敛：非有限值回退 fallback，越界夹取到 [min, max]。
+export function clampOutput(value, min, max, fallback) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.min(max, Math.max(min, Math.round(number)));
 }
 
 export function chineseNumberToInt(text) {
   const digits = { 零: 0, 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 };
-  const units = { 十: 10, 百: 100, 千: 1000 };
+  const units = { 十: 10, 百: 100, 千: 1000, 万: 10000 };
   let total = 0;
+  let section = 0;
   let current = 0;
   for (const ch of String(text)) {
     if (ch in digits) {
       current = digits[ch];
     } else if (ch in units) {
-      if (current === 0) current = 1;
-      total += current * units[ch];
+      const unit = units[ch];
+      const value = current === 0 ? 1 : current;
       current = 0;
+      if (unit === 10000) {
+        // “万”用当前节（或单位前的数字）整体放大：二十万=20*10000
+        total += (section > 0 ? section : value) * unit;
+        section = 0;
+      } else {
+        section += value * unit;
+      }
     }
   }
-  return total + current;
+  return total + section + current;
+}
+
+// 章节数字提取：阿拉伯数字直接转，汉字数字走 chineseNumberToInt。
+function chapterDigit(raw) {
+  const t = String(raw || '').trim();
+  return /^\d+$/.test(t) ? Number(t) : chineseNumberToInt(t);
+}
+
+// 章节/数字指代确定性转阿拉伯数字：“第一章/第1章/1/二十万” → 1 / 1 / 1 / 200000。
+// 无法转换返回 null（交由 schema 校验拒绝），不猜测。
+export function parseChapterNumber(text) {
+  const t = String(text || '').trim();
+  if (/^\d+$/.test(t)) return Number(t);
+  const chapter = t.match(/^第\s*([0-9零一二两三四五六七八九十百千]+)\s*章$/);
+  if (chapter) return chapterDigit(chapter[1]);
+  if (/^[零一二两三四五六七八九十百千万]+$/.test(t)) return chineseNumberToInt(t);
+  return null;
+}
+
+// 章节指代文本归一化为 read 工具要求的数字/范围格式：“第一章”→"1"，“第3到8章”→"3-8"。
+// 用于 xChapterRef 字符串参数（如 read_book.target），消除对模型自律转换的依赖。
+export function normalizeChapterTarget(text) {
+  const t = String(text || '').trim();
+  if (/^\d+(\s*[-~—]\s*\d+)?$/.test(t)) return t.replace(/\s+/g, '');
+  const single = t.match(/^第\s*([0-9零一二两三四五六七八九十百千]+)\s*章$/);
+  if (single) return String(chineseNumberToInt(single[1]));
+  const range = t.match(/^第?\s*([0-9零一二两三四五六七八九十百千]+)\s*章?\s*(?:到|至|~|—|-)\s*第?\s*([0-9零一二两三四五六七八九十百千]+)\s*章?$/);
+  if (range) {
+    const from = chapterDigit(range[1]);
+    const to = chapterDigit(range[2]);
+    return `${Math.min(from, to)}-${Math.max(from, to)}`;
+  }
+  return t;
+}
+
+// 章节总长上限截断：目标 capRatio（默认 1.5 = 150%）内保留；超出按完整句截断（找不到完整句则硬切）。
+// 纯函数，create/rewrite/ensure 统一应用“上限截断”约束。
+export function trimChapterToLimit(content, targetWords, capRatio = 1.5) {
+  const cap = Math.round(Number(targetWords) * Number(capRatio));
+  const text = String(content || '');
+  if (!Number.isFinite(cap) || text.length <= cap) return text;
+  const slice = text.slice(0, cap);
+  const cut = Math.max(slice.lastIndexOf('。'), slice.lastIndexOf('！'), slice.lastIndexOf('？'), slice.lastIndexOf('\n'));
+  return cut > cap * 0.8 ? slice.slice(0, cut + 1) : slice;
 }
 
 export function intToChinese(number) {
@@ -62,29 +106,6 @@ export function isLastChapter(book, chapterId) {
   return Boolean(last && last.id === chapterId);
 }
 
-export function searchChapters(book, text) {
-  const value = String(text || '').trim();
-  if (!value) return [];
-  const chapterMatch = value.match(/(?:第)?\s*([0-9零一二两三四五六七八九十百千]+)\s*章/);
-  let chapterNumber = 0;
-  if (chapterMatch) {
-    const raw = chapterMatch[1];
-    chapterNumber = /^\d+$/.test(raw) ? Number(raw) : chineseNumberToInt(raw);
-  }
-  if (!chapterNumber) {
-    const numberMatch = value.match(/\d+/);
-    if (numberMatch) chapterNumber = Number(numberMatch[0]);
-  }
-  if (chapterNumber > 0 && book.chapters[chapterNumber - 1]) {
-    const index = chapterNumber - 1;
-    return [{ index, title: book.chapters[index].title, score: 100 }];
-  }
-  return book.chapters
-    .map((chapter, index) => ({ index, title: chapter.title, score: fuzzyScore(chapter.title, value) }))
-    .filter((item) => item.score >= 40)
-    .sort((a, b) => b.score - a.score || a.index - b.index);
-}
-
 export function fixChapterPrefixes(book, format, changeLog = new Set()) {
   let count = 0;
   book.chapters.forEach((chapter, index) => {
@@ -102,6 +123,29 @@ export function fixChapterPrefixes(book, format, changeLog = new Set()) {
   return count;
 }
 
+// 从受影响位置起重排标准前缀：仅处理符合“第X章”格式的章节（跳过非标准标题），
+// 用于插入/删除中间章后自动同步章节编号；fromIndex 之后的章节逐个校准。
+// collect 传入 Set 时收集被改动章节 id，供上层 changeLog 写回（避免重排结果丢失）。
+export function renumberChapterPrefixes(book, { fromIndex = 0, collect } = {}) {
+  const chapters = Array.isArray(book?.chapters) ? book.chapters : [];
+  let count = 0;
+  for (let index = Math.max(0, Number(fromIndex) || 0); index < chapters.length; index += 1) {
+    const chapter = chapters[index];
+    const original = String(chapter?.title || '').trim();
+    if (!original) continue;
+    const matched = original.match(/^第\s*([0-9零一二两三四五六七八九十百千]+)\s*章/);
+    if (!matched) continue;
+    const rest = original.slice(matched[0].length);
+    const nextTitle = `第${index + 1}章${rest}`.trim();
+    if (nextTitle !== original) {
+      chapter.title = nextTitle;
+      if (collect && typeof collect.add === 'function') collect.add(chapter.id);
+      count += 1;
+    }
+  }
+  return count;
+}
+
 export function replaceTextInBook(book, from, to, changeLog = new Set()) {
   const source = String(from || '');
   const target = String(to ?? '');
@@ -112,7 +156,7 @@ export function replaceTextInBook(book, from, to, changeLog = new Set()) {
     count += value.split(source).length - 1;
     return value.split(source).join(target);
   };
-  for (const field of ['title', 'outline', 'storySummary']) {
+  for (const field of ['title', 'outline']) {
     book[field] = replaceIn(book[field]);
   }
   if (book.draft) {

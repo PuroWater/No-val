@@ -2,6 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import ConfirmModal from '../components/ConfirmModal.jsx';
 import { applySettings } from '../components/SettingsApplier.jsx';
+import TrashPanel from '../components/TrashPanel.jsx';
+import AccountPanel from '../components/AccountPanel.jsx';
+import ProvidersPanel from '../components/ProvidersPanel.jsx';
+import NumberStepper from '../components/NumberStepper.jsx';
+import { useHoverTip, HoverTip } from '../components/TooltipKit.jsx';
 
 const THEMES = [
   { value: 'system', label: '跟随系统' },
@@ -17,22 +22,34 @@ const SIZES = [
   { value: 'large', label: '大' }
 ];
 
+const THINKING_STAGE_ITEMS = [
+  { key: 'routing', label: '路由/构思', desc: '开启后决策更精细，且个别情况可能偶发误判，需重发一次。默认建议关。' },
+  { key: 'execution', label: '执行', desc: '开启后工具决策先思考，更严谨，但更慢。' },
+  { key: 'writing', label: '正文', desc: '开启后正文生成质量更高，但更慢。' },
+  { key: 'review', label: '审校', desc: '开启后评审更准，但更慢。' },
+  { key: 'maintenance', label: '维护', desc: '开启后章节维护更精细，但更慢。默认建议关。' }
+];
+
 export default function SettingsPage() {
-  const [activeSetting, setActiveSetting] = useState('appearance');
+const SETTING_TITLES = { general: '常规设置', appearance: '外观设置', providers: '模型配置', account: '账户设置', trash: '回收站' };
+  const [activeSetting, setActiveSetting] = useState('general');
   const [theme, setTheme] = useState('paper');
   const [fontSize, setFontSize] = useState('medium');
   const [chaptersPerOutput, setChaptersPerOutput] = useState(3);
   const [chapterWords, setChapterWords] = useState(2000);
   const [enterToSend, setEnterToSend] = useState(true);
+  const [thinkingMode, setThinkingMode] = useState('off');
+  const [thinkingStages, setThinkingStages] = useState({ routing: false, execution: false, writing: false, review: false, maintenance: false });
+  const [stageTip, setStageTip] = useState(null);
+  const [customTip, setCustomTip] = useState(null);
+  const [developmentLineOrientation, setDevelopmentLineOrientation] = useState('vertical');
+  const [reviewAfterWrite, setReviewAfterWrite] = useState(false);
+  const [confirmBeforeWrite, setConfirmBeforeWrite] = useState(false);
   const [trash, setTrash] = useState([]);
   const [toasts, setToasts] = useState([]);
   const toastIdRef = useRef(0);
-  const [oldPassword, setOldPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [accountMessage, setAccountMessage] = useState('');
-  const [accountError, setAccountError] = useState('');
   const [permanentTarget, setPermanentTarget] = useState(null);
+  const { tip: hoverTip, bindHover } = useHoverTip();
 
   async function loadTrash() {
     const data = await api('/books/trash');
@@ -54,12 +71,24 @@ export default function SettingsPage() {
       setChaptersPerOutput(Number(data.settings.chaptersPerOutput) || 3);
       setChapterWords(Number(data.settings.chapterWords) || 2000);
       setEnterToSend(data.settings.enterToSend !== false);
+      setThinkingMode(['off', 'on', 'custom'].includes(data.settings.thinkingMode) ? data.settings.thinkingMode : (data.settings.thinkingEnabled === true ? 'on' : 'off'));
+      setThinkingStages({
+        routing: data.settings.thinkingStages?.routing === true,
+        execution: data.settings.thinkingStages?.execution === true,
+        writing: data.settings.thinkingStages?.writing === true,
+        review: data.settings.thinkingStages?.review === true,
+        maintenance: data.settings.thinkingStages?.maintenance === true
+      });
+      setDevelopmentLineOrientation(data.settings.developmentLineOrientation === 'horizontal' ? 'horizontal' : 'vertical');
+      setReviewAfterWrite(data.settings.reviewAfterWrite === true);
+      setConfirmBeforeWrite(data.settings.confirmBeforeWrite === true);
       applySettings(data.settings);
     });
     loadTrash();
   }, []);
 
-  async function save(nextTheme, nextSize, nextChapters, nextWords, nextEnter) {
+  async function save(nextTheme, nextSize, nextChapters, nextWords, nextEnter, nextOrientation, nextThinkingMode, nextThinkingStages, nextReview, nextConfirm) {
+    const confirm = nextConfirm === undefined ? confirmBeforeWrite : nextConfirm;
     try {
       const data = await api('/settings', {
         method: 'PUT',
@@ -68,7 +97,12 @@ export default function SettingsPage() {
           fontSize: nextSize,
           chaptersPerOutput: nextChapters,
           chapterWords: nextWords,
-          enterToSend: nextEnter
+          enterToSend: nextEnter,
+          developmentLineOrientation: nextOrientation,
+          thinkingMode: nextThinkingMode,
+          thinkingStages: nextThinkingStages || thinkingStages,
+          reviewAfterWrite: nextReview,
+          confirmBeforeWrite: confirm
         })
       });
       applySettings(data.settings);
@@ -78,37 +112,30 @@ export default function SettingsPage() {
     }
   }
 
+  function setStageThinking(key, value) {
+    const next = { ...thinkingStages, [key]: value };
+    setThinkingStages(next);
+    save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, 'custom', next, reviewAfterWrite);
+  }
+
   async function restore(book) {
-    await api(`/books/${book.id}/restore`, { method: 'POST' });
-    await loadTrash();
+    try {
+      await api(`/books/${book.id}/restore`, { method: 'POST', body: JSON.stringify({ version: book.version }) });
+      await loadTrash();
+    } catch (err) {
+      pushToast(`恢复失败：${err.message}`, true);
+    }
   }
 
   async function confirmPermanentDelete() {
     if (!permanentTarget) return;
-    await api(`/books/${permanentTarget.id}/permanent`, { method: 'DELETE' });
-    await loadTrash();
-    setPermanentTarget(null);
-  }
-
-  async function changePassword(event) {
-    event.preventDefault();
-    setAccountMessage('');
-    setAccountError('');
-    if (newPassword !== confirmPassword) {
-      setAccountError('两次输入的新密码不一致');
-      return;
-    }
     try {
-      await api('/auth/password', {
-        method: 'PUT',
-        body: JSON.stringify({ oldPassword, newPassword })
-      });
-      setAccountMessage('密码已修改');
-      setOldPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
+      await api(`/books/${permanentTarget.id}/permanent`, { method: 'DELETE', body: JSON.stringify({ version: permanentTarget.version }) });
+      await loadTrash();
+      setPermanentTarget(null);
     } catch (err) {
-      setAccountError(err.message);
+      pushToast(`彻底删除失败：${err.message}`, true);
+      setPermanentTarget(null);
     }
   }
 
@@ -120,22 +147,22 @@ export default function SettingsPage() {
       <div className="settings-layout">
         <aside className="settings-directory">
           <button
-            className={`directory-item ${activeSetting === 'appearance' ? 'active' : ''}`}
-            onClick={() => setActiveSetting('appearance')}
-          >
-            外观
-          </button>
-          <button
             className={`directory-item ${activeSetting === 'general' ? 'active' : ''}`}
             onClick={() => setActiveSetting('general')}
           >
-            常规
+            常规设置
           </button>
           <button
-            className={`directory-item ${activeSetting === 'trash' ? 'active' : ''}`}
-            onClick={() => setActiveSetting('trash')}
+            className={`directory-item ${activeSetting === 'appearance' ? 'active' : ''}`}
+            onClick={() => setActiveSetting('appearance')}
           >
-            回收站
+            外观设置
+          </button>
+          <button
+            className={`directory-item ${activeSetting === 'providers' ? 'active' : ''}`}
+            onClick={() => setActiveSetting('providers')}
+          >
+            模型配置
           </button>
           <button
             className={`directory-item ${activeSetting === 'account' ? 'active' : ''}`}
@@ -143,15 +170,22 @@ export default function SettingsPage() {
           >
             账户设置
           </button>
+          <button
+            className={`directory-item ${activeSetting === 'trash' ? 'active' : ''}`}
+            onClick={() => setActiveSetting('trash')}
+          >
+            回收站
+          </button>
         </aside>
         <div className="settings-content">
+          <h2 className="settings-title">{SETTING_TITLES[activeSetting]}</h2>
           {activeSetting === 'appearance' && (
             <>
               <div className="settings-group">
                 <span>背景风格</span>
                 <div className="option-row">
                   {THEMES.map((item) => (
-                    <button key={item.value} className={theme === item.value ? 'active' : ''} onClick={() => { setTheme(item.value); save(item.value, fontSize, chaptersPerOutput, chapterWords, enterToSend); }}>
+                  <button key={item.value} className={theme === item.value ? 'active' : ''} onClick={() => { setTheme(item.value); save(item.value, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, thinkingMode, thinkingStages, reviewAfterWrite); }}>
                       {item.label}
                     </button>
                   ))}
@@ -161,10 +195,27 @@ export default function SettingsPage() {
                 <span>字号</span>
                 <div className="option-row">
                   {SIZES.map((item) => (
-                    <button key={item.value} className={fontSize === item.value ? 'active' : ''} onClick={() => { setFontSize(item.value); save(theme, item.value, chaptersPerOutput, chapterWords, enterToSend); }}>
+                  <button key={item.value} className={fontSize === item.value ? 'active' : ''} onClick={() => { setFontSize(item.value); save(theme, item.value, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, thinkingMode, thinkingStages, reviewAfterWrite); }}>
                       {item.label}
                     </button>
                   ))}
+                </div>
+              </div>
+              <div className="settings-group">
+                <span>发展线方向</span>
+                <div className="option-row">
+                  <button
+                    className={developmentLineOrientation === 'vertical' ? 'active' : ''}
+                    onClick={() => { setDevelopmentLineOrientation('vertical'); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, 'vertical', thinkingMode, thinkingStages, reviewAfterWrite); }}
+                  >
+                    纵向
+                  </button>
+                  <button
+                    className={developmentLineOrientation === 'horizontal' ? 'active' : ''}
+                    onClick={() => { setDevelopmentLineOrientation('horizontal'); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, 'horizontal', thinkingMode, thinkingStages, reviewAfterWrite); }}
+                  >
+                    横向
+                  </button>
                 </div>
               </div>
             </>
@@ -172,35 +223,31 @@ export default function SettingsPage() {
           {activeSetting === 'general' && (
             <>
               <div className="settings-group">
-                <span>默认输出章节数</span>
-                <input
-                  className="setting-number"
-                  type="number"
-                  min="1"
-                  max="5"
+                <span className="setting-label" {...bindHover('模型输出的章节数，范围为1-5，默认值为3（用户对话优先于设置值，但范围仍在1-5）')}>输出章节数</span>
+                <NumberStepper
                   value={chaptersPerOutput}
-                  onChange={(e) => setChaptersPerOutput(Number(e.target.value))}
-                  onBlur={() => {
-                    const value = Math.min(5, Math.max(1, Math.round(Number(chaptersPerOutput) || 1)));
+                  min={1}
+                  max={5}
+                  onChange={setChaptersPerOutput}
+                  onCommit={(raw) => {
+                    const value = Math.min(5, Math.max(1, Math.round(Number(raw) || 1)));
                     setChaptersPerOutput(value);
-                    save(theme, fontSize, value, chapterWords, enterToSend);
+                    save(theme, fontSize, value, chapterWords, enterToSend, developmentLineOrientation, thinkingMode, thinkingStages, reviewAfterWrite);
                   }}
                 />
               </div>
               <div className="settings-group">
-                <span>默认输出字数（每章）</span>
-                <input
-                  className="setting-number"
-                  type="number"
-                  min="1000"
-                  max="10000"
-                  step="500"
+                <span className="setting-label" {...bindHover('模型输出每章的默认字数，范围为1000-10000，默认值为2000。（用户对话优先于设置值，但范围仍在1000-10000）')}>输出章节字数</span>
+                <NumberStepper
                   value={chapterWords}
-                  onChange={(e) => setChapterWords(Number(e.target.value))}
-                  onBlur={() => {
-                    const value = Math.min(10000, Math.max(1000, Math.round(Number(chapterWords) || 1000)));
+                  min={1000}
+                  max={10000}
+                  step={500}
+                  onChange={setChapterWords}
+                  onCommit={(raw) => {
+                    const value = Math.min(10000, Math.max(1000, Math.round(Number(raw) || 1000)));
                     setChapterWords(value);
-                    save(theme, fontSize, chaptersPerOutput, value, enterToSend);
+                    save(theme, fontSize, chaptersPerOutput, value, enterToSend, developmentLineOrientation, thinkingMode, thinkingStages, reviewAfterWrite);
                   }}
                 />
               </div>
@@ -209,68 +256,147 @@ export default function SettingsPage() {
                 <div className="option-row">
                   <button
                     className={enterToSend ? 'active' : ''}
-                    onClick={() => { setEnterToSend(true); save(theme, fontSize, chaptersPerOutput, chapterWords, true); }}
+                    onClick={() => { setEnterToSend(true); save(theme, fontSize, chaptersPerOutput, chapterWords, true, developmentLineOrientation, thinkingMode, thinkingStages, reviewAfterWrite); }}
                   >
                     Enter
                   </button>
                   <button
                     className={!enterToSend ? 'active' : ''}
-                    onClick={() => { setEnterToSend(false); save(theme, fontSize, chaptersPerOutput, chapterWords, false); }}
+                    onClick={() => { setEnterToSend(false); save(theme, fontSize, chaptersPerOutput, chapterWords, false, developmentLineOrientation, thinkingMode, thinkingStages, reviewAfterWrite); }}
                   >
                     Ctrl+Enter
                   </button>
                 </div>
               </div>
+              <div className="settings-group">
+                <span className="setting-label" {...bindHover('开启后，在新建/改写/删除/批量修改等写操作执行前，AI 会先在对话中向你确认，回复“确认”后才真正执行。')}>写前确认</span>
+                <div className="option-row">
+                  <button
+                    className={!confirmBeforeWrite ? 'active' : ''}
+                    onClick={() => { setConfirmBeforeWrite(false); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, thinkingMode, thinkingStages, reviewAfterWrite, false); }}
+                  >
+                    关闭
+                  </button>
+                  <button
+                    className={confirmBeforeWrite ? 'active' : ''}
+                    onClick={() => { setConfirmBeforeWrite(true); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, thinkingMode, thinkingStages, reviewAfterWrite, true); }}
+                  >
+                    开启
+                  </button>
+                </div>
+              </div>
+              <div className="settings-group">
+                <span className="setting-label" {...bindHover('开启后，生成或改写章节后 AI 会对内容合理性与衔接问题进行审校，会造成额外耗时与 token 消耗，默认关闭。')}>写后审校</span>
+                <div className="option-row">
+                  <button
+                    className={!reviewAfterWrite ? 'active' : ''}
+                    onClick={() => { setReviewAfterWrite(false); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, thinkingMode, thinkingStages, false); }}
+                  >
+                    关闭
+                  </button>
+                  <button
+                    className={reviewAfterWrite ? 'active' : ''}
+                    onClick={() => { setReviewAfterWrite(true); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, thinkingMode, thinkingStages, true); }}
+                  >
+                    开启
+                  </button>
+                </div>
+              </div>
+
+              <div className="settings-group">
+                <span className="setting-label" {...bindHover('开启后模型会先思考再输出，具体影响请查看自定义选项')}>模型思考</span>
+                <div className="option-row">
+                  <button
+                    className={thinkingMode === 'off' ? 'active' : ''}
+                    onClick={() => { setThinkingMode('off'); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, 'off', thinkingStages, reviewAfterWrite); }}
+                  >
+                    关闭
+                  </button>
+                  <button
+                    className={thinkingMode === 'on' ? 'active' : ''}
+                    onClick={() => { setThinkingMode('on'); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, 'on', thinkingStages, reviewAfterWrite); }}
+                  >
+                    开启
+                  </button>
+                  <button
+                    className={thinkingMode === 'custom' ? 'active' : ''}
+                    onClick={() => { setThinkingMode('custom'); save(theme, fontSize, chaptersPerOutput, chapterWords, enterToSend, developmentLineOrientation, 'custom', thinkingStages, reviewAfterWrite); }}
+                    onMouseEnter={(event) => setCustomTip({ x: event.clientX, y: event.clientY })}
+                    onMouseMove={(event) => setCustomTip({ x: event.clientX, y: event.clientY })}
+                    onMouseLeave={() => setCustomTip(null)}
+                  >
+                    自定义
+                  </button>
+                  {customTip && (
+                    <div
+                      className="chat-date-tooltip"
+                      style={{
+                        left: Math.min(customTip.x + 14, window.innerWidth - 270),
+                        top: Math.min(customTip.y + 16, window.innerHeight - 90)
+                      }}
+                    >
+                      鼠标悬停可查看各项影响
+                    </div>
+                  )}
+
+                </div>
+                {thinkingMode === 'custom' && (
+                  <div className="thinking-stages">
+                    {THINKING_STAGE_ITEMS.map((item) => (
+                      <div className="option-row stage-row" key={item.key}>
+                        <span
+                          className="stage-label"
+                          onMouseEnter={(event) => setStageTip({ x: event.clientX, y: event.clientY, text: item.desc })}
+                          onMouseMove={(event) => setStageTip({ x: event.clientX, y: event.clientY, text: item.desc })}
+                          onMouseLeave={() => setStageTip(null)}
+                        >
+                          {item.label}
+                        </span>
+                        <span className="stage-buttons">
+                  <button
+                            className={!thinkingStages[item.key] ? 'active' : ''}
+                            onClick={() => setStageThinking(item.key, false)}
+                          >
+                            关
+                          </button>
+                  <button
+                            className={thinkingStages[item.key] ? 'active' : ''}
+                            onClick={() => setStageThinking(item.key, true)}
+                          >
+                            开
+                          </button>
+                        </span>
+                      </div>
+                    ))}
+                    {stageTip && (
+                      <div
+                        className="chat-date-tooltip"
+                        style={{
+                          left: Math.min(stageTip.x + 14, window.innerWidth - 270),
+                          top: Math.min(stageTip.y + 16, window.innerHeight - 90)
+                        }}
+                      >
+                        {stageTip.text}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </>
+          )}
+          {activeSetting === 'providers' && (
+            <ProvidersPanel />
           )}
           {activeSetting === 'trash' && (
-            <>
-              <div className="trash-section">
-                <h3>图书（已生成）</h3>
-                {trashBooks.length === 0 && <p className="muted">暂无回收图书</p>}
-                {trashBooks.map((book) => (
-                  <div key={book.id} className="trash-item">
-                    <div>
-                      <strong>{book.title}</strong>
-                      <span className="muted">{book.chapterCount} 章</span>
-                    </div>
-                    <div>
-                      <button onClick={() => restore(book)}>恢复</button>
-                      <button className="danger" onClick={() => setPermanentTarget(book)}>彻底删除</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="trash-section">
-                <h3>构思（未生成）</h3>
-                {trashDrafts.length === 0 && <p className="muted">暂无回收构思</p>}
-                {trashDrafts.map((book) => (
-                  <div key={book.id} className="trash-item">
-                    <div>
-                      <strong>{book.title}</strong>
-                      <span className="muted">创作中</span>
-                    </div>
-                    <div>
-                      <button onClick={() => restore(book)}>恢复</button>
-                      <button className="danger" onClick={() => setPermanentTarget(book)}>彻底删除</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
+            <TrashPanel
+              books={trashBooks}
+              drafts={trashDrafts}
+              onRestore={restore}
+              onPermanent={setPermanentTarget}
+            />
           )}
           {activeSetting === 'account' && (
-            <div className="settings-group">
-              <span>账户设置</span>
-              <form className="account-form" onSubmit={changePassword}>
-                <input type="password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} placeholder="原密码" />
-                <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="新密码（至少 6 位）" />
-                <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="确认新密码" />
-                {accountError && <p className="form-error">{accountError}</p>}
-                {accountMessage && <p className="saved-tip">{accountMessage}</p>}
-                <button className="primary" type="submit">修改密码</button>
-              </form>
-            </div>
+            <AccountPanel />
           )}
         </div>
       </div>
@@ -289,6 +415,7 @@ export default function SettingsPage() {
           ))}
         </div>
       )}
+      <HoverTip tip={hoverTip} />
     </section>
   );
 }

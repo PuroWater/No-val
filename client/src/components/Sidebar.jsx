@@ -14,15 +14,15 @@ export default function Sidebar() {
 
   return (
     <header className="top-nav">
-      <div className="top-brand">Novel Agent</div>
+      <div className="top-brand">No-val</div>
       <nav className="top-links">
         <NavLink to="/workspace">创作</NavLink>
-        <NavLink to="/shelf">书架</NavLink>
+        <NavLink to="/shelf">书城</NavLink>
         <NavLink to="/my">我的</NavLink>
       </nav>
       <div className="user-menu">
         <button className="user-button" onClick={() => setOpen((value) => !value)}>
-          {user?.username || '账号'}
+          {user?.nickname || user?.username || '账号'}
         </button>
         {open && (
           <div className="user-dropdown">

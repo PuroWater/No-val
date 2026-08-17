@@ -1,4 +1,6 @@
 import { readJson, SETTINGS_FILE } from '../lib/store.js';
+import { defaultSettings } from '../lib/settingsDefaults.js';
+import { legacyThinkingMode, normalizeThinkingMode, normalizeThinkingStages } from '../lib/thinking.js';
 
 function clampInt(value, min, max, fallback) {
   const number = Number(value);
@@ -9,11 +11,18 @@ function clampInt(value, min, max, fallback) {
 export function getUserSettings(userId) {
   const settings = readJson(SETTINGS_FILE, []);
   const current = settings.find((item) => item.userId === userId) || {};
+  const base = defaultSettings(userId);
   return {
-    theme: current.theme || 'paper',
-    fontSize: current.fontSize || 'medium',
-    chaptersPerOutput: clampInt(current.chaptersPerOutput, 1, 5, 3),
-    chapterWords: clampInt(current.chapterWords, 1000, 10000, 2000),
-    enterToSend: current.enterToSend !== false
+    theme: current.theme || base.theme,
+    fontSize: current.fontSize || base.fontSize,
+    chaptersPerOutput: clampInt(current.chaptersPerOutput, 1, 5, base.chaptersPerOutput),
+    chapterWords: clampInt(current.chapterWords, 1000, 10000, base.chapterWords),
+    enterToSend: current.enterToSend !== false,
+    // 0.9.3 思考开关三态 + 五档细分；旧 thinkingEnabled/thinkingForWriting 自动迁移
+    thinkingMode: normalizeThinkingMode(current.thinkingMode ?? legacyThinkingMode(current)),
+    thinkingStages: normalizeThinkingStages(current.thinkingStages),
+    developmentLineOrientation: current.developmentLineOrientation === 'horizontal' ? 'horizontal' : 'vertical',
+    reviewAfterWrite: current.reviewAfterWrite === true,
+    confirmBeforeWrite: current.confirmBeforeWrite === true
   };
 }

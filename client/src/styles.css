@@ -176,7 +176,7 @@ button, input, textarea, select {
   border-bottom: 1px solid var(--border);
   background: var(--panel);
   position: relative;
-  z-index: 10;
+  z-index: 100;
 }
 
 .top-brand {
@@ -327,6 +327,7 @@ button, input, textarea, select {
 
 .chat-date-wrap {
   position: relative;
+  z-index: 40;
 }
 
 .chat-date-select {
@@ -351,13 +352,15 @@ button, input, textarea, select {
 }
 
 .chat-date-panel {
-  position: absolute;
-  top: calc(100% + 4px);
+  position: fixed;
+  top: 0;
   left: 0;
-  z-index: 30;
+  z-index: 80;
   min-width: 150px;
   max-height: 260px;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
   padding: 4px;
   display: flex;
   flex-direction: column;
@@ -392,7 +395,7 @@ button, input, textarea, select {
 
 .chat-date-tooltip {
   position: fixed;
-  z-index: 40;
+  z-index: 96;
   max-width: 260px;
   padding: 6px 10px;
   background: #1f2328;
@@ -452,9 +455,9 @@ button, input, textarea, select {
 
 .chat-input textarea {
   flex: 1;
-  height: 56px;
-  min-height: 56px;
-  max-height: 56px;
+  height: 42px;
+  min-height: 42px;
+  max-height: 42px;
   resize: none;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -472,7 +475,7 @@ button, input, textarea, select {
 
 .chat-input .primary {
   flex: none;
-  height: 56px;
+  height: 42px;
   min-width: 88px;
   padding: 0 20px;
   font-size: 14px;
@@ -644,8 +647,8 @@ button, input, textarea, select {
 
 .book-card-link {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  gap: 12px;
   width: 100%;
   text-align: left;
   color: var(--text);
@@ -654,6 +657,37 @@ button, input, textarea, select {
   border: 0;
   padding: 0;
   cursor: pointer;
+}
+
+.book-card-cover {
+  width: 56px;
+  flex: 0 0 56px;
+  aspect-ratio: 3 / 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: 800;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+}
+
+.book-card-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.book-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
 }
 
 .book-delete {
@@ -764,119 +798,181 @@ button, input, textarea, select {
   color: var(--muted);
 }
 
-.relation-graph {
-  position: relative;
-  overflow: hidden;
+.character-search {
+  margin-bottom: 12px;
+}
+.character-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 16px;
+  overflow-y: auto;
   flex: 1;
   min-height: 0;
+  padding-right: 4px;
+}
+
+.character-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  padding: 14px 12px;
+}
+.character-card-cover {
+  width: 132px;
+  height: 176px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--panel);
-  padding: 12px;
-  cursor: grab;
-  user-select: none;
+  overflow: hidden;
+  background: var(--accent);
+  color: #ffffff;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.14);
 }
-
-.relation-graph svg {
+.character-card-cover img {
   width: 100%;
   height: 100%;
-  min-height: 0;
+  object-fit: cover;
   display: block;
 }
-
-.relation-graph line {
-  stroke: var(--muted);
-  stroke-width: 1.5;
+.character-card-fallback {
+  font-size: 54px;
+  font-weight: 800;
 }
-
-.relation-graph .edge-label {
-  fill: var(--muted);
+.character-card-name {
+  font-size: 15px;
+  font-weight: 800;
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.character-card-meta {
+  margin-top: 6px;
   font-size: 12px;
-  text-anchor: middle;
+  color: var(--muted);
 }
-
-.relation-graph .relation-node text {
-  fill: var(--text);
-  font-size: 13px;
-}
-
-.relation-graph .relation-node.person circle {
-  fill: var(--accent);
-}
-
-.relation-graph .relation-node.faction circle {
-  fill: #b7791f;
-}
-
-.relation-graph .relation-node circle {
-  stroke: var(--panel);
-  stroke-width: 3;
-}
-
-.relation-graph .main-halo {
-  fill: none;
-  stroke: #e67e22;
-  stroke-width: 4;
-  stroke-dasharray: 8 6;
-}
-
-.relation-graph .node-type {
-  font-size: 12px;
-  fill: rgba(255, 255, 255, 0.9);
-}
-
-.graph-toolbar {
-  position: absolute;
-  top: 16px;
-  right: 16px;
+.character-card-actions {
   display: flex;
-  gap: 8px;
-  z-index: 2;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  margin-top: 16px;
 }
-
-.graph-toolbar button {
-  padding: 6px 10px;
+.character-card-actions button {
+  padding: 5px 9px;
+  font-size: 12px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: var(--panel);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+}
+.character-card-actions button:hover:not(:disabled) {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+.character-card-actions button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* 主区（姓名 + 最新快照）：历史按钮对该区域垂直居中，展开历史列表在虚线下独立，不影响按钮 */
+.character-card-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.character-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.character-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.character-name {
+  font-size: 15px;
+}
+
+.character-latest {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.character-history-toggle {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 84px;
+  font-size: 13px;
+  line-height: 1;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
   color: var(--text);
   cursor: pointer;
 }
 
-.graph-legend {
-  position: absolute;
-  left: 16px;
-  bottom: 16px;
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  padding: 8px 12px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--panel);
-  color: var(--muted);
-  font-size: 12px;
-  z-index: 2;
-}
-
-.legend-dot {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  margin-right: 4px;
-}
-
-.legend-dot.person {
+.character-history-toggle.active {
   background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
 }
 
-.legend-dot.faction {
-  background: #b7791f;
+.character-snapshot {
+  margin: 8px 0 0;
+  color: var(--text);
+  line-height: 1.6;
 }
 
-.legend-dot.main {
-  background: #e67e22;
+.character-history {
+  margin: 8px 0 0;
+  width: 100%;
+  text-align: left;
+  list-style: none;
+  border-top: 1px dashed var(--border);
+  padding: 8px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.character-history li {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.character-history-chapter {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.character-history-chapter:hover {
+  color: var(--text);
 }
 
 .shelf-placeholder {
@@ -980,6 +1076,10 @@ button, input, textarea, select {
   color: var(--text);
 }
 
+.setting-label {
+  cursor: default;
+}
+
 .setting-number {
   max-width: 180px;
   padding: 9px 10px;
@@ -987,6 +1087,52 @@ button, input, textarea, select {
   border-radius: 6px;
   background: var(--panel);
   color: var(--text);
+}
+
+.number-stepper {
+  display: flex;
+  align-items: stretch;
+  max-width: 208px;
+}
+.number-stepper .setting-number {
+  width: 150px;
+  max-width: none;
+  border-radius: 6px 0 0 6px;
+  -moz-appearance: textfield;
+}
+.number-stepper .setting-number::-webkit-outer-spin-button,
+.number-stepper .setting-number::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.number-stepper-buttons {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-left: 0;
+  border-radius: 0 6px 6px 0;
+  overflow: hidden;
+}
+.number-stepper-buttons button {
+  width: 28px;
+  flex: 1;
+  border: 0;
+  background: var(--panel);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 10px;
+  line-height: 1;
+}
+.number-stepper-buttons button + button {
+  border-top: 1px solid var(--border);
+}
+.number-stepper-buttons button:hover:not(:disabled) {
+  background: var(--accent);
+  color: #ffffff;
+}
+.number-stepper-buttons button:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 
 .account-form .primary {
@@ -1222,6 +1368,10 @@ button, input, textarea, select {
   color: #ffffff;
 }
 
+.directory-item.active .directory-grip {
+  color: #ffffff;
+}
+
 .directory-item.new {
   border-style: dashed;
   border-color: var(--border);
@@ -1232,7 +1382,9 @@ button, input, textarea, select {
 }
 
 .directory-label {
+  flex: 1;
   min-width: 0;
+  text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1387,7 +1539,7 @@ button, input, textarea, select {
 
 .book-widget-cover {
   width: 46px;
-  height: 60px;
+  aspect-ratio: 3 / 4;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1395,6 +1547,14 @@ button, input, textarea, select {
   background: var(--accent);
   color: #ffffff;
   font-weight: 700;
+  overflow: hidden;
+}
+
+.book-widget-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .book-widget-info {
@@ -1406,6 +1566,23 @@ button, input, textarea, select {
 
 .book-widget-info span {
   color: var(--muted);
+  font-size: 13px;
+}
+
+.book-widget-actions {
+  display: flex;
+
+  gap: 8px;
+  margin-left: auto;
+  margin-right: auto;
+  min-width: 0;
+}
+
+.book-widget-actions .link-button {
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 4px;
   font-size: 13px;
 }
 
@@ -1436,7 +1613,7 @@ button, input, textarea, select {
   overflow-y: auto;
 }
 
-.timeline-list {
+.development-line-list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -1445,14 +1622,14 @@ button, input, textarea, select {
   gap: 10px;
 }
 
-.timeline-chapter {
+.development-line-chapter {
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--bg);
   overflow: hidden;
 }
 
-.timeline-chapter-head {
+.development-line-chapter-head {
   width: 100%;
   display: flex;
   align-items: center;
@@ -1467,50 +1644,50 @@ button, input, textarea, select {
   text-align: left;
 }
 
-.timeline-chapter-title {
+.development-line-chapter-title {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.timeline-chapter-count {
+.development-line-chapter-count {
   flex: none;
   color: var(--muted);
   font-size: 12px;
 }
 
-.timeline-events {
+.development-line-events {
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 0 12px 12px;
 }
 
-.timeline-empty {
+.development-line-empty {
   margin: 0;
 }
 
-.timeline-event {
+.development-line-event {
   padding: 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--panel);
 }
 
-.timeline-event-text {
+.development-line-event-text {
   margin: 0 0 6px;
   line-height: 1.6;
 }
 
-.timeline-event-characters {
+.development-line-event-characters {
   margin: 0;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
 
-.timeline-character {
+.development-line-character {
   padding: 2px 8px;
   border-radius: 10px;
   background: var(--accent);
@@ -1553,4 +1730,1455 @@ button, input, textarea, select {
   .workspace-split {
     grid-template-columns: 1fr;
   }
+}
+
+/* ---------- 0.7.4 分层时间线 ---------- */
+
+.development-line-view {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.development-line-canvas {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+/* 0.8.57 分方向对齐：竖排水平居中+垂直靠上；横排水平靠左+垂直居中（保证第一章在视线内） */
+.development-line-canvas-vertical {
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.development-line-canvas-horizontal {
+  justify-content: flex-start;
+  align-items: center;
+}
+.development-line-vertical {
+  /* 0.8.56 竖排：背景按钮中线对齐，连接线连接中线 */
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.development-line-horizontal {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+}
+
+.development-line-content {
+  position: relative;
+  width: max-content;
+  min-height: 100%;
+  padding: 12px;
+}
+
+/* 横版：内容高度随内容（不再撑满画布），行内容垂直居中；竖版背景水平居中、连接线居中连接（0.8.54） */
+.development-line-horizontal {
+  min-height: auto;
+  align-items: center;
+}
+
+.development-line-group-block {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.development-line-vertical .development-line-group-block {
+  flex-direction: row;
+}
+
+.development-line-horizontal .development-line-group-block {
+  flex-direction: column;
+}
+
+/* 背景组之间的连接线：主题色、居中连接相邻背景（0.8.42 美化） */
+.development-line-connector {
+  flex: none;
+  background: var(--accent);
+  opacity: 0.45;
+  border-radius: 2px;
+}
+
+.development-line-vertical .development-line-connector {
+  width: 2px;
+  height: 26px;
+  align-self: center;
+}
+
+.development-line-horizontal .development-line-connector {
+  height: 2px;
+  width: 26px;
+  align-self: center;
+}
+
+.development-line-node {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 120px;
+  max-width: 220px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.development-line-node.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+.development-line-node-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.development-line-node-range {
+  margin-left: auto;
+  font-size: 12px;
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+.development-line-chapter-column {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.development-line-scene-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.development-line-scene-title {
+  display: block;
+  width: 100%;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-align: left;
+  cursor: pointer;
+}
+
+.development-line-scene-title:hover {
+  background: var(--border);
+}
+
+.development-line-scene-title.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+.development-line-float {
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
+  z-index: 30;
+  align-items: flex-start;
+  max-height: 300px;
+  overflow: auto;
+}
+
+.development-line-chapter-float {
+  display: none;
+}
+
+.development-line-tooltip-detail {
+  margin: 4px 0 0;
+  white-space: pre-wrap;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* ---------- 0.7.4 聊天处理进度 ---------- */
+
+.chat-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.chat-progress-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-progress-bar {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.chat-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+  transition: width 0.4s ease;
+}
+
+.modal-message {
+  white-space: pre-line;
+}
+ne-tooltip-detail {
+  margin: 4px 0 0;
+  white-space: pre-wrap;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* ---------- 0.7.4 聊天处理进度 ---------- */
+
+.chat-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.chat-progress-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-progress-bar {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.chat-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+  transition: width 0.4s ease;
+}
+
+.modal-message {
+  white-space: pre-line;
+}
+
+/* 0.9.3 模型思考细分（自定义模式展开的子级选项） */
+.thinking-stages {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 2px;
+}
+
+.thinking-stages .stage-row {
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.stage-label {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.stage-buttons {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.thinking-stages .stage-buttons button {
+  padding: 5px 12px;
+}
+
+/* 0.9.6 模型服务管理 */
+.provider-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 8px 12px;
+}
+
+.provider-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.provider-name-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.provider-active {
+  font-size: 11px;
+  color: #ffffff;
+  background: var(--accent);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
+.provider-meta {
+  font-size: 12px;
+  color: var(--muted);
+  word-break: break-all;
+}
+
+.provider-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.provider-form {
+  margin-top: 16px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.form-grid input,
+.form-grid select {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+}
+
+.option-row button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+/* 0.9.6 v2 模型服务管理 */
+.chat-model-picker {
+  position: relative;
+  flex: none;
+  align-self: flex-end;
+}
+
+.chat-model-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 96px;
+  max-width: 96px;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-model-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.chat-model-btn-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-model-arrow {
+  flex: none;
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid var(--muted);
+}
+
+.chat-model-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 60;
+  min-width: 150px;
+  max-height: 260px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chat-model-menu button {
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.chat-model-menu button:hover,
+.chat-model-menu button.active {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+
+.model-manage-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.model-modal {
+  width: min(94vw, 680px);
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.model-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.model-modal-head h3 {
+  margin: 0;
+}
+
+.modal-close {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 6px;
+}
+
+.modal-close:hover {
+  color: var(--text);
+}
+
+.model-fetch-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.model-fetch-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.model-modal-select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 13px;
+}
+
+
+.secondary {
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.settings-title {
+  margin: 0 0 16px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* 0.9.6 弹窗模型下拉（自定义，与聊天模型选择器同风格） */
+.model-select {
+  position: relative;
+}
+
+.model-select-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.model-select-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.model-select-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.model-select-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 60;
+  max-height: 260px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.model-select-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.model-select-group-label {
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.model-select-menu button {
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.model-select-menu button:hover,
+.model-select-menu button.active {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+/* 0.9.6 人物快照二级展开（身份/背包/目标/近况） */
+.character-detail-row {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.character-detail-row strong {
+  flex-shrink: 0;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.character-bag {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-content: flex-start;
+}
+
+.character-bag li.junk {
+  opacity: 0.65;
+}
+
+/* 0.9.7 人物快照：近况超链接 + 悬浮详情弹窗 */
+.character-snapshot-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+  line-height: 1.5;
+}
+
+.character-snapshot-link:hover {
+  text-decoration-style: solid;
+  opacity: 0.85;
+}
+
+.character-detail-popup {
+  z-index: 95;
+  pointer-events: auto;
+  width: min(480px, 92vw);
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.character-detail-popup-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.character-detail-popup-head span {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.character-detail-popup-head .modal-close {
+  margin-left: auto;
+}
+
+.character-detail-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.character-detail-popup-foot {
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+
+.character-goto-chapter {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.character-goto-chapter:hover {
+  text-decoration-style: solid;
+  opacity: 0.85;
+}
+
+/* 0.9.7 发展线事件内容弹窗（内容性 tooltip） */
+.development-line-event-popup {
+  z-index: 95;
+  pointer-events: auto;
+  width: min(480px, 92vw);
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.development-line-event-item {
+  line-height: 1.6;
+}
+
+/* 类型3 内容性 tooltip：主题色面板、宽、不跟随鼠标 */
+.content-tip {
+  position: fixed;
+  z-index: 95;
+  pointer-events: auto;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.22);
+}
+
+.character-bag-item {
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.character-bag li.junk {
+  opacity: 0.65;
+}
+
+/* 展开历史：第x章粗体 + 缩进近况（超链接下划线，点击开详情） */
+.character-history-chapter-label {
+  font-weight: 700;
+}
+
+.character-history-snapshot {
+  padding: 0 0 0 1em;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  line-height: 1.5;
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+
+.character-history-snapshot:hover {
+  text-decoration-style: solid;
+  opacity: 0.85;
+}
+
+/* 0.9.7 创作台侧栏拖拽排序 */
+.directory-item {
+  cursor: grab;
+}
+
+.directory-item:active {
+  cursor: grabbing;
+}
+
+.directory-grip {
+  flex: none;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: -1px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.directory-item:hover .directory-grip,
+.directory-item.drag-over .directory-grip {
+  opacity: 1;
+}
+
+/* 拖动中的源条目：半透明 + 虚线框 */
+.directory-item.dragging {
+  opacity: 0.45;
+  border-style: dashed;
+  border-color: var(--accent);
+}
+
+/* 落点：整圈环绕提示（2px 圈 + 柔和光晕，跟随圆角，清晰不像细线） */
+.directory-item.drag-over {
+  box-shadow: 0 0 0 2px var(--accent), 0 0 8px rgba(0, 0, 0, 0.18);
+}
+
+/* 选中态深色主题色上仍要能看到拖拽反馈（不改主题色本身）：
+   白圈在浅色背景上会隐形，外加深色晕使其两侧都可见 */
+.directory-item.active.dragging {
+  border-color: rgba(255, 255, 255, 0.85);
+}
+
+.directory-item.active.drag-over {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.95), 0 0 0 5px var(--accent);
+}
+
+/* ===== 0.9.8 书籍信息页 ===== */
+.book-info-tab {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 16px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+}
+.book-info-top {
+  display: flex;
+  align-items: stretch;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+}
+.book-info-top-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+}
+.book-info-cover-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 180px;
+}
+.book-info-cover-wrap {
+  width: 180px;
+  aspect-ratio: 3 / 4;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.book-info-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.book-info-cover-empty {
+  color: #ffffff;
+  font-size: 56px;
+  font-weight: 800;
+  background: var(--accent);
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.book-info-upload {
+  width: 180px;
+}
+.book-info-cover-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  width: 180px;
+}
+.book-info-cover-actions .secondary {
+  flex: 1;
+}
+.book-info-main {
+  flex: 1;
+  min-width: 0;
+}
+.book-info-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.3;
+}
+.book-info-author {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+.book-info-outline {
+  margin: 0;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+.book-info-style {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.book-info-style-label {
+  color: var(--muted);
+  font-size: 14px;
+  white-space: nowrap;
+}
+.book-info-style-select {
+  min-width: 160px;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 14px;
+}
+.book-info-hint {
+  font-size: 12px;
+}
+
+/* ===== 0.9.8 我的-书架 / 书城改造 ===== */
+.my-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.my-tabs button {
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+}
+.my-tabs button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+.shelf-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0 24px;
+  align-items: start;
+}
+.shelf-region + .shelf-region {
+  border-left: 1px solid var(--border);
+  padding-left: 24px;
+}
+.shelf-region {
+  min-width: 0;
+}
+.shelf-region-title {
+  margin: 0 0 16px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+.shelf-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 20px 16px;
+  align-items: start;
+}
+.shelf-book {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  color: var(--text);
+  text-align: center;
+}
+.shelf-book-cover {
+  width: 120px;
+  aspect-ratio: 3 / 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px 8px 8px 4px;
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
+  overflow: hidden;
+  background: var(--panel);
+  position: relative;
+}
+.shelf-book-cover::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  background: rgba(0, 0, 0, 0.12);
+}
+.shelf-book-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.shelf-book-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 48px;
+  font-weight: 800;
+}
+.shelf-book-title {
+  width: 120px;
+  font-size: 13px;
+  line-height: 1.4;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* ===== 0.9.8 人物信息横向卡片 + 主次分组 + 菜单浮窗 ===== */
+.character-tab {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow: hidden;
+}
+.character-search {
+  flex: 0 0 auto;
+}
+.character-row {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  align-items: stretch;
+  padding-bottom: 8px;
+}
+.character-group-divider {
+  flex: 0 0 1px;
+  align-self: stretch;
+  border-left: 1px dashed var(--border);
+  margin: 0 2px;
+}
+
+.character-card {
+  --card-inner: calc(240px - 2px - 32px);
+  flex: 0 0 240px;
+  width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  overflow: hidden;
+}
+.character-card.expanded {
+  flex: 0 0 560px;
+  width: 560px;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0;
+}
+.character-expand-divider {
+  flex: 0 0 1px;
+  align-self: stretch;
+  border-left: 1px dashed var(--border);
+  margin: 0 16px;
+}
+.character-card-left {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+}
+.character-card.expanded .character-card-left {
+  flex: 0 0 var(--card-inner);
+  width: var(--card-inner);
+}
+.character-card .character-card-cover {
+  flex: 0 0 auto;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 3 / 4;
+}
+.character-card-info {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0;
+}
+.character-history-panel {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.character-history-search {
+  margin: 0;
+  flex: 0 0 auto;
+}
+.character-history-list {
+  flex: 1;
+  min-height: 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.character-history-scroll {
+  height: 100%;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+.character-history-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.character-history-item span:first-child {
+  font-size: 12px;
+  color: var(--muted);
+}
+.character-history-item span:last-child {
+  font-size: 13px;
+  line-height: 1.5;
+}
+.character-history-item:hover {
+  border-color: var(--accent);
+}
+
+.character-menu-popup {
+  z-index: 95;
+  pointer-events: auto;
+  width: 120px;
+  min-width: 120px;
+  max-width: 120px;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.character-menu-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.character-menu-actions button {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  text-align: center;
+  font-size: 12px;
+}
+.character-menu-actions button:hover:not(:disabled) {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+.character-menu-actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ===== 0.9.8 缩放防挤压：不够宽时裁剪，不换行 ===== */
+.top-links {
+  min-width: 0;
+  overflow: hidden;
+}
+.top-links a {
+  white-space: nowrap;
+}
+.user-button {
+  white-space: nowrap;
+}
+.chat-head {
+  overflow: hidden;
+}
+.chat-head-left {
+  overflow: hidden;
+}
+.chat-head-left strong {
+  white-space: nowrap;
+}
+.chat-date-wrap,
+.chat-date-select {
+  white-space: nowrap;
+}
+.chat-head-actions {
+  flex: none;
+}
+.chat-head-actions .side-toggle {
+  white-space: nowrap;
+}
+.chat-input .primary {
+  white-space: nowrap;
+}
+.chat-model-btn {
+  white-space: nowrap;
+}
+.status-badge {
+  white-space: nowrap;
+}
+
+/* ===== 0.9.8 全局滚动条（复用样式：细、主题色、透明轨道） ===== */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--accent);
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+/* ===== 0.9.9 世界观设定（worldSettings UI） ===== */
+.world-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+}
+.world-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.world-field-title {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.world-field textarea {
+  min-height: 88px;
+}
+
+.world-current {
+  font-size: 13px;
+  color: var(--muted);
+}
+.world-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.world-form textarea {
+  min-height: 60px;
+  resize: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 20px;
+}
+.world-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.world-history-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.world-history-item span:first-child {
+  font-size: 12px;
+  color: var(--muted);
+}
+.world-history-item span:last-child {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* ===== 0.9.9 书籍信息页布局细化 ===== */
+.book-info-section-title {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+.book-info-style-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 32px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+}
+.book-info-style-section .book-info-section-title {
+  flex: 1;
+  margin: 0;
+}
+.book-info-style-section .model-select {
+  flex: 0 0 160px;
+  width: 160px;
+}
+
+@media (max-width: 640px) {
+  .book-info-top {
+    flex-direction: column;
+  }
+  .book-info-cover-col {
+    flex-basis: auto;
+  }
+  .book-info-style-section {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .book-info-style-section .model-select {
+    align-self: flex-end;
+  }
+}
+
+
+/* 0.9.9 模型下拉悬浮菜单（Portal 到 body）：position:fixed 脱离父容器 overflow 裁剪，
+   悬于页面之上，不被模型配置弹窗/书籍信息文笔区等容器截断。定位由 ModelSelect 动态计算。 */
+.model-select-menu-fixed {
+  position: fixed;
+  z-index: 9999;
+  max-height: 260px;
+  overflow-y: auto;
 }

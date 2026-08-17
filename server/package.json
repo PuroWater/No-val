@@ -1,12 +1,11 @@
 {
-  "name": "novel-agent-server",
-  "version": "0.6.4",
+  "name": "no-val-server",
+  "version": "0.9.9",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node --watch src/index.js",
-    "start": "node src/index.js",
-    "test": "node --test"
+    "dev": "node --watch-path=src src/index.js",
+    "start": "node src/index.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

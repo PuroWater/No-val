@@ -32,13 +32,22 @@ export function AuthProvider({ children }) {
     setUser(data.user);
   }
 
+  async function updateNickname(nickname) {
+    const data = await api('/auth/nickname', {
+      method: 'PUT',
+      body: JSON.stringify({ nickname })
+    });
+    setStoredUser(data.user);
+    setUser(data.user);
+  }
+
   function logout() {
     clearAuth();
     setUser(null);
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout }}>
+    <AuthContext.Provider value={{ user, login, register, logout, updateNickname }}>
       {children}
     </AuthContext.Provider>
   );
