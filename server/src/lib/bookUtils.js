@@ -2,21 +2,26 @@ export function newId(prefix) {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-// 背包归一化（0.9.6）：条目 { name, status }，按重要性顺序截断，超出的合并为"杂物"。
-// maxItems 为硬上限（含"杂物"聚合条目）。
-export function normalizeBag(raw, maxItems = 30) {
-  const list = (Array.isArray(raw) ? raw : [])
-    .map((item) => {
-      const name = String(item?.name || '').trim();
-      const status = String(item?.status || '').trim();
-      return { name, status, ...(item?.junk ? { junk: true } : {}) };
-    })
-    .filter((item) => item.name);
+// 背包归一化：bag 只表示当前仍持有的条目；removedBag 单独保存已消耗/收回审计。
+// 旧数据中模型曾把“已使用/已消耗/已收回”写进 status，这里在迁移时一次性移出当前背包。
+function isLegacyRemovedItem(item) {
+  if (item?.state === 'removed' || item?.removed === true) return true;
+  const status = String(item?.status || '').trim();
+  return /已(?:使用|消耗|收回|丢弃|用尽|失去)/.test(status);
+}
+
+function normalizeBagItem(item) {
+  const name = String(item?.name || '').trim();
+  const status = String(item?.status || '').trim();
+  return { name, status };
+}
+
+function capBag(list, maxItems) {
   const seen = new Set();
   const unique = [];
   for (const item of list) {
     const key = item.name + '\u0000' + item.status;
-    if (seen.has(key)) continue;
+    if (!item.name || seen.has(key)) continue;
     seen.add(key);
     unique.push(item);
   }
@@ -28,7 +33,35 @@ export function normalizeBag(raw, maxItems = 30) {
   return kept;
 }
 
-// 角色快照归一化（0.9.6）：旧版字符串快照 → 结构化 { identity, bag, goal, recent }。
+function normalizeInventory(raw, maxItems = 30) {
+  const active = [];
+  const removed = [];
+  for (const rawItem of (Array.isArray(raw) ? raw : [])) {
+    const item = normalizeBagItem(rawItem);
+    if (!item.name) continue;
+    if (isLegacyRemovedItem(rawItem)) removed.push({ ...item, reason: item.status || '已移除' });
+    else active.push({ ...item, ...(rawItem?.junk ? { junk: true } : {}) });
+  }
+  return { active: capBag(active, maxItems), removed: capBag(removed, maxItems) };
+}
+
+export function normalizeBag(raw, maxItems = 30) {
+  const list = (Array.isArray(raw) ? raw : [])
+    .map((item) => ({ ...normalizeBagItem(item), ...(item?.junk ? { junk: true } : {}) }))
+    .filter((item) => item.name);
+  return capBag(list, maxItems);
+}
+
+export function normalizeRemovedBag(raw, maxItems = 30) {
+  return capBag((Array.isArray(raw) ? raw : [])
+    .map((item) => {
+      const normalized = normalizeBagItem(item);
+      return normalized.name ? { ...normalized, reason: String(item?.reason || normalized.status || '已移除').trim() } : null;
+    })
+    .filter(Boolean), maxItems);
+}
+
+// 角色快照归一化（0.9.6）：旧版字符串快照 → 结构化 { identity, bag, removedBag, goal, recent }。
 export function normalizeWorldSnapshot(raw) {
   if (!raw || typeof raw !== 'object') raw = {};
   return {
@@ -54,12 +87,14 @@ export function normalizeWorld(raw) {
 
 export function normalizeCharacterSnapshot(raw) {
   if (typeof raw === 'string') {
-    return { identity: '', bag: [], goal: '', recent: String(raw).trim() };
+    return { identity: '', bag: [], removedBag: [], goal: '', recent: String(raw).trim() };
   }
-  if (!raw || typeof raw !== 'object') return { identity: '', bag: [], goal: '', recent: '' };
+  if (!raw || typeof raw !== 'object') return { identity: '', bag: [], removedBag: [], goal: '', recent: '' };
+  const inventory = normalizeInventory(raw.bag);
   return {
     identity: String(raw.identity || '').trim(),
-    bag: normalizeBag(raw.bag),
+    bag: inventory.active,
+    removedBag: normalizeRemovedBag([...(Array.isArray(raw.removedBag) ? raw.removedBag : []), ...inventory.removed]),
     goal: String(raw.goal || '').trim(),
     recent: String(raw.recent || '').trim()
   };

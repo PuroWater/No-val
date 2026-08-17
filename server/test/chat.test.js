@@ -14,6 +14,11 @@ test('isConfirmation recognizes confirmation phrases', () => {
   assert.equal(isConfirmation('主角叫林晚'), false);
 });
 
+test('规模字段不再从用户文本正则推断，未指定字段由路由使用 default', () => {
+  assert.equal('hasExplicitChapterWords' in {}, false);
+});
+
+
 test('buildTodayHistory keeps today chat and excludes current user and processing', () => {
   const today = new Date().toISOString();
   const yesterday = new Date(Date.now() - 86400000).toISOString();

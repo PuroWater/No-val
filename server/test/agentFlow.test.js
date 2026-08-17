@@ -121,7 +121,7 @@ test('runRouter routes tool intent with schema output', async () => {
   });
   assert.equal(route.mode, 'tool');
   assert.equal(route.intent, 'create_append');
-  assert.deepEqual(route.output, { chapters: 2 });
+  assert.deepEqual(route.output, { chapters: 2, chapterWords: 'default' });
 
   const navigate = await runRouter({
     user: '发一个卡片',
@@ -141,7 +141,7 @@ test('runRouter injects default output scale into prompt', async () => {
   assert.ok(captured.includes('默认输出规模'), '提示词应包含默认输出规模');
   assert.ok(captured.includes('3 章'), '提示词应包含默认章节数');
   assert.ok(captured.includes('2500 字'), '提示词应包含默认每章字数');
-  assert.ok(captured.includes('再写一章') && captured.includes('chapters:1'), '提示词应明确一章=1章');
+  assert.ok(captured.includes('再写一章') && captured.includes('\"chapters\":1') && captured.includes('\"chapterWords\":\"default\"'), '提示词应明确一章=1章且未指定字数取 default');
 });
 
 test('runRouter clamps out-of-range defaults', async () => {
@@ -492,3 +492,13 @@ test('prefilterDraftIntent injects default output scale into prompt', async () =
   assert.ok(captured.includes('3000 字'), '提示词应包含默认每章字数');
 });
 
+
+
+test('runRouter preserves structured default markers for omitted scale fields', async () => {
+  const route = await runRouter({
+    user: '再写一章',
+    defaults: { chaptersPerOutput: 3, chapterWords: 2500 },
+    ask: async () => ({ mode: 'tool', intent: 'create_append', output: { chapters: 1, chapterWords: 'default' } })
+  });
+  assert.deepEqual(route.output, { chapters: 1, chapterWords: 'default' });
+});

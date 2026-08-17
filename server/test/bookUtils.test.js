@@ -56,3 +56,19 @@ test('normalizeWorld dedupes by chapter and filters empty snapshots', () => {
   assert.equal(world.history[0].snapshot.summary, 'b');
 });
 
+
+
+test('normalizeCharacters removes consumed legacy bag entries and keeps audit trail separate', () => {
+  const cards = normalizeCharacters([{
+    name: '主角',
+    history: [{ chapter: 0, snapshot: {
+      bag: [
+        { name: '长剑', status: '仍在手中' },
+        { name: '回春丹', status: '已使用' },
+        { name: '旧令牌', state: 'removed', reason: '本章收回' }
+      ]
+    } }]
+  }]);
+  assert.deepEqual(cards[0].history[0].snapshot.bag.map((item) => item.name), ['长剑']);
+  assert.deepEqual(cards[0].history[0].snapshot.removedBag.map((item) => item.name), ['回春丹', '旧令牌']);
+});

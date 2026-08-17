@@ -1,18 +1,8 @@
 // 聊天消息列表（纯展示）：渲染消息气泡/书籍卡片/日期分隔线，滚动由父级通过 ref 控制。
 import { Fragment } from 'react';
 import BookWidget from './BookWidget.jsx';
+import { formatDate } from '../lib/chatDate.js';
 
-function formatDate(iso) {
-  try {
-    const date = new Date(iso);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  } catch {
-    return '';
-  }
-}
 
 export default function ChatMessageList({ messages, book, greeting, emptyText, scrollRef, onScroll, onOpenBook }) {
   let lastDate = null;

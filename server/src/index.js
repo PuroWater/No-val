@@ -46,7 +46,7 @@ const port = Number(process.env.PORT || 3001);
 await ensureInitialData();
 recoverStaleProcessing();
 const server = app.listen(port, () => {
-  console.log(`Novel Agent server listening on http://localhost:${port}`);
+  console.log(`No-val server listening on http://localhost:${port}`);
 });
 server.on('error', (err) => {
   if (err.code === 'EADDRINUSE') {

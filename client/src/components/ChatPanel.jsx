@@ -5,23 +5,13 @@ import { api } from '../api.js';
 import BookWidget from './BookWidget.jsx';
 import ChatModelPicker from './ChatModelPicker.jsx';
 import { useStack } from './OverlayStack.jsx';
+import { formatDate, getDateRanges } from '../lib/chatDate.js';
 
 const SUGGESTIONS = ['今天有什么想法？', '来聊聊吧！'];
 
 // 0.8.48 刷新即中断：模块级标记，仅页面刷新（模块重载）后首次加载时检查一次，切换书不重复中断。
 let initializedForSession = false;
 
-function formatDate(iso) {
-  try {
-    const date = new Date(iso);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  } catch {
-    return '';
-  }
-}
 
 export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOpen, onToggleSide, onBookChanged }) {
   const isNew = !bookId;
@@ -266,6 +256,7 @@ export default function ChatPanel({ bookId, onOpenBook, onSessionCreated, sideOp
   }
 
   const todayKey = formatDate(new Date());
+  const dateOptions = getDateRanges(book);
   const isKnownDate = selectedDate && selectedDate !== '__today__' && dateOptions.some((option) => option.date === selectedDate);
   const mode = selectedDate === '__today__' || !selectedDate
     ? selectedDate

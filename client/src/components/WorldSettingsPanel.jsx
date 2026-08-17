@@ -110,10 +110,22 @@ export default function WorldSettingsPanel({ book, onUpdated, onNotice }) {
       />
       <div className="world-current">当前：第{focusChapter + 1}章</div>
       <form className="world-form" onSubmit={saveWorld}>
-        <textarea value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="世界观总述" />
-        <textarea value={power} onChange={(e) => setPower(e.target.value)} placeholder="境界/等级设定（如有）" />
-        <textarea value={factions} onChange={(e) => setFactions(e.target.value)} placeholder="势力/集团（每行一个，名称与介绍之间用冒号分隔）" />
-        <textarea value={places} onChange={(e) => setPlaces(e.target.value)} placeholder="地点/区域（每行一个，名称与介绍之间用冒号分隔）" />
+        <div className="world-field">
+          <div className="world-field-title">世界观总述（请用自然语言描述书籍整体世界观）</div>
+          <textarea aria-label="世界观总述" value={summary} onChange={(e) => setSummary(e.target.value)} />
+        </div>
+        <div className="world-field">
+          <div className="world-field-title">境界/等级设定（如有请用自然语言描述，不严格要求格式）</div>
+          <textarea aria-label="境界/等级设定" value={power} onChange={(e) => setPower(e.target.value)} />
+        </div>
+        <div className="world-field">
+          <div className="world-field-title">势力/集团（每行一个，名称与介绍之间用冒号分隔）</div>
+          <textarea aria-label="势力/集团" value={factions} onChange={(e) => setFactions(e.target.value)} />
+        </div>
+        <div className="world-field">
+          <div className="world-field-title">地点/区域（每行一个，名称与介绍之间用冒号分隔）</div>
+          <textarea aria-label="地点/区域" value={places} onChange={(e) => setPlaces(e.target.value)} />
+        </div>
         <button className="primary" type="submit" disabled={saving}>{saving ? '保存中…' : '保存世界观'}</button>
       </form>
       {filteredHistory.length > 0 && (

@@ -1,4 +1,4 @@
-# Novel Agent 小说创作平台
+# No-val 小说创作平台
 
 一个可直接运行的本地小说创作 Web 应用。前端使用 React + Vite，后端使用 Express，数据以 JSON 文件持久化在 `data/` 目录。后端统一调用模型辅助创作（默认 DeepSeek，可在设置页“模型服务”接入其它 OpenAI 兼容模型，如 OpenAI / Ollama / 各类中转与本地模型）。
 

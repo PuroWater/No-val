@@ -14,7 +14,7 @@ export default function Sidebar() {
 
   return (
     <header className="top-nav">
-      <div className="top-brand">Novel Agent</div>
+      <div className="top-brand">No-val</div>
       <nav className="top-links">
         <NavLink to="/workspace">创作</NavLink>
         <NavLink to="/shelf">书城</NavLink>

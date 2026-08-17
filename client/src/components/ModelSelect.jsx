@@ -24,7 +24,7 @@ export default function ModelSelect({ value, onChange, groups = [], placeholder 
         <span className="chat-model-arrow" aria-hidden="true" />
       </button>
       {open && (
-        <div className="model-select-menu">
+        <div className="model-select-menu" onWheel={(event) => event.stopPropagation()} onTouchMove={(event) => event.stopPropagation()}>
           {groups.map((group) => (
             <div className="model-select-group" key={group.label || 'group'}>
               {group.label && <div className="model-select-group-label">{group.label}</div>}

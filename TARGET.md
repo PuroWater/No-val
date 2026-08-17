@@ -22,7 +22,7 @@
 项目代码直接在当前工作目录下创建，根目录保留 `README.md`、`SUMMARY.md`、`TARGET.md`，代码放入以下结构：
 
 ```text
-Novel Agent/
+No-val/
 ├─ client/                 # React 前端
 │  ├─ src/                 # 页面、组件、路由
 │  └─ package.json

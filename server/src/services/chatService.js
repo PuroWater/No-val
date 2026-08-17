@@ -15,12 +15,17 @@ const activeJobs = new Map();
 // 需要写前确认（系统级 interrupt）的写意图
 const WRITE_INTENTS = new Set(['create_append', 'create_insert', 'rewrite', 'delete', 'batch_edit']);
 
+function outputValue(value, fallback) {
+  return value === 'default' || value === undefined || value === null ? fallback : value;
+}
+
 function intentConfirmText(intent, output, target, settings) {
+  const chapters = outputValue(output?.chapters, settings.chaptersPerOutput || 1);
   switch (intent) {
     case 'create_append':
-      return `将续写/新建 ${output?.chapters || settings.chaptersPerOutput || 1} 章（追加到末尾）。`;
+      return `将续写/新建 ${chapters} 章（追加到末尾）。`;
     case 'create_insert':
-      return `将在${Number.isInteger(target?.chapter) ? `第 ${target.chapter} 章${target?.position === 'before' ? '前' : '后'}` : '指定位置'}插入 ${output?.chapters || 1} 章。`;
+      return `将在${Number.isInteger(target?.chapter) ? `第 ${target.chapter} 章${target?.position === 'before' ? '前' : '后'}` : '指定位置'}插入 ${chapters} 章。`;
     case 'rewrite':
       return `将改写第 ${target?.chapter || '目标'} 章。`;
     case 'delete':
@@ -338,9 +343,9 @@ async function handleDraftMessage(book, content, settings, signal) {
     return;
   }
   if (filter.output) {
-    // 与 ready 路径一致的信任守卫：仅当消息提到规模关键词才采纳
-    if (Number.isInteger(filter.output.chapters) && /章/.test(content)) book.draft.chaptersPerOutput = filter.output.chapters;
-    if (Number.isFinite(filter.output.chapterWords) && /字数|每章/.test(content)) book.draft.chapterWords = filter.output.chapterWords;
+    // 路由已将未指定字段显式归一化为 "default"；只有数字才写入草稿覆盖值。
+    if (Number.isInteger(filter.output.chapters)) book.draft.chaptersPerOutput = filter.output.chapters;
+    if (Number.isFinite(filter.output.chapterWords)) book.draft.chapterWords = filter.output.chapterWords;
   }
   if (book.draft.summary && isConfirmation(content)) {
     await finalizeDraftBook(book, {
@@ -400,22 +405,17 @@ async function handleReadyMessage(book, content, settings, signal, changeLog, jo
     return;
   }
   // 路由产出意图 → 任务单（工具白名单 + 步骤 + 完成条件），执行器按任务单执行
-  // 输出规模信任守卫：仅当用户消息明确提到 章/字数/每章 时才采用路由解析的 output，
-  // 防止模型虚构 chapterWords/chapters 覆盖用户设置（自查发现“再写一章”被虚构 1000 字）。
-  // 输出规模信任守卫：字段级——消息提“章”才采用 chapters，提“字数/每章”才采用 chapterWords，
-  // 防止模型虚构越界规模覆盖用户设置（自查发现“再写一章”被虚构 chapterWords 触发超限）。
-  const safeOutput = {};
-  if (/章/.test(content) && Number.isInteger(route.output?.chapters)) safeOutput.chapters = route.output.chapters;
-  if (/字数|每章/.test(content) && Number.isFinite(route.output?.chapterWords)) safeOutput.chapterWords = route.output.chapterWords;
-  const finalOutput = Object.keys(safeOutput).length > 0 ? safeOutput : null;
+  // 路由输出是唯一的规模来源：数字表示用户明确指定的覆盖值，"default" 表示设置页默认值。
+  // 不再从用户文本猜测字段含义，避免关键词正则把内容要求误判为字数要求。
+  const finalOutput = route.output || null;
   const plan = buildPlan(route.intent, { output: finalOutput, target: route.target, settings });
   if (settings.confirmBeforeWrite && !isConfirmReply && WRITE_INTENTS.has(route.intent)) {
-    book.pendingAction = { intent: route.intent, output: route.output, target: route.target, content };
-    replaceProcessing(book, `确认执行：${intentConfirmText(route.intent, route.output, route.target, settings)}\n\n回复“确认”继续，或直接提出修改。`, 'question');
+    book.pendingAction = { intent: route.intent, output: finalOutput, target: route.target, content };
+    replaceProcessing(book, `确认执行：${intentConfirmText(route.intent, finalOutput, route.target, settings)}\n\n回复“确认”继续，或直接提出修改。`, 'question');
     return;
   }
-  const effectiveSettings = safeOutput?.chapterWords
-    ? { ...settings, chapterWords: safeOutput.chapterWords }
+  const effectiveSettings = Number.isFinite(finalOutput?.chapterWords)
+    ? { ...settings, chapterWords: finalOutput.chapterWords }
     : settings;
   // 任务单显式工具白名单：模型只能调用任务允许的工具，避免越权选择其他意图的工具
   const allowedTools = new Set(plan.tools);
