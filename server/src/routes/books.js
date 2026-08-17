@@ -86,7 +86,7 @@ router.get('/:id', (req, res) => {
 
 router.put('/:id/world', (req, res) => {
   const snapshot = normalizeWorldSnapshot(req.body?.snapshot);
-  if (!snapshot.summary && snapshot.factions.length === 0 && snapshot.places.length === 0 && snapshot.systems.length === 0) {
+  if (!snapshot.summary && !snapshot.power && snapshot.factions.length === 0 && snapshot.places.length === 0) {
     return res.status(400).json({ error: '世界观设定不能为空' });
   }
   const { version } = req.body || {};

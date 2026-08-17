@@ -350,8 +350,8 @@ export default function BookSidePanel({ bookId, onClose, onBack, openChapter, re
             <h2 className="book-info-title">{book.title}</h2>
             <p className="book-info-author">作者：{user?.nickname || user?.username || '未知'}</p>
             <p className="book-info-outline">{book.outline || '暂无简介'}</p>
-            <div className="book-info-style" {...bindHover('文笔风格只影响之后新建/改写的正文，不修改已有章节')}>
-              <span className="book-info-style-label">文笔风格</span>
+            <div className="book-info-style-section" {...bindHover('文笔风格只影响之后新建/改写的正文，不修改已有章节')}>
+              <h4 className="book-info-section-title">文笔风格</h4>
               <ModelSelect
                 value={book.writingStyle || 'default'}
                 onChange={saveWritingStyle}

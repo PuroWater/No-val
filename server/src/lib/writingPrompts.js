@@ -98,10 +98,10 @@ export function worldSnapshotRef(book, { untilChapter = Number.MAX_SAFE_INTEGER 
   const s = latest.snapshot;
   const fmt = (list) => list.map((item) => (item.status ? `${item.name}（${item.status}）` : item.name)).join('、');
   const parts = [];
-  if (s.summary) parts.push(`总述/规则：${s.summary}`);
+  if (s.summary) parts.push(`世界观总述：${s.summary}`);
+  if (s.power) parts.push(`境界/等级设定：${s.power}`);
   if (s.factions.length) parts.push(`势力：${fmt(s.factions)}`);
   if (s.places.length) parts.push(`地点：${fmt(s.places)}`);
-  if (s.systems.length) parts.push(`体系/规则：${fmt(s.systems)}`);
   return parts.length > 0 ? `世界设定（当前已知，剧情需要时可新增）：\n${parts.join('\n')}` : '';
 }
 

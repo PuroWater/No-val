@@ -33,9 +33,9 @@ export function normalizeWorldSnapshot(raw) {
   if (!raw || typeof raw !== 'object') raw = {};
   return {
     summary: String(raw.summary || '').trim(),
+    power: String(raw.power || '').trim(),
     factions: normalizeBag(raw.factions),
-    places: normalizeBag(raw.places),
-    systems: normalizeBag(raw.systems)
+    places: normalizeBag(raw.places)
   };
 }
 
@@ -46,7 +46,7 @@ export function normalizeWorld(raw) {
     const chapter = Number(item?.chapter);
     if (!Number.isInteger(chapter) || chapter < 0) continue;
     const snapshot = normalizeWorldSnapshot(item?.snapshot);
-    if (!snapshot.summary && snapshot.factions.length === 0 && snapshot.places.length === 0 && snapshot.systems.length === 0) continue;
+    if (!snapshot.summary && !snapshot.power && snapshot.factions.length === 0 && snapshot.places.length === 0) continue;
     byChapter.set(chapter, { chapter, snapshot });
   }
   return { history: [...byChapter.values()].sort((a, b) => a.chapter - b.chapter) };

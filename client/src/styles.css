@@ -3082,3 +3082,17 @@ ne-tooltip-detail {
   line-height: 1.5;
 }
 
+/* ===== 0.9.9 书籍信息页 section 标题与文笔下拉加宽 ===== */
+.book-info-section-title {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+.book-info-style-section {
+  margin-bottom: 16px;
+}
+.book-info-style-section .model-select {
+  width: 320px;
+}
+
